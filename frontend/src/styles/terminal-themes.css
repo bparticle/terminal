@@ -1,0 +1,29 @@
+/* Theme 1: Classic Green (Default) */
+:root {
+  --primary-color: #2dfe39;
+  --primary-rgb: 45, 254, 57;
+  --primary-dim: #1fb527;
+  --primary-dark: #158c1d;
+  --primary-light: #5fff66;
+  --primary-glow: rgba(45, 254, 57, 0.5);
+}
+
+/* Theme 2: Laser Blue */
+:root[data-theme="2"] {
+  --primary-color: #00d9ff;
+  --primary-rgb: 0, 217, 255;
+  --primary-dim: #0099b3;
+  --primary-dark: #006688;
+  --primary-light: #66e5ff;
+  --primary-glow: rgba(0, 217, 255, 0.5);
+}
+
+/* Theme 3: Knight Rider Red */
+:root[data-theme="3"] {
+  --primary-color: #ff0040;
+  --primary-rgb: 255, 0, 64;
+  --primary-dim: #cc0033;
+  --primary-dark: #990025;
+  --primary-light: #ff6690;
+  --primary-glow: rgba(255, 0, 64, 0.5);
+}

@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  background: #0a0a0a;
+  color: #ededed;
+  font-family: 'VT323', monospace;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Wallet adapter modal overrides */
+.wallet-adapter-modal-wrapper {
+  font-family: 'VT323', monospace !important;
+}
+
+.wallet-adapter-button {
+  font-family: 'VT323', monospace !important;
+}
