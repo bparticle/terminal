@@ -4,6 +4,7 @@ import { query } from '../config/database';
 import { AuthenticatedRequest } from '../types';
 import { isValidSolanaAddress } from '../services/auth.service';
 import { AppError } from '../middleware/errorHandler';
+import { validateString, validateUrl } from '../middleware/validate';
 
 const router = Router();
 
@@ -65,7 +66,11 @@ router.get('/profile', requireAuth, async (req: AuthenticatedRequest, res: Respo
  */
 router.put('/profile', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, pfp_image_url, pfp_nft_id } = req.body;
+    // Validate inputs
+    const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
+    const pfp_image_url = validateUrl(req.body.pfp_image_url, 'pfp_image_url', { maxLength: 2048 });
+    const pfp_nft_id = validateString(req.body.pfp_nft_id, 'pfp_nft_id', { maxLength: 100 });
+
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;

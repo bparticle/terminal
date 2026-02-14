@@ -18,6 +18,7 @@ import {
 } from '../services/campaign.service';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import { validateString, validateStringArray } from '../middleware/validate';
 
 const router = Router();
 
@@ -150,8 +151,19 @@ router.get('/:id/leaderboard', async (req: Request, res: Response) => {
  */
 router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    // Whitelist allowed fields -- no mass assignment
     const campaign = await createCampaign({
-      ...req.body,
+      name: validateString(req.body.name, 'name', { required: true, maxLength: 200 })!,
+      description: validateString(req.body.description, 'description', { maxLength: 1000 }),
+      target_states: validateStringArray(req.body.target_states, 'target_states', { required: true, maxItems: 20 })!,
+      target_value: validateString(req.body.target_value, 'target_value', { maxLength: 200 }),
+      require_all: typeof req.body.require_all === 'boolean' ? req.body.require_all : true,
+      max_winners: typeof req.body.max_winners === 'number' ? Math.floor(req.body.max_winners) : 0,
+      reward_description: validateString(req.body.reward_description, 'reward_description', { required: true, maxLength: 500 })!,
+      reward_nft_mint: validateString(req.body.reward_nft_mint, 'reward_nft_mint', { maxLength: 100 }),
+      sets_state: validateString(req.body.sets_state, 'sets_state', { maxLength: 200 }),
+      expires_at: req.body.expires_at ? new Date(req.body.expires_at).toISOString() : undefined,
+      is_active: typeof req.body.is_active === 'boolean' ? req.body.is_active : true,
       created_by: req.user!.walletAddress,
     });
 

@@ -12,6 +12,7 @@ import campaignsRoutes from './routes/campaigns.routes';
 import walletRoutes from './routes/wallet.routes';
 import { registerChatHandlers } from './sockets/chat.socket';
 import { verifyToken } from './services/auth.service';
+import { authLimiter, apiLimiter, writeLimiter } from './middleware/rateLimiter';
 
 const app = express();
 const httpServer = createServer(app);
@@ -19,20 +20,36 @@ const httpServer = createServer(app);
 // ── Socket.IO ──────────────────────────────────────────────
 const corsOrigin = config.nodeEnv === 'development'
   ? ['http://localhost:3000', 'http://localhost:3001']
-  : process.env.FRONTEND_URL || '*';
+  : config.frontendUrl; // validated at startup in constants.ts
 
 const io = new Server(httpServer, {
   cors: {
     origin: corsOrigin,
     credentials: true,
   },
+  pingTimeout: 20_000,
+  pingInterval: 25_000,
+  maxHttpBufferSize: 1e4, // 10KB max message size
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+  },
 });
+
+// Track connections per IP for abuse prevention
+const connectionsPerIp = new Map<string, number>();
 
 // Socket.IO JWT authentication middleware
 io.use((socket, next) => {
+  // Connection limit per IP: max 10
+  const ip = socket.handshake.address;
+  const current = connectionsPerIp.get(ip) || 0;
+  if (current >= 10) {
+    return next(new Error('Too many connections'));
+  }
+
   const token = socket.handshake.auth?.token;
   if (!token) {
-    return next(new Error('Authentication required'));
+    return next(new Error('Authentication failed'));
   }
   try {
     const decoded = verifyToken(token);
@@ -40,12 +57,25 @@ io.use((socket, next) => {
     socket.data.walletAddress = decoded.walletAddress;
     next();
   } catch {
-    return next(new Error('Invalid or expired token'));
+    return next(new Error('Authentication failed'));
   }
 });
 
 // Register Socket.IO event handlers
 io.on('connection', (socket) => {
+  // Track connection count per IP
+  const ip = socket.handshake.address;
+  connectionsPerIp.set(ip, (connectionsPerIp.get(ip) || 0) + 1);
+
+  socket.on('disconnect', () => {
+    const count = connectionsPerIp.get(ip) || 1;
+    if (count <= 1) {
+      connectionsPerIp.delete(ip);
+    } else {
+      connectionsPerIp.set(ip, count - 1);
+    }
+  });
+
   registerChatHandlers(io, socket);
 });
 
@@ -68,12 +98,12 @@ app.use('/api/v1', (req, res, next) => {
   next();
 });
 
-// Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', usersRoutes);
-app.use('/api/v1/game', gameRoutes);
-app.use('/api/v1/campaigns', campaignsRoutes);
-app.use('/api/v1/wallet', walletRoutes);
+// Routes (with rate limiting)
+app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1/users', apiLimiter, usersRoutes);
+app.use('/api/v1/game', writeLimiter, gameRoutes);
+app.use('/api/v1/campaigns', apiLimiter, campaignsRoutes);
+app.use('/api/v1/wallet', apiLimiter, walletRoutes);
 
 // Health check
 app.get('/api/v1/health', (_req, res) => {

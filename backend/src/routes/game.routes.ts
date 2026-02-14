@@ -5,6 +5,7 @@ import { findGameSave, createGameSave, updateGameSave } from '../services/game.s
 import { processAchievements, evaluateCampaigns } from '../services/campaign.service';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import { validateString, validateJsonObject, validateJsonArray } from '../middleware/validate';
 
 const router = Router();
 
@@ -43,7 +44,8 @@ router.get('/load/:wallet_address', requireAuth, async (req: AuthenticatedReques
  */
 router.post('/new', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { starting_node_id, name } = req.body;
+    const starting_node_id = validateString(req.body.starting_node_id, 'starting_node_id', { maxLength: 100 });
+    const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
     const wallet_address = req.user!.walletAddress;
 
     // Check if save already exists
@@ -79,8 +81,14 @@ router.post('/new', requireAuth, async (req: AuthenticatedRequest, res: Response
  */
 router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { current_node_id, location, game_state, inventory, name } = req.body;
     const wallet_address = req.user!.walletAddress;
+
+    // Validate inputs
+    const current_node_id = validateString(req.body.current_node_id, 'current_node_id', { maxLength: 100 });
+    const location = validateString(req.body.location, 'location', { maxLength: 100 });
+    const game_state = validateJsonObject(req.body.game_state, 'game_state', { maxSizeBytes: 50_000 });
+    const inventory = validateJsonArray(req.body.inventory, 'inventory', { maxItems: 100, maxSizeBytes: 10_000 }) as string[] | undefined;
+    const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
 
     // 1. Update game save
     const save = await updateGameSave(wallet_address, {

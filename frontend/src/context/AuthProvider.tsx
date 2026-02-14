@@ -29,7 +29,6 @@ interface Session {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const SESSION_KEY = 'terminal_game_session';
-const TOKEN_KEY = 'sessionToken';
 
 function getFingerprint(): string {
   if (typeof window === 'undefined') return '';
@@ -58,10 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (parsed.fingerprint === fingerprint && parsed.expiresAt > Date.now()) {
           setSession(parsed);
-          localStorage.setItem(TOKEN_KEY, parsed.token);
         } else {
           sessionStorage.removeItem(SESSION_KEY);
-          localStorage.removeItem(TOKEN_KEY);
         }
       }
     } catch (e) {
@@ -167,7 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setSession(newSession);
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-      localStorage.setItem(TOKEN_KEY, token);
     } catch (error) {
       console.error('Authentication failed:', error);
       throw error;
@@ -179,7 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     setSession(null);
     sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(TOKEN_KEY);
   }, []);
 
   const getAuthHeaders = useCallback((): Record<string, string> => {

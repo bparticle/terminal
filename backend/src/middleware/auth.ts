@@ -11,7 +11,7 @@ export function requireAuth(
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'No token provided' });
+    res.status(401).json({ error: 'Authentication required' });
     return;
   }
 
@@ -22,7 +22,7 @@ export function requireAuth(
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    res.status(401).json({ error: 'Authentication required' });
   }
 }
 

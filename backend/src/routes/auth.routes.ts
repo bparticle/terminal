@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import {
   generateAuthMessage,
   verifySignature,
+  validateAndConsumeNonce,
   isValidSolanaAddress,
   generateToken,
 } from '../services/auth.service';
@@ -49,10 +50,15 @@ router.post('/verify-wallet', async (req: Request, res: Response) => {
       throw new AppError('Invalid wallet address', 400);
     }
 
+    // Validate nonce (replay protection)
+    if (!validateAndConsumeNonce(message)) {
+      throw new AppError('Authentication failed', 401);
+    }
+
     // Verify the signature
     const isValid = verifySignature(message, signature, wallet_address);
     if (!isValid) {
-      throw new AppError('Invalid signature', 401);
+      throw new AppError('Authentication failed', 401);
     }
 
     // Find or create user

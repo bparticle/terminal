@@ -2,6 +2,35 @@ import { Server, Socket } from 'socket.io';
 import { query } from '../config/database';
 
 const MAX_MESSAGE_LENGTH = 280;
+const MAX_NODE_ID_LENGTH = 100;
+
+// ── Per-socket rate limiting ──────────────────────────────
+interface RateBucket {
+  count: number;
+  resetAt: number;
+}
+
+function checkRateLimit(
+  buckets: Map<string, RateBucket>,
+  key: string,
+  maxPerWindow: number,
+  windowMs: number,
+): boolean {
+  const now = Date.now();
+  const bucket = buckets.get(key);
+
+  if (!bucket || now >= bucket.resetAt) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (bucket.count >= maxPerWindow) {
+    return false; // rate limited
+  }
+
+  bucket.count++;
+  return true;
+}
 
 /**
  * Look up a player's display name from the database.
@@ -36,6 +65,7 @@ function getCurrentRoom(socket: Socket): string | null {
  */
 export function registerChatHandlers(io: Server, socket: Socket): void {
   const walletAddress: string = socket.data.walletAddress;
+  const rateBuckets = new Map<string, RateBucket>();
 
   console.log(`[socket] connected: ${walletAddress} (${socket.id})`);
 
@@ -43,6 +73,12 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
   socket.on('join-room', async (payload: { nodeId: string }) => {
     const { nodeId } = payload || {};
     if (!nodeId || typeof nodeId !== 'string') return;
+
+    // Validate nodeId: alphanumeric, hyphens, underscores only; reasonable length
+    if (nodeId.length > MAX_NODE_ID_LENGTH || !/^[a-zA-Z0-9_-]+$/.test(nodeId)) return;
+
+    // Rate limit: max 10 room joins per minute
+    if (!checkRateLimit(rateBuckets, 'join', 10, 60_000)) return;
 
     const newRoom = `room:${nodeId}`;
 
@@ -94,6 +130,9 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
 
     const trimmed = message.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_MESSAGE_LENGTH) return;
+
+    // Rate limit: max 10 messages per 5 seconds
+    if (!checkRateLimit(rateBuckets, 'msg', 10, 5_000)) return;
 
     const currentRoom = getCurrentRoom(socket);
     if (!currentRoom) return; // not in any room

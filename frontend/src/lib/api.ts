@@ -25,12 +25,6 @@ export async function fetchWithAuth(
   if (authContext) {
     const authHeaders = authContext.getAuthHeaders();
     Object.assign(headers, authHeaders);
-  } else {
-    // Fallback to localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('sessionToken') : null;
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
   }
 
   const url = path.startsWith('http') ? path : `${API_BASE_URL}/${path}`;
