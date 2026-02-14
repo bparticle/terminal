@@ -11,7 +11,9 @@ import Monitor from './components/Monitor';
 import StatsBox from './components/StatsBox';
 import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
+import ChatModeToggle from './components/ChatModeToggle';
 import SnakeGame from '@/components/terminal/SnakeGame';
+import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
 import './game-terminal.css';
 
 interface OutputLine {
@@ -38,10 +40,51 @@ export default function GameTerminal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [onboardingState, setOnboardingState] = useState<OnboardingState>('idle');
+  const [chatMode, setChatMode] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const currentNodeIdRef = useRef<string | null>(null);
+
+  // ── Socket.IO for room chat ──────────────────────────────
+  const handleChatMessage = useCallback((msg: ChatMessage) => {
+    const isMe = msg.sender === playerName;
+    const prefix = isMe ? '[You]' : `[${msg.sender}]`;
+    setOutput((prev) => [
+      ...prev,
+      {
+        text: `${prefix}: ${msg.message}`,
+        className: isMe ? 'chat-message chat-message-self' : 'chat-message',
+        timestamp: msg.timestamp,
+      },
+    ]);
+  }, [playerName]);
+
+  const handleSystemEvent = useCallback((evt: ChatSystemEvent) => {
+    setOutput((prev) => [
+      ...prev,
+      {
+        text: `* ${evt.message}`,
+        className: 'chat-system',
+        timestamp: evt.timestamp,
+      },
+    ]);
+  }, []);
+
+  const { isConnected: isSocketConnected, joinRoom, sendMessage } = useSocket({
+    onChatMessage: handleChatMessage,
+    onSystemEvent: handleSystemEvent,
+  });
+
+  // Wraps setCurrentLocation to also join the Socket.IO room
+  const handleLocationChange = useCallback((location: string, nodeId?: string) => {
+    setCurrentLocation(location);
+    if (nodeId) {
+      currentNodeIdRef.current = nodeId;
+      joinRoom(nodeId);
+    }
+  }, [joinRoom]);
 
   // Set auth context for API client
   useEffect(() => {
@@ -133,7 +176,7 @@ export default function GameTerminal() {
 
     const engine = new GameEngine(
       addOutput,
-      setCurrentLocation,
+      handleLocationChange,
       setInventory,
       (gameId: string) => {
         setActiveGame(gameId);
@@ -149,7 +192,7 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [onboardingState, publicKey, playerName]);
+  }, [onboardingState, publicKey, playerName, handleLocationChange]);
 
   // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {
@@ -210,6 +253,11 @@ export default function GameTerminal() {
     [onboardingState, addOutput]
   );
 
+  // Toggle chat mode
+  const toggleChatMode = useCallback(() => {
+    setChatMode((prev) => !prev);
+  }, []);
+
   // Handle form submit
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -220,6 +268,13 @@ export default function GameTerminal() {
       if (onboardingState === 'ask_name') {
         if (trimmed) addUserOutput(trimmed);
         await handleOnboardingInput(input);
+        setInput('');
+        return;
+      }
+
+      // ── Chat mode: send message instead of processing commands ──
+      if (chatMode && trimmed) {
+        sendMessage(trimmed);
         setInput('');
         return;
       }
@@ -268,7 +323,7 @@ export default function GameTerminal() {
 
       setInput('');
     },
-    [input, publicKey, connected, theme, pendingRestart, onboardingState, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput]
+    [input, publicKey, connected, theme, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
   );
 
   // Re-focus input when returning from a mini-game
@@ -411,22 +466,38 @@ export default function GameTerminal() {
             <div ref={outputEndRef} />
           </div>
 
-          <form onSubmit={handleSubmit} className="terminal-input-form">
-            <span className="terminal-prompt">&gt;_</span>
+          <form onSubmit={handleSubmit} className={`terminal-input-form ${chatMode ? 'chat-mode' : ''}`}>
+            {connected && onboardingState === 'done' ? (
+              <ChatModeToggle
+                chatMode={chatMode}
+                onToggle={toggleChatMode}
+                isSocketConnected={isSocketConnected}
+              />
+            ) : (
+              <span className="terminal-prompt">&gt;_</span>
+            )}
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab' && connected && onboardingState === 'done') {
+                  e.preventDefault();
+                  toggleChatMode();
+                }
+              }}
               className="terminal-input"
               autoFocus
               autoComplete="off"
               placeholder={
                 onboardingState === 'ask_name'
                   ? 'Enter your name...'
-                  : connected
-                    ? 'Enter command...'
-                    : 'Connect wallet to start'
+                  : chatMode
+                    ? 'Talk to nearby players...'
+                    : connected
+                      ? 'Enter command...'
+                      : 'Connect wallet to start'
               }
               disabled={activeGame !== null}
             />

@@ -4,7 +4,7 @@ import { loadGame, startNewGame, saveGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
 
 type OutputFn = (text: string, className?: string) => void;
-type LocationChangeFn = (location: string) => void;
+type LocationChangeFn = (location: string, nodeId?: string) => void;
 type InventoryChangeFn = (items: Array<{ name: string }>) => void;
 type MiniGameStartFn = (gameId: string) => void;
 
@@ -157,7 +157,7 @@ export class GameEngine {
     // Update location
     if (node.location) {
       this.save.location = node.location;
-      this.locationChangeFn?.(node.location);
+      this.locationChangeFn?.(node.location, this.save.current_node_id);
     }
   }
 

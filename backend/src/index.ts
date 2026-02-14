@@ -1,5 +1,7 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
+import { Server } from 'socket.io';
 import { config } from './config/constants';
 import { errorHandler } from './middleware/errorHandler';
 import { query } from './config/database';
@@ -8,14 +10,48 @@ import usersRoutes from './routes/users.routes';
 import gameRoutes from './routes/game.routes';
 import campaignsRoutes from './routes/campaigns.routes';
 import walletRoutes from './routes/wallet.routes';
+import { registerChatHandlers } from './sockets/chat.socket';
+import { verifyToken } from './services/auth.service';
 
 const app = express();
+const httpServer = createServer(app);
+
+// ── Socket.IO ──────────────────────────────────────────────
+const corsOrigin = config.nodeEnv === 'development'
+  ? ['http://localhost:3000', 'http://localhost:3001']
+  : process.env.FRONTEND_URL || '*';
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: corsOrigin,
+    credentials: true,
+  },
+});
+
+// Socket.IO JWT authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    return next(new Error('Authentication required'));
+  }
+  try {
+    const decoded = verifyToken(token);
+    socket.data.userId = decoded.userId;
+    socket.data.walletAddress = decoded.walletAddress;
+    next();
+  } catch {
+    return next(new Error('Invalid or expired token'));
+  }
+});
+
+// Register Socket.IO event handlers
+io.on('connection', (socket) => {
+  registerChatHandlers(io, socket);
+});
 
 // Middleware
 app.use(cors({
-  origin: config.nodeEnv === 'development'
-    ? ['http://localhost:3000', 'http://localhost:3001']
-    : process.env.FRONTEND_URL || '*',
+  origin: corsOrigin,
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
@@ -72,8 +108,9 @@ async function seedAdminWallets(): Promise<void> {
 }
 
 // Start server
-app.listen(config.port, async () => {
+httpServer.listen(config.port, async () => {
   console.log(`Terminal Game API running on port ${config.port} (${config.nodeEnv})`);
+  console.log(`Socket.IO ready for connections`);
   await seedAdminWallets();
 });
 
