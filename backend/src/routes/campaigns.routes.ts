@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import {
   findActiveCampaigns,
+  findAllCampaigns,
   findCampaignById,
   getCampaignWinners,
   getCampaignWinnerCount,
@@ -12,6 +13,7 @@ import {
   updateCampaign,
   deleteCampaign,
   evaluateCampaigns,
+  evaluateCampaignForAllUsers,
   recordAchievement,
 } from '../services/campaign.service';
 import { query } from '../config/database';
@@ -28,6 +30,31 @@ router.get('/', async (_req: Request, res: Response) => {
     const campaigns = await findActiveCampaigns();
 
     // Enrich with winner counts
+    const enriched = await Promise.all(
+      campaigns.map(async (campaign) => {
+        const winnerCount = await getCampaignWinnerCount(campaign.id);
+        return {
+          ...campaign,
+          winner_count: winnerCount,
+          is_full: campaign.max_winners > 0 && winnerCount >= campaign.max_winners,
+        };
+      })
+    );
+
+    res.json({ campaigns: enriched });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch campaigns' });
+  }
+});
+
+/**
+ * GET /api/v1/campaigns/all (admin only)
+ * List ALL campaigns (active, inactive, expired) for admin management
+ */
+router.get('/all', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const campaigns = await findAllCampaigns();
+
     const enriched = await Promise.all(
       campaigns.map(async (campaign) => {
         const winnerCount = await getCampaignWinnerCount(campaign.id);
@@ -121,14 +148,8 @@ router.get('/:id/leaderboard', async (req: Request, res: Response) => {
  * POST /api/v1/campaigns (admin only)
  * Create a new campaign
  */
-router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Check admin status
-    const userResult = await query('SELECT is_admin FROM users WHERE id = $1', [req.user!.userId]);
-    if (!userResult.rows[0]?.is_admin) {
-      throw new AppError('Admin access required', 403);
-    }
-
     const campaign = await createCampaign({
       ...req.body,
       created_by: req.user!.walletAddress,
@@ -149,13 +170,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
  * PUT /api/v1/campaigns/:id (admin only)
  * Update a campaign
  */
-router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userResult = await query('SELECT is_admin FROM users WHERE id = $1', [req.user!.userId]);
-    if (!userResult.rows[0]?.is_admin) {
-      throw new AppError('Admin access required', 403);
-    }
-
     const campaign = await updateCampaign(req.params.id, req.body);
     if (!campaign) {
       throw new AppError('Campaign not found', 404);
@@ -175,13 +191,8 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
  * DELETE /api/v1/campaigns/:id (admin only)
  * Delete a campaign
  */
-router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userResult = await query('SELECT is_admin FROM users WHERE id = $1', [req.user!.userId]);
-    if (!userResult.rows[0]?.is_admin) {
-      throw new AppError('Admin access required', 403);
-    }
-
     await deleteCampaign(req.params.id);
     res.json({ success: true });
   } catch (error) {
@@ -194,16 +205,35 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respon
 });
 
 /**
+ * POST /api/v1/campaigns/:id/evaluate (admin only)
+ * Retroactively evaluate a campaign against all users
+ */
+router.post('/:id/evaluate', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const campaign = await findCampaignById(req.params.id);
+    if (!campaign) {
+      throw new AppError('Campaign not found', 404);
+    }
+
+    const winnersAwarded = await evaluateCampaignForAllUsers(campaign);
+
+    res.json({ success: true, winners_awarded: winnersAwarded });
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      console.error('Evaluate campaign error:', error);
+      res.status(500).json({ error: 'Failed to evaluate campaign' });
+    }
+  }
+});
+
+/**
  * POST /api/v1/campaigns/simulate-achievement (admin, for testing)
  * Simulate recording an achievement
  */
-router.post('/simulate-achievement', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userResult = await query('SELECT is_admin FROM users WHERE id = $1', [req.user!.userId]);
-    if (!userResult.rows[0]?.is_admin) {
-      throw new AppError('Admin access required', 403);
-    }
-
     const { wallet_address, state_name, state_value } = req.body;
 
     // Find user by wallet

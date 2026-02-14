@@ -70,7 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsInitialized(true);
   }, []);
 
-  // Auto-authenticate when wallet connects
+  // Detect wallet switch: if connected wallet doesn't match session wallet, clear session
+  useEffect(() => {
+    if (session && publicKey && session.user.wallet_address !== publicKey.toBase58()) {
+      logout();
+    }
+  }, [publicKey, session]);
+
+  // Auto-authenticate when wallet connects (or after session cleared from wallet switch)
   useEffect(() => {
     if (connected && publicKey && !session && isInitialized && !authAttemptRef.current) {
       authAttemptRef.current = true;
@@ -78,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authAttemptRef.current = false;
       });
     }
-  }, [connected, publicKey, isInitialized]);
+  }, [connected, publicKey, isInitialized, session]);
 
   // Clean up on disconnect
   useEffect(() => {

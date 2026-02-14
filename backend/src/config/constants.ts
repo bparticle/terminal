@@ -14,4 +14,5 @@ export const config = {
   apiKey: process.env.API_KEY || 'change-this-api-key',
   heliusApiKey: process.env.HELIUS_API_KEY || '',
   collectionMintAddress: process.env.COLLECTION_MINT_ADDRESS || '',
+  adminWallets: (process.env.ADMIN_WALLETS || '').split(',').map(w => w.trim()).filter(Boolean),
 };

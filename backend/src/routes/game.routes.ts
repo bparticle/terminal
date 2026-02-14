@@ -1,8 +1,9 @@
 import { Router, Response } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import { findGameSave, createGameSave, updateGameSave } from '../services/game.service';
 import { processAchievements, evaluateCampaigns } from '../services/campaign.service';
+import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -130,6 +131,69 @@ router.post('/action', requireAuth, async (req: AuthenticatedRequest, res: Respo
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to process action' });
+  }
+});
+
+/**
+ * GET /api/v1/game/users (admin only)
+ * List all game users with game state, inventory, location
+ */
+router.get('/users', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT
+        u.id as user_id,
+        u.wallet_address,
+        u.name,
+        u.pfp_image_url,
+        u.pfp_nft_id,
+        u.is_admin,
+        u.created_at as user_created_at,
+        gs.current_node_id,
+        gs.location,
+        gs.game_state,
+        gs.inventory,
+        gs.updated_at as last_played_at
+      FROM users u
+      LEFT JOIN game_saves gs ON gs.user_id = u.id
+      ORDER BY gs.updated_at DESC NULLS LAST`
+    );
+
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Get game users error:', error);
+    res.status(500).json({ error: 'Failed to fetch game users' });
+  }
+});
+
+/**
+ * GET /api/v1/game/metadata (admin only)
+ * Return all distinct game state keys and inventory items across all saves
+ */
+router.get('/metadata', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Get all distinct game state keys
+    const statesResult = await query(
+      `SELECT DISTINCT jsonb_object_keys(game_state) as state_key
+       FROM game_saves
+       WHERE game_state != '{}'::jsonb
+       ORDER BY state_key`
+    );
+
+    // Get all distinct inventory items
+    const inventoryResult = await query(
+      `SELECT DISTINCT item
+       FROM game_saves, jsonb_array_elements_text(inventory) as item
+       ORDER BY item`
+    );
+
+    res.json({
+      all_states: statesResult.rows.map((r: any) => r.state_key),
+      all_inventory_items: inventoryResult.rows.map((r: any) => r.item),
+    });
+  } catch (error) {
+    console.error('Get game metadata error:', error);
+    res.status(500).json({ error: 'Failed to fetch game metadata' });
   }
 });
 

@@ -15,8 +15,12 @@ const ALLOWED_PATHS = [
   'game/load',
   'game/save',
   'game/action',
+  'game/users',
+  'game/metadata',
   'campaigns',
+  'campaigns/all',
   'campaigns/user/progress',
+  'campaigns/simulate-achievement',
   'wallet',
   'nft',
 ];

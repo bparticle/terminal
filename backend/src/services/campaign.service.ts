@@ -65,6 +65,16 @@ export async function findActiveCampaigns(): Promise<Campaign[]> {
 }
 
 /**
+ * Find ALL campaigns (active, inactive, expired) for admin management
+ */
+export async function findAllCampaigns(): Promise<Campaign[]> {
+  const result = await query(
+    'SELECT * FROM campaigns ORDER BY created_at DESC'
+  );
+  return result.rows;
+}
+
+/**
  * Find a campaign by ID
  */
 export async function findCampaignById(id: string): Promise<Campaign | null> {
@@ -263,4 +273,49 @@ export async function updateCampaign(id: string, data: Partial<Campaign>): Promi
  */
 export async function deleteCampaign(id: string): Promise<void> {
   await query('DELETE FROM campaigns WHERE id = $1', [id]);
+}
+
+/**
+ * Retroactively evaluate a specific campaign against ALL users.
+ * Returns the number of new winners awarded.
+ */
+export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<number> {
+  // Get all users who have achievements
+  const usersResult = await query(
+    `SELECT DISTINCT u.id, u.wallet_address
+     FROM users u
+     JOIN achievements a ON a.user_id = u.id`
+  );
+
+  let winnersAwarded = 0;
+
+  for (const user of usersResult.rows) {
+    // Skip if already won
+    const alreadyWon = await hasWonCampaign(campaign.id, user.wallet_address);
+    if (alreadyWon) continue;
+
+    // Skip if campaign is full
+    if (campaign.max_winners > 0) {
+      const winnerCount = await getCampaignWinnerCount(campaign.id);
+      if (winnerCount >= campaign.max_winners) break;
+    }
+
+    // Get user's achievements and check requirements
+    const userAchievements = await getUserAchievements(user.wallet_address);
+    const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
+
+    if (meetsRequirements) {
+      await recordCampaignWin(campaign.id, user.id, user.wallet_address);
+
+      if (campaign.sets_state) {
+        await updateGameSaveState(user.wallet_address, {
+          [campaign.sets_state]: 'true',
+        });
+      }
+
+      winnersAwarded++;
+    }
+  }
+
+  return winnersAwarded;
 }

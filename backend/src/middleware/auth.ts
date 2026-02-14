@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { verifyToken } from '../services/auth.service';
 import { AuthenticatedRequest } from '../types';
+import { query } from '../config/database';
 
 export function requireAuth(
   req: AuthenticatedRequest,
@@ -25,19 +26,28 @@ export function requireAuth(
   }
 }
 
-export function requireAdmin(
+/**
+ * Middleware that checks is_admin from the database.
+ * Must be used AFTER requireAuth.
+ */
+export async function requireAdmin(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void {
-  // For now, admin check is done by querying the user record
-  // This middleware should be used after requireAuth
+): Promise<void> {
   if (!req.user) {
     res.status(401).json({ error: 'Not authenticated' });
     return;
   }
 
-  // We'll check admin status in the route handler via DB query
-  // This is a placeholder that passes through
-  next();
+  try {
+    const result = await query('SELECT is_admin FROM users WHERE id = $1', [req.user.userId]);
+    if (!result.rows[0]?.is_admin) {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to verify admin status' });
+  }
 }

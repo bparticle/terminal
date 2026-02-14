@@ -24,3 +24,28 @@ html, body {
 .wallet-adapter-button {
   font-family: 'VT323', monospace !important;
 }
+
+/* Admin page - allow scrolling */
+.admin-page {
+  overflow-y: auto !important;
+}
+
+/* Admin form inputs */
+.admin-input {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  font-family: 'VT323', monospace;
+  background: #111;
+  color: #d1d5db;
+  border: 1px solid #374151;
+  outline: none;
+}
+
+.admin-input:focus {
+  border-color: #22c55e;
+}
+
+.admin-input::placeholder {
+  color: #4b5563;
+}

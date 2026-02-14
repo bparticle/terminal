@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config/constants';
 import { errorHandler } from './middleware/errorHandler';
+import { query } from './config/database';
 import authRoutes from './routes/auth.routes';
 import usersRoutes from './routes/users.routes';
 import gameRoutes from './routes/game.routes';
@@ -50,9 +51,30 @@ app.get('/api/v1/health', (_req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
+/**
+ * Seed admin wallets from ADMIN_WALLETS env var on startup.
+ * Sets is_admin = true for any matching wallet addresses that already exist in the DB.
+ */
+async function seedAdminWallets(): Promise<void> {
+  if (config.adminWallets.length === 0) return;
+
+  try {
+    for (const wallet of config.adminWallets) {
+      await query(
+        'UPDATE users SET is_admin = true WHERE wallet_address = $1 AND is_admin = false',
+        [wallet]
+      );
+    }
+    console.log(`Admin wallet seeding checked for ${config.adminWallets.length} wallet(s)`);
+  } catch (error) {
+    console.error('Failed to seed admin wallets:', error);
+  }
+}
+
 // Start server
-app.listen(config.port, () => {
+app.listen(config.port, async () => {
   console.log(`Terminal Game API running on port ${config.port} (${config.nodeEnv})`);
+  await seedAdminWallets();
 });
 
 export default app;
