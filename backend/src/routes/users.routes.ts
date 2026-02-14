@@ -109,6 +109,50 @@ router.put('/profile', requireAuth, async (req: AuthenticatedRequest, res: Respo
 });
 
 /**
+ * GET /api/v1/users/online
+ * Get recently active players (active in last 5 minutes)
+ */
+router.get('/online', async (_req: Request, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT wallet_address, name, last_active_at
+       FROM users
+       WHERE last_active_at > NOW() - INTERVAL '5 minutes'
+         AND name IS NOT NULL
+       ORDER BY last_active_at DESC
+       LIMIT 50`,
+      []
+    );
+
+    const players = result.rows.map((row: any) => ({
+      wallet_address: row.wallet_address,
+      name: row.name,
+      last_active_at: row.last_active_at,
+    }));
+
+    res.json({ players });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch online players' });
+  }
+});
+
+/**
+ * POST /api/v1/users/heartbeat
+ * Update last_active_at for the authenticated user
+ */
+router.post('/heartbeat', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await query(
+      'UPDATE users SET last_active_at = NOW() WHERE id = $1',
+      [req.user!.userId]
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Heartbeat failed' });
+  }
+});
+
+/**
  * GET /api/v1/users/check-admin
  * Check if the authenticated user is an admin
  */

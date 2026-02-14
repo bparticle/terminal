@@ -9,6 +9,8 @@ const ALLOWED_PATHS = [
   'users/check-wallet',
   'users/check-admin',
   'users/profile',
+  'users/online',
+  'users/heartbeat',
   'game/new',
   'game/load',
   'game/save',
@@ -76,7 +78,13 @@ export async function POST(
   }
 
   try {
-    const body = await request.json();
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {
+      // Empty body is OK (e.g. heartbeat)
+    }
+
     const url = `${API_BASE_URL}/${path}`;
 
     const response = await fetch(url, {

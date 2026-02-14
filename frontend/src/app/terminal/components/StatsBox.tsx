@@ -35,6 +35,19 @@ export default function StatsBox({ walletAddress }: StatsBoxProps) {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Refresh immediately when the game engine saves (achievements may have changed)
+  useEffect(() => {
+    const handleProgressUpdate = () => {
+      getCampaigns().then(setCampaigns).catch(console.error);
+      if (isAuthenticated) {
+        getUserProgress().then(setProgress).catch(console.error);
+      }
+    };
+
+    window.addEventListener('game-progress-updated', handleProgressUpdate);
+    return () => window.removeEventListener('game-progress-updated', handleProgressUpdate);
+  }, [isAuthenticated]);
+
   const campaign = campaigns[0]; // Single campaign
   const achievedStates = new Set(
     progress?.achievements.map((a) => a.state_name) || []

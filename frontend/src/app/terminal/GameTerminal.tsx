@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useAuth } from '@/context/AuthProvider';
-import { setAuthContext } from '@/lib/api';
+import { setAuthContext, getUserProfile, updateProfileName, fetchWithAuth } from '@/lib/api';
 import { GameEngine } from '@/lib/game-engine';
 import { processCommand, TerminalContext } from '@/lib/terminal-commands';
 import Monitor from './components/Monitor';
 import StatsBox from './components/StatsBox';
 import InventoryBox from './components/InventoryBox';
+import PlayersPanel from './components/PlayersPanel';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import './game-terminal.css';
 
@@ -19,6 +20,8 @@ interface OutputLine {
   className?: string;
   timestamp: number;
 }
+
+type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'done';
 
 export default function GameTerminal() {
   const { publicKey, connected, disconnect } = useWallet();
@@ -33,6 +36,8 @@ export default function GameTerminal() {
   const [pendingRestart, setPendingRestart] = useState(false);
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [playerName, setPlayerName] = useState<string | null>(null);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>('idle');
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -82,21 +87,61 @@ export default function GameTerminal() {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [output]);
 
-  // Initialize game engine when authenticated
+  // ============================================================
+  // ONBOARDING: Check profile after auth, ask for name if needed
+  // ============================================================
   useEffect(() => {
-    if (isAuthenticated && publicKey && !engineRef.current) {
-      const engine = new GameEngine(
-        addOutput,
-        setCurrentLocation,
-        setInventory,
-        (gameId: string) => {
-          setActiveGame(gameId);
-        }
-      );
+    if (!isAuthenticated || !publicKey || onboardingState !== 'idle') return;
 
-      engineRef.current = engine;
-      engine.initialize(publicKey.toBase58());
-    }
+    setOnboardingState('checking');
+
+    getUserProfile()
+      .then((profile) => {
+        if (profile.name) {
+          // Returning user - skip onboarding
+          setPlayerName(profile.name);
+          setOnboardingState('done');
+          addOutput('=== TERMINAL ADVENTURE v1.0 ===', 'text-cyan-400');
+          addOutput('');
+          addOutput(`Welcome back, ${profile.name}.`, 'text-green-400');
+          addOutput('Resuming your adventure...', 'text-gray-400');
+          addOutput('');
+        } else {
+          // New user - start onboarding
+          setOnboardingState('ask_name');
+          addOutput('=== TERMINAL ADVENTURE v1.0 ===', 'text-cyan-400');
+          addOutput('');
+          addOutput('Initializing new user profile...', 'text-yellow-400');
+          addOutput('');
+          addOutput('Before we begin, traveler, what shall we call you?', 'text-white');
+          addOutput('Enter your name:', 'text-cyan-400');
+        }
+      })
+      .catch(() => {
+        // Fallback: proceed with onboarding
+        setOnboardingState('ask_name');
+        addOutput('=== TERMINAL ADVENTURE v1.0 ===', 'text-cyan-400');
+        addOutput('');
+        addOutput('What shall we call you, traveler?', 'text-white');
+        addOutput('Enter your name:', 'text-cyan-400');
+      });
+  }, [isAuthenticated, publicKey, onboardingState]);
+
+  // Initialize game engine AFTER onboarding is done
+  useEffect(() => {
+    if (onboardingState !== 'done' || !publicKey || engineRef.current) return;
+
+    const engine = new GameEngine(
+      addOutput,
+      setCurrentLocation,
+      setInventory,
+      (gameId: string) => {
+        setActiveGame(gameId);
+      }
+    );
+
+    engineRef.current = engine;
+    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer');
 
     return () => {
       if (engineRef.current) {
@@ -104,24 +149,80 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [isAuthenticated, publicKey]);
+  }, [onboardingState, publicKey, playerName]);
 
-  // Show welcome message
+  // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {
-    if (isInitialized && !connected) {
+    if (!isAuthenticated) return;
+
+    // Immediate heartbeat
+    fetchWithAuth('users/heartbeat', { method: 'POST' }).catch(() => {});
+
+    const interval = setInterval(() => {
+      fetchWithAuth('users/heartbeat', { method: 'POST' }).catch(() => {});
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Show welcome message only when not connected and not authenticating
+  useEffect(() => {
+    if (isInitialized && !connected && !isAuthenticated && !isAuthenticating) {
       addOutput('=== TERMINAL ADVENTURE v1.0 ===', 'text-cyan-400');
       addOutput('');
       addOutput('Connect your Solana wallet to begin.', 'text-white');
       addOutput('Type "help" for a list of commands.', 'text-gray-400');
       addOutput('');
     }
-  }, [isInitialized, connected]);
+  }, [isInitialized, connected, isAuthenticated, isAuthenticating]);
+
+  // Handle onboarding name input
+  const handleOnboardingInput = useCallback(
+    async (value: string) => {
+      const trimmed = value.trim();
+
+      if (onboardingState === 'ask_name') {
+        if (!trimmed) {
+          addOutput('Please enter a name (2-20 characters):', 'text-yellow-400');
+          return;
+        }
+
+        if (trimmed.length < 2 || trimmed.length > 20) {
+          addOutput('Name must be between 2 and 20 characters. Try again:', 'text-red-400');
+          return;
+        }
+
+        // Save name to backend
+        addOutput(`Setting name to "${trimmed}"...`, 'text-yellow-400');
+
+        try {
+          await updateProfileName(trimmed);
+          setPlayerName(trimmed);
+          addOutput('');
+          addOutput(`Welcome, ${trimmed}! Your journey begins now.`, 'text-green-400');
+          addOutput('');
+          setOnboardingState('done');
+        } catch {
+          addOutput('Failed to save name. Try again:', 'text-red-400');
+        }
+      }
+    },
+    [onboardingState, addOutput]
+  );
 
   // Handle form submit
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       const trimmed = input.trim();
+
+      // During onboarding, route all input to the onboarding handler
+      if (onboardingState === 'ask_name') {
+        if (trimmed) addUserOutput(trimmed);
+        await handleOnboardingInput(input);
+        setInput('');
+        return;
+      }
 
       // Echo user input (even if empty for "enter to continue")
       if (trimmed) {
@@ -167,8 +268,19 @@ export default function GameTerminal() {
 
       setInput('');
     },
-    [input, publicKey, connected, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
+    [input, publicKey, connected, theme, pendingRestart, onboardingState, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput]
   );
+
+  // Re-focus input when returning from a mini-game
+  useEffect(() => {
+    if (activeGame === null) {
+      // Small delay to ensure overlay is gone before focusing
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeGame]);
 
   // Handle Snake game events
   const handleSnakeGameOver = useCallback(
@@ -187,6 +299,57 @@ export default function GameTerminal() {
     }
     setActiveGame(null);
   }, []);
+
+  // Handle clicking a choice or "press ENTER to continue"
+  const handleChoiceClick = useCallback(
+    (value: string) => {
+      // Set input and submit programmatically
+      setInput(value);
+      // We need to submit after the state update, so use a microtask
+      setTimeout(async () => {
+        if (value) {
+          addUserOutput(value);
+        }
+
+        const ctx: TerminalContext = {
+          engine: engineRef.current,
+          walletAddress: publicKey?.toBase58() || null,
+          connected,
+          addOutput,
+          clearOutput,
+          openWalletModal: () => setVisible(true),
+          disconnectWallet: () => disconnect(),
+          setTheme,
+          currentTheme: theme,
+          pendingRestart,
+          setPendingRestart,
+        };
+
+        if (engineRef.current) {
+          if (engineRef.current.canHandleInput(value)) {
+            await engineRef.current.processInput(value);
+            setInput('');
+            inputRef.current?.focus();
+            return;
+          }
+        }
+
+        if (value && processCommand(value, ctx)) {
+          setInput('');
+          inputRef.current?.focus();
+          return;
+        }
+
+        if (engineRef.current && value) {
+          await engineRef.current.processInput(value);
+        }
+
+        setInput('');
+        inputRef.current?.focus();
+      }, 0);
+    },
+    [publicKey, connected, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
+  );
 
   // Focus input on click
   const handleTerminalClick = useCallback(() => {
@@ -219,14 +382,32 @@ export default function GameTerminal() {
                 Authenticating wallet...
               </div>
             )}
-            {output.map((line, i) => (
-              <div
-                key={`${line.timestamp}-${i}`}
-                className={`terminal-line ${line.className || ''} ${line.isUser ? 'user-input' : ''}`}
-              >
-                {line.text}
-              </div>
-            ))}
+            {output.map((line, i) => {
+              const choiceMatch = line.text.match(/^\[(\d+)\]\s/);
+              const isEnterPrompt = line.text.includes('Press ENTER');
+              const isClickable = (choiceMatch || isEnterPrompt) && !line.isUser;
+
+              return (
+                <div
+                  key={`${line.timestamp}-${i}`}
+                  className={`terminal-line ${line.className || ''} ${line.isUser ? 'user-input' : ''} ${isClickable ? 'clickable-line' : ''}`}
+                  onClick={
+                    isClickable
+                      ? (e) => {
+                          e.stopPropagation();
+                          if (choiceMatch) {
+                            handleChoiceClick(choiceMatch[1]);
+                          } else {
+                            handleChoiceClick('');
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  {line.text}
+                </div>
+              );
+            })}
             <div ref={outputEndRef} />
           </div>
 
@@ -240,7 +421,13 @@ export default function GameTerminal() {
               className="terminal-input"
               autoFocus
               autoComplete="off"
-              placeholder={connected ? 'Enter command...' : 'Connect wallet to start'}
+              placeholder={
+                onboardingState === 'ask_name'
+                  ? 'Enter your name...'
+                  : connected
+                    ? 'Enter command...'
+                    : 'Connect wallet to start'
+              }
               disabled={activeGame !== null}
             />
           </form>
@@ -262,6 +449,7 @@ export default function GameTerminal() {
           <Monitor />
           <StatsBox walletAddress={publicKey?.toBase58() || null} />
           <InventoryBox items={inventory} />
+          <PlayersPanel currentPlayerName={playerName} />
         </div>
 
         {/* Mobile Sidebar */}
@@ -274,6 +462,7 @@ export default function GameTerminal() {
               <Monitor />
               <StatsBox walletAddress={publicKey?.toBase58() || null} />
               <InventoryBox items={inventory} />
+              <PlayersPanel currentPlayerName={playerName} />
             </div>
           </div>
         )}

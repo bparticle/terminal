@@ -71,14 +71,13 @@ export default function Monitor() {
 
   return (
     <div className="panel-box monitor-container">
-      <div className="panel-title">Monitor</div>
       <div className="monitor-screen">
         {state.type === 'idle' && (
           <canvas
             ref={canvasRef}
             width={220}
-            height={160}
-            style={{ width: '100%', height: '160px', borderRadius: '4px' }}
+            height={220}
+            style={{ width: '100%', height: '100%', borderRadius: '4px', display: 'block' }}
           />
         )}
         {state.type === 'image' && state.imageUrl && (
@@ -87,9 +86,10 @@ export default function Monitor() {
             alt="Display"
             style={{
               width: '100%',
-              height: '160px',
+              height: '100%',
               objectFit: 'contain',
               borderRadius: '4px',
+              display: 'block',
             }}
           />
         )}

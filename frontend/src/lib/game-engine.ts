@@ -38,7 +38,7 @@ export class GameEngine {
   // LIFECYCLE
   // ==========================================
 
-  async initialize(walletAddress: string): Promise<void> {
+  async initialize(walletAddress: string, playerName: string = 'Wanderer'): Promise<void> {
     this.walletAddress = walletAddress;
 
     // Try to load existing save
@@ -46,13 +46,14 @@ export class GameEngine {
       const response = await loadGame(walletAddress);
       if (response) {
         this.save = response.save as unknown as GameSave;
-        this.outputFn('Game loaded! Resuming your adventure...', 'text-green-400');
+        // Update the name in save to match current profile
+        this.save.name = playerName;
+        this.save.game_state.player_name = playerName;
       } else {
         // No save found, create new game
-        const newResponse = await startNewGame('start', 'Wanderer');
+        const newResponse = await startNewGame('start', playerName);
         this.save = newResponse.save as unknown as GameSave;
-        this.save.game_state = { player_name: 'Wanderer' };
-        this.outputFn('New game created! Welcome, Wanderer.', 'text-cyan-400');
+        this.save.game_state = { player_name: playerName };
       }
     } catch (error) {
       console.error('Failed to initialize game:', error);
@@ -61,9 +62,9 @@ export class GameEngine {
         wallet_address: walletAddress,
         current_node_id: 'start',
         location: 'HUB',
-        game_state: { player_name: 'Wanderer' },
+        game_state: { player_name: playerName },
         inventory: [],
-        name: 'Wanderer',
+        name: playerName,
       };
       this.outputFn('Playing in offline mode.', 'text-yellow-400');
     }
@@ -402,6 +403,9 @@ export class GameEngine {
           this.applyEffects(node.failure_effects);
         }
 
+        // Reset quiz attempts so the player can retry when they return
+        this.save.game_state[quizKey] = { attempts: 0, completed: false };
+
         this.quizState = null;
 
         if (node.failure_node) {
@@ -682,6 +686,11 @@ export class GameEngine {
         inventory: this.save.inventory,
         name: this.save.name || 'Wanderer',
       });
+
+      // Notify UI components (e.g. StatsBox) that progress may have changed
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('game-progress-updated'));
+      }
     } catch (error) {
       console.error('Auto-save failed:', error);
     }

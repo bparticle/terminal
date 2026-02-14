@@ -17,7 +17,7 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'start',
     type: 'story',
     content:
-      'SYSTEM BOOT...\nMEMORY CHECK... OK\nDISK CHECK... OK\nNETWORK... CONNECTED\n\n> Initializing Terminal Adventure v1.0\n> Welcome, {{state.player_name}}.\n\nYou awaken in a dimly lit room. The hum of old machinery fills the air. A green-phosphor terminal flickers to life before you, casting eerie shadows on the concrete walls.\n\nPress ENTER to continue...',
+      'SYSTEM BOOT...\nMEMORY CHECK... OK\nDISK CHECK... OK\nNETWORK... CONNECTED\n\n> Initializing Terminal Adventure v1.0\n> Welcome, {{state.player_name}}.\n\nYou awaken in a dimly lit room. The hum of old machinery fills the air. A green-phosphor terminal flickers to life before you, casting eerie shadows on the concrete walls.',
     location: 'HUB',
     effects: {
       set_state: { _game_session_start: Date.now().toString() },
@@ -173,7 +173,7 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'nft_check',
     content: 'The biometric scanner pulses, waiting for authentication...',
     location: 'HUB',
-    nft_id: 'REPLACE_WITH_YOUR_NFT_MINT_ADDRESS',
+    nft_id: 'HmkSyoYpZPQ9jiZu5ZDW1DxGQag2uZeuWuxwoDetAjUK',
     item_name: 'Neural Interface',
     nft_owned_content:
       'The scanner detects your digital credentials. The light turns green.\n\n"WELCOME, AUTHORIZED USER."\n\nThe lab door slides open. Inside, you find an experimental Neural Interface device on the workbench.',
@@ -190,7 +190,7 @@ export const gameNodes: Record<string, GameNode> = {
       'The lab is filled with strange equipment. Wires snake across the floor, connecting mysterious devices. On the central workbench sits the Neural Interface — a headband-like device pulsing with soft light.\n\nDr. Chen\'s notes are scattered across the desk.',
     location: 'HUB',
     effects: {
-      set_state: { lab_accessed: 'true' },
+      set_state: { lab_accessed: 'true', ancient_key_found: 'true' },
     },
     choices: [
       {

@@ -65,12 +65,17 @@ router.post('/verify-wallet', async (req: Request, res: Response) => {
     if (userResult.rows.length === 0) {
       // Create new user
       const createResult = await query(
-        'INSERT INTO users (wallet_address) VALUES ($1) RETURNING *',
+        'INSERT INTO users (wallet_address, last_active_at) VALUES ($1, NOW()) RETURNING *',
         [wallet_address]
       );
       user = createResult.rows[0];
     } else {
-      user = userResult.rows[0];
+      // Update last active
+      const updateResult = await query(
+        'UPDATE users SET last_active_at = NOW() WHERE id = $1 RETURNING *',
+        [userResult.rows[0].id]
+      );
+      user = updateResult.rows[0];
     }
 
     // Generate JWT

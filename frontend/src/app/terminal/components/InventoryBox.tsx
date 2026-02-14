@@ -7,7 +7,7 @@ interface InventoryBoxProps {
   maxItems?: number;
 }
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 2;
 
 export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps) {
   const [page, setPage] = useState(0);
@@ -38,52 +38,49 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
     slots.push({ name: '' });
   }
 
+  const hasMultiplePages = items.length > ITEMS_PER_PAGE;
+
   return (
     <div className="panel-box inventory-box">
       <div className="panel-title">
         Inventory ({items.length}/{maxItems})
       </div>
 
-      <div className="inventory-grid">
-        {slots.map((item, i) => (
-          <div
-            key={`${startIdx + i}-${item.name}`}
-            className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''}`}
-            title={item.name || 'Empty'}
-          >
-            {item.name ? (
-              <span className="item-icon">
-                {getItemEmoji(item.name)}
-              </span>
-            ) : (
-              <span className="empty-slot">-</span>
-            )}
-          </div>
-        ))}
-      </div>
+      <div className="inventory-row">
+        <button
+          className="nav-btn nav-arrow"
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={!hasMultiplePages || page === 0}
+        >
+          ◄
+        </button>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="inventory-nav">
-          <button
-            className="nav-btn"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-          >
-            ◄
-          </button>
-          <span className="page-indicator">
-            {page + 1}/{totalPages}
-          </span>
-          <button
-            className="nav-btn"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-          >
-            ►
-          </button>
+        <div className="inventory-slots">
+          {slots.map((item, i) => (
+            <div
+              key={`${startIdx + i}-${item.name}`}
+              className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''}`}
+              title={item.name || 'Empty'}
+            >
+              {item.name ? (
+                <span className="item-icon">
+                  {getItemEmoji(item.name)}
+                </span>
+              ) : (
+                <span className="empty-slot">-</span>
+              )}
+            </div>
+          ))}
         </div>
-      )}
+
+        <button
+          className="nav-btn nav-arrow"
+          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={!hasMultiplePages || page >= totalPages - 1}
+        >
+          ►
+        </button>
+      </div>
     </div>
   );
 }
