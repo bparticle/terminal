@@ -49,6 +49,12 @@ export function validateJsonObject(
     throw new AppError(`${fieldName} must be a JSON object`, 400);
   }
 
+  // Reject prototype pollution keys
+  const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+  if (Object.keys(value as object).some(k => dangerousKeys.includes(k))) {
+    throw new AppError(`${fieldName} contains disallowed keys`, 400);
+  }
+
   const serialized = JSON.stringify(value);
   if (serialized.length > maxSizeBytes) {
     throw new AppError(`${fieldName} exceeds maximum allowed size`, 400);

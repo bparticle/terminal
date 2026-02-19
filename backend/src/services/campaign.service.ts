@@ -31,7 +31,24 @@ export async function getUserAchievements(wallet: string): Promise<Achievement[]
 }
 
 /**
- * Scan game_state for achievement-worthy flags and record them
+ * Allowlist of state keys that can be recorded as achievements.
+ * Only states set by game nodes (via set_state effects) should be here.
+ * This prevents clients from forging arbitrary achievement states.
+ */
+const VALID_ACHIEVEMENT_STATES = new Set([
+  'riddle_solved',
+  'archives_accessed',
+  'lab_accessed',
+  'ancient_key_found',
+  'snake_master',
+  'guardian_defeated',
+  'vault_opened',
+  'quest_complete',
+]);
+
+/**
+ * Scan game_state for achievement-worthy flags and record them.
+ * Only allowlisted state keys are processed to prevent client-side forgery.
  */
 export async function processAchievements(
   userId: string,
@@ -39,8 +56,8 @@ export async function processAchievements(
   gameState: Record<string, any>
 ): Promise<void> {
   for (const [stateName, stateValue] of Object.entries(gameState)) {
-    // Skip internal/system state keys
-    if (stateName.startsWith('_') || stateName.startsWith('quiz_')) continue;
+    // Only process allowlisted achievement state keys
+    if (!VALID_ACHIEVEMENT_STATES.has(stateName)) continue;
     // Skip complex objects (only record simple true/false flags)
     if (typeof stateValue === 'object') continue;
 
@@ -111,17 +128,23 @@ export async function recordCampaignWin(
   campaignId: string,
   userId: string,
   wallet: string
-): Promise<void> {
-  // Get current winner count for rank
-  const count = await getCampaignWinnerCount(campaignId);
-  const rank = count + 1;
-
-  await query(
+): Promise<boolean> {
+  // Atomic insert: compute rank and enforce max_winners in a single query
+  const result = await query(
     `INSERT INTO campaign_winners (campaign_id, user_id, wallet_address, rank)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (campaign_id, wallet_address) DO NOTHING`,
-    [campaignId, userId, wallet, rank]
+     SELECT $1, $2, $3, COALESCE(
+       (SELECT COUNT(*) + 1 FROM campaign_winners WHERE campaign_id = $1), 1
+     )
+     WHERE (
+       (SELECT max_winners FROM campaigns WHERE id = $1) = 0
+       OR (SELECT COUNT(*) FROM campaign_winners WHERE campaign_id = $1) <
+          (SELECT max_winners FROM campaigns WHERE id = $1)
+     )
+     ON CONFLICT (campaign_id, wallet_address) DO NOTHING
+     RETURNING id`,
+    [campaignId, userId, wallet]
   );
+  return result.rows.length > 0;
 }
 
 /**
@@ -192,21 +215,15 @@ export async function evaluateCampaigns(
     const alreadyWon = await hasWonCampaign(campaign.id, wallet);
     if (alreadyWon) continue;
 
-    // Skip if campaign is full
-    if (campaign.max_winners > 0) {
-      const winnerCount = await getCampaignWinnerCount(campaign.id);
-      if (winnerCount >= campaign.max_winners) continue;
-    }
-
     // Check if user meets requirements
     const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
 
     if (meetsRequirements) {
-      // Award campaign win
-      await recordCampaignWin(campaign.id, userId, wallet);
+      // Atomically award campaign win (enforces max_winners in the query)
+      const awarded = await recordCampaignWin(campaign.id, userId, wallet);
 
       // Set state flag on user's game save if configured
-      if (campaign.sets_state) {
+      if (awarded && campaign.sets_state) {
         await updateGameSaveState(wallet, {
           [campaign.sets_state]: 'true',
         });
@@ -294,18 +311,14 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<n
     const alreadyWon = await hasWonCampaign(campaign.id, user.wallet_address);
     if (alreadyWon) continue;
 
-    // Skip if campaign is full
-    if (campaign.max_winners > 0) {
-      const winnerCount = await getCampaignWinnerCount(campaign.id);
-      if (winnerCount >= campaign.max_winners) break;
-    }
-
     // Get user's achievements and check requirements
     const userAchievements = await getUserAchievements(user.wallet_address);
     const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
 
     if (meetsRequirements) {
-      await recordCampaignWin(campaign.id, user.id, user.wallet_address);
+      // Atomically award (enforces max_winners)
+      const awarded = await recordCampaignWin(campaign.id, user.id, user.wallet_address);
+      if (!awarded) break; // campaign is full
 
       if (campaign.sets_state) {
         await updateGameSaveState(user.wallet_address, {

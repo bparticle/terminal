@@ -26,7 +26,11 @@ const ALLOWED_PATHS = [
 ];
 
 function isPathAllowed(path: string): boolean {
-  return ALLOWED_PATHS.some((allowed) => path.startsWith(allowed));
+  // Reject path traversal attempts
+  if (path.includes('..') || path.includes('%2e') || path.includes('%2E')) {
+    return false;
+  }
+  return ALLOWED_PATHS.some((allowed) => path === allowed || path.startsWith(allowed + '/'));
 }
 
 function buildHeaders(request: NextRequest): HeadersInit {

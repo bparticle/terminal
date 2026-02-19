@@ -17,6 +17,7 @@ import {
   recordAchievement,
 } from '../services/campaign.service';
 import { query } from '../config/database';
+import { isValidSolanaAddress } from '../services/auth.service';
 import { AppError } from '../middleware/errorHandler';
 import { validateString, validateStringArray } from '../middleware/validate';
 
@@ -184,7 +185,22 @@ router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, re
  */
 router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const campaign = await updateCampaign(req.params.id, req.body);
+    // Validate inputs the same way as POST to prevent mass assignment
+    const validatedData: Partial<any> = {};
+
+    if (req.body.name !== undefined) validatedData.name = validateString(req.body.name, 'name', { required: true, maxLength: 200 });
+    if (req.body.description !== undefined) validatedData.description = validateString(req.body.description, 'description', { maxLength: 1000 });
+    if (req.body.target_states !== undefined) validatedData.target_states = validateStringArray(req.body.target_states, 'target_states', { maxItems: 20 });
+    if (req.body.target_value !== undefined) validatedData.target_value = validateString(req.body.target_value, 'target_value', { maxLength: 200 });
+    if (req.body.require_all !== undefined && typeof req.body.require_all === 'boolean') validatedData.require_all = req.body.require_all;
+    if (req.body.max_winners !== undefined && typeof req.body.max_winners === 'number') validatedData.max_winners = Math.floor(req.body.max_winners);
+    if (req.body.reward_description !== undefined) validatedData.reward_description = validateString(req.body.reward_description, 'reward_description', { maxLength: 500 });
+    if (req.body.reward_nft_mint !== undefined) validatedData.reward_nft_mint = validateString(req.body.reward_nft_mint, 'reward_nft_mint', { maxLength: 100 });
+    if (req.body.sets_state !== undefined) validatedData.sets_state = validateString(req.body.sets_state, 'sets_state', { maxLength: 200 });
+    if (req.body.is_active !== undefined && typeof req.body.is_active === 'boolean') validatedData.is_active = req.body.is_active;
+    if (req.body.expires_at !== undefined) validatedData.expires_at = req.body.expires_at ? new Date(req.body.expires_at).toISOString() : null;
+
+    const campaign = await updateCampaign(req.params.id, validatedData);
     if (!campaign) {
       throw new AppError('Campaign not found', 404);
     }
@@ -246,7 +262,13 @@ router.post('/:id/evaluate', requireAuth, requireAdmin, async (req: Authenticate
  */
 router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { wallet_address, state_name, state_value } = req.body;
+    const wallet_address = validateString(req.body.wallet_address, 'wallet_address', { required: true, maxLength: 50 })!;
+    const state_name = validateString(req.body.state_name, 'state_name', { required: true, maxLength: 200 })!;
+    const state_value = validateString(req.body.state_value, 'state_value', { maxLength: 200 }) || 'true';
+
+    if (!isValidSolanaAddress(wallet_address)) {
+      throw new AppError('Invalid wallet address', 400);
+    }
 
     // Find user by wallet
     const targetUser = await query('SELECT id FROM users WHERE wallet_address = $1', [wallet_address]);
@@ -254,7 +276,7 @@ router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: Auth
       throw new AppError('User not found', 404);
     }
 
-    await recordAchievement(targetUser.rows[0].id, wallet_address, state_name, state_value || 'true');
+    await recordAchievement(targetUser.rows[0].id, wallet_address, state_name, state_value);
     await evaluateCampaigns(targetUser.rows[0].id, wallet_address);
 
     res.json({ success: true });

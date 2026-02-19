@@ -6,25 +6,38 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config/constants';
 
 // ── Nonce store for replay protection ──────────────────────
-// Maps nonce -> expiration timestamp. Nonces expire after 5 minutes.
+// Maps nonce -> { expiresAt, walletAddress }. Nonces expire after 5 minutes.
 const NONCE_TTL_MS = 5 * 60 * 1000;
-const nonceStore = new Map<string, number>();
+const MAX_NONCE_STORE_SIZE = 10_000;
+const nonceStore = new Map<string, { expiresAt: number; walletAddress: string }>();
 
-// Periodically clean expired nonces (every 10 minutes)
+// Periodically clean expired nonces (every 5 minutes, matching TTL)
 setInterval(() => {
   const now = Date.now();
-  for (const [nonce, expiresAt] of nonceStore) {
-    if (now >= expiresAt) nonceStore.delete(nonce);
+  for (const [nonce, entry] of nonceStore) {
+    if (now >= entry.expiresAt) nonceStore.delete(nonce);
   }
-}, 10 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 /**
  * Generate a cryptographically secure nonce message for wallet signing.
  * The nonce is stored server-side for replay protection.
  */
-export function generateAuthMessage(): string {
+export function generateAuthMessage(walletAddress: string): string {
+  // Prevent nonce flooding
+  if (nonceStore.size >= MAX_NONCE_STORE_SIZE) {
+    // Emergency cleanup of expired nonces
+    const now = Date.now();
+    for (const [nonce, entry] of nonceStore) {
+      if (now >= entry.expiresAt) nonceStore.delete(nonce);
+    }
+    if (nonceStore.size >= MAX_NONCE_STORE_SIZE) {
+      throw new Error('Server busy, please try again later');
+    }
+  }
+
   const nonce = crypto.randomBytes(32).toString('hex');
-  nonceStore.set(nonce, Date.now() + NONCE_TTL_MS);
+  nonceStore.set(nonce, { expiresAt: Date.now() + NONCE_TTL_MS, walletAddress });
   return `Sign this message to authenticate with Terminal Game: ${nonce}`;
 }
 
@@ -32,16 +45,21 @@ export function generateAuthMessage(): string {
  * Validate and consume a nonce from a signed message.
  * Returns true if the nonce is valid and has not been used/expired.
  */
-export function validateAndConsumeNonce(message: string): boolean {
+export function validateAndConsumeNonce(message: string, walletAddress: string): boolean {
   const match = message.match(/: ([a-f0-9]{64})$/);
   if (!match) return false;
 
   const nonce = match[1];
-  const expiresAt = nonceStore.get(nonce);
-  if (!expiresAt) return false; // unknown or already consumed
-  if (Date.now() >= expiresAt) {
+  const entry = nonceStore.get(nonce);
+  if (!entry) return false; // unknown or already consumed
+  if (Date.now() >= entry.expiresAt) {
     nonceStore.delete(nonce);
     return false; // expired
+  }
+
+  // Verify the nonce was issued for this wallet
+  if (entry.walletAddress !== walletAddress) {
+    return false;
   }
 
   // Consume the nonce (one-time use)
@@ -88,7 +106,7 @@ export function generateToken(userId: string, walletAddress: string): string {
   return jwt.sign(
     { userId, walletAddress },
     config.jwtSecret,
-    { expiresIn: '24h' }
+    { expiresIn: '24h', algorithm: 'HS256', issuer: 'terminal-game-api', audience: 'terminal-game-client' }
   );
 }
 
@@ -96,7 +114,11 @@ export function generateToken(userId: string, walletAddress: string): string {
  * Verify and decode a JWT token
  */
 export function verifyToken(token: string): { userId: string; walletAddress: string } {
-  const decoded = jwt.verify(token, config.jwtSecret) as {
+  const decoded = jwt.verify(token, config.jwtSecret, {
+    algorithms: ['HS256'],
+    issuer: 'terminal-game-api',
+    audience: 'terminal-game-client',
+  }) as {
     userId: string;
     walletAddress: string;
   };

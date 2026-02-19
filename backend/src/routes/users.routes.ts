@@ -67,7 +67,10 @@ router.get('/profile', requireAuth, async (req: AuthenticatedRequest, res: Respo
 router.put('/profile', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Validate inputs
-    const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
+    let name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
+    if (name !== undefined && !/^[a-zA-Z0-9_\- .]+$/.test(name)) {
+      throw new AppError('Name can only contain letters, numbers, spaces, hyphens, underscores, and dots', 400);
+    }
     const pfp_image_url = validateUrl(req.body.pfp_image_url, 'pfp_image_url', { maxLength: 2048 });
     const pfp_nft_id = validateString(req.body.pfp_nft_id, 'pfp_nft_id', { maxLength: 100 });
 
@@ -117,7 +120,7 @@ router.put('/profile', requireAuth, async (req: AuthenticatedRequest, res: Respo
  * GET /api/v1/users/online
  * Get recently active players (active in last 5 minutes)
  */
-router.get('/online', async (_req: Request, res: Response) => {
+router.get('/online', requireAuth, async (_req: Request, res: Response) => {
   try {
     const result = await query(
       `SELECT wallet_address, name, last_active_at

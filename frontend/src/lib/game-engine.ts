@@ -663,8 +663,10 @@ export class GameEngine {
 
   private getStatePath(path: string): any {
     const keys = path.split('.');
+    const disallowed = new Set(['__proto__', 'constructor', 'prototype']);
     let value: any = this.save?.game_state;
     for (const key of keys) {
+      if (disallowed.has(key)) return undefined;
       value = value?.[key];
       if (value === undefined) return undefined;
     }

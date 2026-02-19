@@ -6,20 +6,16 @@ dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env') });
 // Also try backend/.env as fallback
 dotenv.config();
 
-const isProduction = (process.env.NODE_ENV || 'development') === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
-// ── Validate required secrets in production ────────────────
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value && isProduction) {
-    console.error(`FATAL: Required environment variable ${name} is not set.`);
-    process.exit(1);
-  }
-  return value || '';
+// ── Validate required secrets in non-development environments ──
+const jwtSecret = process.env.JWT_SECRET || (isDevelopment ? 'dev-only-secret' : '');
+const apiKey = process.env.API_KEY || (isDevelopment ? 'dev-only-api-key' : '');
+
+if (isDevelopment && !process.env.JWT_SECRET) {
+  console.warn('WARNING: Using default dev JWT secret. Do NOT use in production.');
 }
-
-const jwtSecret = process.env.JWT_SECRET || (isProduction ? '' : 'dev-only-secret');
-const apiKey = process.env.API_KEY || (isProduction ? '' : 'dev-only-api-key');
 
 if (isProduction) {
   if (!jwtSecret || jwtSecret.length < 32) {

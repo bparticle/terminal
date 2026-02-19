@@ -29,6 +29,6 @@ export function errorHandler(
   console.error('Unhandled error:', err);
 
   res.status(500).json({
-    error: config.nodeEnv === 'development' ? err.message : 'Internal server error',
+    error: config.nodeEnv === 'development' ? err.message : 'An unexpected error occurred',
   });
 }

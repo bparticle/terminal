@@ -26,6 +26,11 @@ interface UseSocketOptions {
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
+// Warn if using unencrypted WebSocket in production
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production' && SOCKET_URL.startsWith('http:')) {
+  console.warn('[socket] WARNING: Using unencrypted WebSocket URL in production. Use wss:// for security.');
+}
+
 export function useSocket({ onChatMessage, onSystemEvent }: UseSocketOptions = {}) {
   const { session, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);

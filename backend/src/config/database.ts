@@ -7,7 +7,11 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
   // Neon and most cloud Postgres providers require SSL in production
-  ssl: config.nodeEnv === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: config.nodeEnv === 'production' ? {
+    rejectUnauthorized: true,
+    // If your cloud provider requires a specific CA cert, set DATABASE_CA_CERT env var
+    ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT } : {}),
+  } : undefined,
 });
 
 pool.on('error', (err) => {

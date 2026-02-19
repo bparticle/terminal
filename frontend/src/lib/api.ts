@@ -27,7 +27,7 @@ export async function fetchWithAuth(
     Object.assign(headers, authHeaders);
   }
 
-  const url = path.startsWith('http') ? path : `${API_BASE_URL}/${path}`;
+  const url = `${API_BASE_URL}/${path}`;
 
   const response = await fetch(url, {
     ...options,

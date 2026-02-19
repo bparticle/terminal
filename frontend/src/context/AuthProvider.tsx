@@ -154,12 +154,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { token, user } = await verifyResponse.json();
 
-      // 4. Store session
+      // 4. Store session — derive expiry from JWT claims
+      let expiresAt = Date.now() + 24 * 60 * 60 * 1000; // fallback
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp) expiresAt = payload.exp * 1000;
+      } catch { /* use fallback */ }
+
       const newSession: Session = {
         token,
         user,
         fingerprint: getFingerprint(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        expiresAt,
       };
 
       setSession(newSession);

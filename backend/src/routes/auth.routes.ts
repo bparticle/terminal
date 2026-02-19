@@ -23,7 +23,7 @@ router.post('/request-message', async (req: Request, res: Response) => {
       throw new AppError('Invalid wallet address', 400);
     }
 
-    const message = generateAuthMessage();
+    const message = generateAuthMessage(wallet_address);
     res.json({ message });
   } catch (error) {
     if (error instanceof AppError) {
@@ -50,8 +50,8 @@ router.post('/verify-wallet', async (req: Request, res: Response) => {
       throw new AppError('Invalid wallet address', 400);
     }
 
-    // Validate nonce (replay protection)
-    if (!validateAndConsumeNonce(message)) {
+    // Validate nonce (replay protection, bound to wallet)
+    if (!validateAndConsumeNonce(message, wallet_address)) {
       throw new AppError('Authentication failed', 401);
     }
 

@@ -128,17 +128,21 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
  */
 router.post('/action', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { action_type, action_data } = req.body;
+    const action_type = validateString(req.body.action_type, 'action_type', { maxLength: 50 });
 
     // For now, most game logic runs client-side
     // This endpoint is available for future server-side validation
     res.json({
       success: true,
-      action_type,
+      action_type: action_type || 'unknown',
       message: 'Action acknowledged',
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to process action' });
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to process action' });
+    }
   }
 });
 
