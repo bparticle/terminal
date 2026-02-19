@@ -1,0 +1,13 @@
+{
+  "name": "terminal-game",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,magenta \"pnpm --filter terminal-game-backend dev\" \"pnpm --filter frontend dev\"",
+    "build": "pnpm --filter terminal-game-backend build && pnpm --filter frontend build",
+    "start": "concurrently -n backend,frontend -c blue,magenta \"pnpm --filter terminal-game-backend start\" \"pnpm --filter frontend start\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

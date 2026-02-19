@@ -12,6 +12,7 @@ import StatsBox from './components/StatsBox';
 import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
+import ScanlineTitle from './components/ScanlineTitle';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
 import './game-terminal.css';
@@ -41,14 +42,22 @@ export default function GameTerminal() {
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [onboardingState, setOnboardingState] = useState<OnboardingState>('idle');
   const [chatMode, setChatMode] = useState(false);
+  const [soloMode, setSoloMode] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentNodeIdRef = useRef<string | null>(null);
 
+  // ── Solo mode ref for use in stable callbacks ──────────
+  const soloModeRef = useRef(soloMode);
+  useEffect(() => {
+    soloModeRef.current = soloMode;
+  }, [soloMode]);
+
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
+    if (soloModeRef.current) return;
     const isMe = msg.sender === playerName;
     const prefix = isMe ? '[You]' : `[${msg.sender}]`;
     setOutput((prev) => [
@@ -62,6 +71,7 @@ export default function GameTerminal() {
   }, [playerName]);
 
   const handleSystemEvent = useCallback((evt: ChatSystemEvent) => {
+    if (soloModeRef.current) return;
     setOutput((prev) => [
       ...prev,
       {
@@ -93,11 +103,14 @@ export default function GameTerminal() {
     }
   }, [isAuthenticated, getAuthHeaders, authenticate]);
 
-  // Load theme from localStorage
+  // Load theme and solo mode from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('terminalTheme') || '1';
     setThemeState(saved);
     document.documentElement.setAttribute('data-theme', saved);
+
+    const savedSolo = localStorage.getItem('soloMode') === 'true';
+    setSoloMode(savedSolo);
   }, []);
 
   const setTheme = useCallback((t: string) => {
@@ -253,10 +266,23 @@ export default function GameTerminal() {
     [onboardingState, addOutput]
   );
 
-  // Toggle chat mode
-  const toggleChatMode = useCallback(() => {
-    setChatMode((prev) => !prev);
+  // Toggle solo mode
+  const toggleSoloMode = useCallback(() => {
+    setSoloMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('soloMode', String(next));
+      if (next) {
+        setChatMode(false);
+      }
+      return next;
+    });
   }, []);
+
+  // Toggle chat mode (blocked by solo mode)
+  const toggleChatMode = useCallback(() => {
+    if (soloMode) return;
+    setChatMode((prev) => !prev);
+  }, [soloMode]);
 
   // Handle form submit
   const handleSubmit = useCallback(
@@ -413,6 +439,9 @@ export default function GameTerminal() {
 
   return (
     <div className="terminal-page">
+      <div className="title-header">
+        <ScanlineTitle variant={5} />
+      </div>
       <div className="retro-container">
         {/* Main Terminal */}
         <div className="terminal-section" onClick={handleTerminalClick}>
@@ -472,6 +501,7 @@ export default function GameTerminal() {
                 chatMode={chatMode}
                 onToggle={toggleChatMode}
                 isSocketConnected={isSocketConnected}
+                disabled={soloMode}
               />
             ) : (
               <span className="terminal-prompt">&gt;_</span>
@@ -482,7 +512,7 @@ export default function GameTerminal() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Tab' && connected && onboardingState === 'done') {
+                if (e.key === 'Tab' && connected && onboardingState === 'done' && !soloMode) {
                   e.preventDefault();
                   toggleChatMode();
                 }
@@ -501,6 +531,17 @@ export default function GameTerminal() {
               }
               disabled={activeGame !== null}
             />
+            {connected && onboardingState === 'done' && (
+              <button
+                type="button"
+                className={`solo-toggle ${soloMode ? 'solo-toggle-active' : ''}`}
+                onClick={toggleSoloMode}
+                title={soloMode ? 'Exit solo mode' : 'Solo mode - mute all chat'}
+                aria-label={soloMode ? 'Exit solo mode' : 'Enable solo mode'}
+              >
+                SOLO
+              </button>
+            )}
           </form>
 
           {/* Snake game overlay */}

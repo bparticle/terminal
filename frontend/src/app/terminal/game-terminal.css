@@ -7,15 +7,35 @@
 .terminal-page {
   font-family: 'VT323', monospace;
   background: #0a0a0a;
-  min-height: 100vh;
+  height: 100vh;
   color: var(--primary-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.title-header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 6px 15px 0;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.title-header canvas {
+  max-width: 420px;
+  background: #0a0a0a;
 }
 
 .retro-container {
   display: flex;
   gap: 15px;
-  height: 100vh;
-  padding: 15px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 15px 15px;
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -730,6 +750,48 @@
   animation: blink 1s infinite;
 }
 
+/* Chat toggle disabled (solo mode active) */
+.chat-toggle-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Solo mode toggle */
+.solo-toggle {
+  background: none;
+  border: 1px solid var(--primary-dim);
+  color: var(--primary-dim);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.solo-toggle:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+.solo-toggle-active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+.solo-toggle-active:hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
+
 /* Input form in chat mode */
 .terminal-input-form.chat-mode {
   border-top-color: #22d3ee;
@@ -768,10 +830,21 @@
    RESPONSIVE
    ========================================== */
 @media (max-width: 768px) {
+  .terminal-page {
+    height: 100dvh;
+  }
+
+  .title-header {
+    padding: 4px 10px 0;
+  }
+
+  .title-header canvas {
+    max-width: 260px;
+  }
+
   .retro-container {
     flex-direction: column;
     padding: 0;
-    height: 100dvh;
     gap: 0;
   }
 
