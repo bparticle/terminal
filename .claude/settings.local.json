@@ -8,7 +8,11 @@
       "Bash(pnpm install:*)",
       "Bash(CI=true pnpm install:*)",
       "Bash(npm install:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npx jest:*)",
+      "Bash(node -e:*)",
+      "Bash(git status:*)",
+      "Bash(git push:*)"
     ]
   }
 }
