@@ -18,6 +18,8 @@
   flex-shrink: 0;
   display: flex;
   justify-content: center;
+  align-items: flex-end;
+  gap: 6px;
   padding: 6px 15px 0;
   width: 100%;
   max-width: 1400px;
@@ -27,6 +29,17 @@
 .title-header canvas {
   max-width: 420px;
   background: #0a0a0a;
+}
+
+.version-badge {
+  font-family: monospace;
+  font-size: 0.6rem;
+  color: var(--primary-color, #2dfe39);
+  opacity: 0.4;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-bottom: 2px;
+  user-select: none;
 }
 
 .retro-container {
@@ -836,6 +849,10 @@
 
   .title-header {
     padding: 4px 10px 0;
+  }
+
+  .version-badge {
+    font-size: 0.5rem;
   }
 
   .title-header canvas {

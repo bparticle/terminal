@@ -13,6 +13,7 @@ import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
 import ScanlineTitle from './components/ScanlineTitle';
+import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
 import './game-terminal.css';
@@ -441,12 +442,13 @@ export default function GameTerminal() {
     <div className="terminal-page">
       <div className="title-header">
         <ScanlineTitle variant={5} />
+        <span className="version-badge">v{APP_VERSION}</span>
       </div>
       <div className="retro-container">
         {/* Main Terminal */}
         <div className="terminal-section" onClick={handleTerminalClick}>
           <div className="terminal-header">
-            <span>TERMINAL ADVENTURE v1.0</span>
+            <span>TERMINAL ADVENTURE</span>
             <span className="terminal-location">{currentLocation}</span>
             {/* Mobile sidebar toggle */}
             <button

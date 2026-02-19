@@ -1,6 +1,6 @@
 {
   "name": "terminal-game",
-  "version": "1.0.0",
+  "version": "0.4.0-beta",
   "private": true,
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,magenta \"pnpm --filter terminal-game-backend dev\" \"pnpm --filter frontend dev\"",
