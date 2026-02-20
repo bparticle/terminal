@@ -43,12 +43,9 @@ export class GameEngine {
   async initialize(
     walletAddress: string,
     playerName: string = 'Wanderer',
-    race?: string,
-    startingItems?: string[],
   ): Promise<void> {
     this.walletAddress = walletAddress;
 
-    // Try to load existing save
     try {
       const response = await loadGame(walletAddress);
       if (response) {
@@ -71,21 +68,6 @@ export class GameEngine {
         name: playerName,
       };
       this.outputFn('Playing in offline mode.', 'text-yellow-400');
-    }
-
-    // Set race before first display (new players get it from onboarding; returning players already have it in save)
-    if (race && !this.save.game_state.race) {
-      this.save.game_state.race = race;
-    }
-
-    // Grant race-specific starting items before first display
-    if (startingItems) {
-      for (const item of startingItems) {
-        if (!this.save.inventory.includes(item)) {
-          this.save.inventory.push(item);
-        }
-      }
-      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
     }
 
     // Load current node
@@ -820,20 +802,4 @@ export class GameEngine {
     }
   }
 
-  getRace(): string | undefined {
-    return this.save?.game_state?.race;
-  }
-
-  setRace(race: string): void {
-    if (this.save) {
-      this.save.game_state.race = race;
-    }
-  }
-
-  grantStartingItem(item: string): void {
-    if (this.save && !this.save.inventory.includes(item)) {
-      this.save.inventory.push(item);
-      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
-    }
-  }
 }

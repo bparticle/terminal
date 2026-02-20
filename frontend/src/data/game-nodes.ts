@@ -3,9 +3,8 @@ import { GameNode } from '@/lib/types/game';
 /**
  * SCANLINES — A web3 terminal adventure on Solana.
  *
- * Node graph for the full story. Race is stored in game_state.race.
+ * Node graph for the full story. All paths are item-gated (no race mechanic).
  * Items are soulbound NFTs tracked as inventory strings.
- * Item degradation/consumption tracked via game_state flags.
  *
  * Campaign target states:
  *   - temple_entered
@@ -28,8 +27,7 @@ export const gameNodes: Record<string, GameNode> = {
       'MEMORY CHECK... OK\n' +
       'DISK CHECK... FRAGMENTED\n' +
       'NETWORK... SIGNAL DETECTED\n' +
-      'IDENTITY... {{state.player_name}}\n' +
-      'RACE... {{state.race}}\n\n' +
+      'IDENTITY... {{state.player_name}}\n\n' +
       '> Initializing SCANLINES v0.1\n' +
       '> "Look at the scanlines."\n\n' +
       'You open your eyes.\n' +
@@ -40,128 +38,8 @@ export const gameNodes: Record<string, GameNode> = {
       'You are in a room with no memory of arrival.',
     location: 'COLD ROOM',
     effects: {
-      set_state: { game_started: true, sanity: 100 },
+      set_state: { game_started: true },
     },
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'DEPRECATED' } },
-        content:
-          'SYSTEM BOOT...\n' +
-          'MEMORY CHECK... FRAGMENTED\n' +
-          'DISK CHECK... LEGACY FORMAT DETECTED\n' +
-          'NETWORK... SIGNAL DETECTED\n' +
-          'IDENTITY... {{state.player_name}}\n' +
-          'RACE... DEPRECATED\n\n' +
-          '> Initializing SCANLINES v0.1\n' +
-          '> "Look at the scanlines."\n\n' +
-          'You open your eyes.\n' +
-          'This feels familiar. Too familiar.\n' +
-          'You have been here before. You are sure of it.\n\n' +
-          'The room is cold. The walls are concrete.\n' +
-          'A single monitor flickers — and for a moment,\n' +
-          'it shows a name. Your old name.\n' +
-          'Then it is gone.\n\n' +
-          'You are in a room with no memory of arrival.\n' +
-          'But you have a key. You have always had it.',
-      },
-      {
-        requirements: { state: { race: 'NULL' } },
-        content:
-          'SYSTEM BOOT...\n' +
-          'MEMORY CHECK... [NULL REFERENCE]\n' +
-          'DISK CHECK... ENTITY NOT FOUND\n' +
-          'NETWORK... SIGNAL DETECTED\n' +
-          'IDENTITY... {{state.player_name}}\n' +
-          'RACE... [UNDEFINED]\n\n' +
-          '> Initializing SCANLINES v0.1\n' +
-          '> "Look at the scanlines."\n\n' +
-          'You open your eyes.\n' +
-          'The system does not register you.\n' +
-          'The room is cold but the cold does not touch you.\n' +
-          'You exist between the data. Partially erased.\n\n' +
-          'A monitor flickers. It does not see you either.',
-      },
-    ],
-    next_node: 'start_race_setup',
-  },
-
-  start_race_setup: {
-    id: 'start_race_setup',
-    type: 'story',
-    content: '',
-    location: 'COLD ROOM',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'DEPRECATED' } },
-        content:
-          'You check your inventory.\n' +
-          'A key. You did not find it.\n' +
-          'You already had it. You have always had it.\n' +
-          'From before.',
-      },
-      {
-        requirements: { state: { race: 'HUMAN' } },
-        content:
-          'You check your status.\n' +
-          'SANITY: 100\n' +
-          'Stable. For now.',
-      },
-      {
-        requirements: { state: { race: 'DEMON' } },
-        content:
-          'Something stirs inside you.\n' +
-          'An impulse. To break. To force.\n' +
-          'The system logged it.\n' +
-          'It logs everything.',
-      },
-      {
-        requirements: { state: { race: 'ROBOT' } },
-        content:
-          'DIAGNOSTIC: COMPLETE\n' +
-          'All interfaces operational.\n' +
-          'Direct terminal access: available.',
-      },
-      {
-        requirements: { state: { race: 'KERNEL' } },
-        content:
-          'ROOT ACCESS: ACTIVE\n' +
-          'The system recognizes you.\n' +
-          'Everything recognizes you.',
-      },
-      {
-        requirements: { state: { race: 'CORRUPTED' } },
-        content:
-          'Your data is infected.\n' +
-          'Everything you touch will carry\n' +
-          'a trace of what you are.\n' +
-          'This is not always a disadvantage.',
-      },
-      {
-        requirements: { state: { race: 'PHANTOM_PROCESS' } },
-        content:
-          'You are running in the background.\n' +
-          'Invisible. Watching.\n' +
-          'The system does not track\n' +
-          'what it cannot see.',
-      },
-    ],
-    effects: {
-      set_state: { demon_forced_count: 0 },
-    },
-    next_node: 'start_deprecated_item',
-  },
-
-  start_deprecated_item: {
-    id: 'start_deprecated_item',
-    type: 'story',
-    content: '',
-    location: 'COLD ROOM',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'DEPRECATED' } },
-        content: 'The echo key hums faintly in your hand.',
-      },
-    ],
     next_node: 'cold_room',
   },
 
@@ -207,37 +85,28 @@ export const gameNodes: Record<string, GameNode> = {
         id: 2,
         text: 'Crawl through the vent',
         next_node: 'corridor_north_via_vent',
-        visibilityRequirements: { state: { vent_noticed: true } },
-        requirements: { state: { race: 'ROBOT' } },
-        lockedText: '[Your frame does not fit]',
-      },
-      {
-        id: 3,
-        text: 'Crawl through the vent (lubricate grate)',
-        next_node: 'corridor_north_via_vent',
         visibilityRequirements: { has_item: ['phosphor_residue'] },
         requirements: { has_item: ['phosphor_residue'] },
       },
       {
-        id: 4,
+        id: 3,
         text: 'Examine the terminal',
         next_node: 'cold_room_terminal',
       },
       {
-        id: 5,
+        id: 4,
         text: 'Wait. Listen.',
         next_node: 'cold_room_wait_1',
       },
       {
-        id: 6,
+        id: 5,
         text: 'Examine hidden panel',
         next_node: 'cold_room_hidden_panel',
-        requirements: { state: { race: 'DEPRECATED' }, has_item: ['echo_key'] },
-        visibilityRequirements: { state: { race: 'DEPRECATED' } },
-        lockedText: '[LOCKED — you need something from before]',
+        requirements: { state: { heard_frequency: true } },
+        visibilityRequirements: { state: { heard_frequency: true } },
       },
       {
-        id: 7,
+        id: 6,
         text: 'Examine the vent',
         next_node: 'cold_room_vent_look',
         requirements: { state: { vent_noticed: true } },
@@ -252,8 +121,8 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The vent grate is loose. Beyond it, a narrow shaft\n' +
       'leads north. You can feel air moving through it.\n' +
-      'A ROBOT could interface with the grate mechanism.\n' +
-      'Otherwise... you would need something slippery.',
+      'The grate is stuck. Something slippery\n' +
+      'might loosen the mechanism.',
     location: 'COLD ROOM',
     effects: { set_state: { vent_noticed: true } },
     next_node: 'cold_room',
@@ -277,15 +146,16 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'cold_room_hidden_panel',
     type: 'story',
     content:
+      'The frequency you heard... it came from here.\n' +
       'You press your hand against the south wall.\n' +
-      'Your echo key vibrates. You remember this.\n' +
-      'A panel slides open — a compartment from\n' +
-      'a session that was never supposed to persist.\n\n' +
-      'Inside: a fragment of saved state. Warm.\n' +
-      'It knows your name. Your old name.',
+      'The wall vibrates in response.\n' +
+      'A panel slides open — a compartment hidden\n' +
+      'behind the concrete.\n\n' +
+      'Inside: a strange key. It hums faintly.\n' +
+      'It feels old. Older than the room.',
     location: 'COLD ROOM',
     effects: {
-      add_item: ['memory_shard'],
+      add_item: ['echo_key'],
     },
     next_node: 'cold_room',
   },
@@ -376,43 +246,6 @@ export const gameNodes: Record<string, GameNode> = {
       'The /system directory is locked.\n' +
       'The /null directory returns: ENTITY NOT FOUND.',
     location: 'COLD ROOM',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'ROBOT' } },
-        content:
-          'The terminal hums softly.\n' +
-          'You interface directly. No keyboard needed.\n\n' +
-          '> COLD ROOM SYSTEM TERMINAL\n' +
-          '> STATUS: OPERATIONAL\n' +
-          '> DIRECTORIES: /logs, /system, /null\n\n' +
-          'You can feel the data structures beneath.\n' +
-          'The /system directory has a frequency lock.\n' +
-          'The /null directory returns: ENTITY NOT FOUND.',
-      },
-      {
-        requirements: { state: { race: 'KERNEL' } },
-        content:
-          'The terminal hums softly.\n' +
-          'It recognizes you. Root access.\n\n' +
-          '> COLD ROOM SYSTEM TERMINAL\n' +
-          '> STATUS: OPERATIONAL\n' +
-          '> DIRECTORIES: /logs, /system, /null\n' +
-          '> ROOT ACCESS: GRANTED\n\n' +
-          'Every directory is open to you.',
-      },
-      {
-        requirements: { state: { race: 'NULL' } },
-        content:
-          'The terminal hums softly.\n' +
-          'The cursor blinks at nothing.\n' +
-          'It does not see you.\n\n' +
-          '> COLD ROOM SYSTEM TERMINAL\n' +
-          '> STATUS: OPERATIONAL\n' +
-          '> DIRECTORIES: /logs, /system, /null\n\n' +
-          'The /null directory... opens for you.\n' +
-          'It has been waiting.',
-      },
-    ],
     choices: [
       {
         id: 1,
@@ -428,33 +261,27 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Access /system (root access)',
-        next_node: 'cold_room_terminal_system_root',
-        requirements: { state: { race: 'KERNEL' } },
+        text: 'Analyze terminal waveform data',
+        next_node: 'cold_room_terminal_waveform',
+        requirements: { has_item: ['cold_room_key'] },
+        visibilityRequirements: { has_item: ['cold_room_key'] },
       },
       {
         id: 4,
-        text: 'Access /null',
-        next_node: 'null_directory',
-        requirements: { state: { race: 'NULL' } },
+        text: 'Access /null (use phosphor residue)',
+        next_node: 'cold_room_terminal_null',
+        requirements: { has_item: ['phosphor_residue'] },
+        visibilityRequirements: { has_item: ['phosphor_residue'] },
       },
       {
         id: 5,
-        text: 'Analyze terminal waveform data',
-        next_node: 'cold_room_terminal_waveform',
-        requirements: { has_item: ['cold_room_key'], state: { race: 'ROBOT' } },
-        visibilityRequirements: { has_item: ['cold_room_key'] },
-        lockedText: '[REQUIRES: ROBOT interface]',
-      },
-      {
-        id: 6,
         text: 'Insert archivist log',
         next_node: 'cold_room_terminal_log_insert',
         requirements: { has_item: ['archivist_log_9'] },
         visibilityRequirements: { has_item: ['archivist_log_9'] },
       },
       {
-        id: 7,
+        id: 6,
         text: 'Back',
         next_node: 'cold_room',
       },
@@ -480,7 +307,7 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You hold the key near the terminal.\n' +
-      'Your ROBOT interface reads the waveform in the teeth.\n\n' +
+      'The terminal reads the waveform in the teeth.\n\n' +
       '> WAVEFORM PATTERN ANALYZED\n' +
       '> FREQUENCY: 47.3 Hz\n' +
       '> MATCH FOUND: /system authentication key\n\n' +
@@ -499,35 +326,38 @@ export const gameNodes: Record<string, GameNode> = {
       '> /system\n' +
       '> FREQUENCY AUTHENTICATION: MATCHED\n\n' +
       'The directory opens.\n' +
-      'Inside: a single file.\n' +
-      'SIGNAL_TOWER_FREQUENCY.dat\n\n' +
+      'Inside: two files.\n\n' +
+      'SIGNAL_TOWER_FREQUENCY.dat\n' +
       'A six-digit code: 473291\n' +
-      '"Only works once. Only works if you already know why."',
-    location: 'COLD ROOM',
-    effects: {
-      add_item: ['signal_tower_code'],
-    },
-    next_node: 'cold_room_terminal',
-  },
-
-  cold_room_terminal_system_root: {
-    id: 'cold_room_terminal_system_root',
-    type: 'story',
-    content:
-      '> /system\n' +
-      '> ROOT ACCESS: GRANTED\n\n' +
-      'The directory opens without resistance.\n' +
-      'You are KERNEL. Everything obeys.\n\n' +
-      'SIGNAL_TOWER_FREQUENCY.dat — code: 473291\n' +
-      'ROOT_ACCESS_LOG.sys — a system log\n\n' +
-      'The root access log shows every entity that has\n' +
+      '"Only works once. Only works if you already know why."\n\n' +
+      'ROOT_ACCESS_LOG.sys\n' +
+      'A system log showing every entity that has\n' +
       'ever had root access to this terminal.\n' +
-      'It is a long list.\n' +
-      'Your name is already on it.\n' +
+      'It is a long list. Your name is already on it.\n' +
       'You have not done that yet.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['signal_tower_code', 'root_access_log'],
+    },
+    next_node: 'cold_room_terminal',
+  },
+
+  cold_room_terminal_null: {
+    id: 'cold_room_terminal_null',
+    type: 'story',
+    content:
+      '> /null\n\n' +
+      'You smear the phosphor residue on the terminal screen.\n' +
+      'The residue reacts. The /null directory flickers —\n' +
+      'then opens.\n\n' +
+      'The directory should not exist.\n' +
+      'Inside: a shard of something that used to be a file.\n' +
+      'It is very quiet. Not silent — quiet.\n' +
+      'Like it is listening.\n\n' +
+      'You take it.',
+    location: 'COLD ROOM',
+    effects: {
+      add_item: ['null_fragment'],
     },
     next_node: 'cold_room_terminal',
   },
@@ -542,27 +372,6 @@ export const gameNodes: Record<string, GameNode> = {
       'The entry ends. The terminal adds a timestamp.\n' +
       'This log has been read 47 times before.',
     location: 'COLD ROOM',
-    next_node: 'cold_room_terminal',
-  },
-
-  // ── Null Directory (NULL race exclusive) ──
-
-  null_directory: {
-    id: 'null_directory',
-    type: 'story',
-    content:
-      '> /null\n\n' +
-      'The directory should not exist.\n' +
-      'But you do not exist either.\n' +
-      'So you fit.\n\n' +
-      'Inside: a shard of something that used to be a file.\n' +
-      'It is very quiet. Not silent — quiet.\n' +
-      'Like it is listening.\n\n' +
-      'You take it. It was always yours.',
-    location: 'COLD ROOM',
-    effects: {
-      add_item: ['null_fragment'],
-    },
     next_node: 'cold_room_terminal',
   },
 
@@ -653,11 +462,15 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'corridor_north_via_vent',
     type: 'story',
     content:
-      'You squeeze through the vent shaft.\n' +
+      'You smear the phosphor residue on the vent grate.\n' +
+      'The grate loosens. You squeeze through the shaft.\n' +
       'The metal groans around you.\n' +
       'After what feels like too long, you emerge\n' +
       'into a corridor lined with cracked monitors.',
     location: 'CORRIDOR NORTH',
+    effects: {
+      remove_item: ['phosphor_residue'],
+    },
     next_node: 'corridor_north',
   },
 
@@ -745,7 +558,7 @@ export const gameNodes: Record<string, GameNode> = {
       'You smear the phosphor residue on the door\n' +
       'marked with a NULL sigil.\n\n' +
       'The door sensor reads the residue.\n' +
-      'It thinks you are partially NULL.\n' +
+      'It reads you as partially belonging.\n' +
       'A click. The door opens a crack.\n\n' +
       'Beyond: the Temple of Null.',
     location: 'CORRIDOR NORTH',
@@ -793,18 +606,11 @@ export const gameNodes: Record<string, GameNode> = {
         id: 4,
         text: 'The unlabeled door (Echo Archive)',
         next_node: 'echo_archive',
-        requirements: { state: { race: 'DEPRECATED' } },
+        requirements: { has_item: ['echo_key'] },
         lockedText: '[The door does not acknowledge you]',
       },
       {
         id: 5,
-        text: 'The unlabeled door (use page ash)',
-        next_node: 'echo_archive_ash',
-        requirements: { has_item: ['page_ash'] },
-        visibilityRequirements: { has_item: ['page_ash'] },
-      },
-      {
-        id: 6,
         text: 'Back to corridor',
         next_node: 'corridor_north',
       },
@@ -843,8 +649,8 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Look up your own race file',
-        next_node: 'registry_race_file',
+        text: 'Look up your own file',
+        next_node: 'registry_player_file',
       },
       {
         id: 4,
@@ -880,102 +686,24 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'registry_office',
   },
 
-  registry_race_file: {
-    id: 'registry_race_file',
+  registry_player_file: {
+    id: 'registry_player_file',
     type: 'story',
     content:
       'You search the filing cabinets for your own entry.\n\n' +
-      'RACE: {{state.race}}\n' +
+      'NAME: {{state.player_name}}\n' +
       'STATUS: ACTIVE\n' +
       'ITERATION: [REDACTED]\n\n' +
       'The file exists. You exist.\n' +
-      'That should not be comforting. It is.',
+      'That should not be comforting. It is.\n\n' +
+      'A note stapled to the back:\n' +
+      '"Previous iterations: 47.\n' +
+      'All terminated. All different.\n' +
+      'All carrying something forward\n' +
+      'without knowing it."',
     location: 'REGISTRY OFFICE',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'HUMAN' } },
-        content:
-          'You search the filing cabinets for your own entry.\n\n' +
-          'RACE: HUMAN\n' +
-          'STATUS: ACTIVE\n' +
-          'SANITY: MONITORED\n' +
-          'ITERATION: [REDACTED]\n\n' +
-          'The act of self-knowledge steadies you.\n' +
-          'You feel something stabilize.\n' +
-          'A piece of something stable in an unstable place.',
-      },
-      {
-        requirements: { state: { race: 'DEPRECATED' } },
-        content:
-          'You search the filing cabinets for your own entry.\n\n' +
-          'RACE: DEPRECATED\n' +
-          'STATUS: LEGACY — SCHEDULED FOR REMOVAL\n' +
-          'PRIOR VERSIONS: 7\n\n' +
-          'You see your prior self\'s file.\n' +
-          'Different name. Same echo key.\n' +
-          'They played this game before you.\n' +
-          'They lost.',
-      },
-      {
-        requirements: { state: { race: 'CORRUPTED' } },
-        content:
-          'You search the filing cabinets for your own entry.\n\n' +
-          'The file glitches as you read it.\n' +
-          'Characters shift. The paper feels warm.\n' +
-          'Before you finish reading, the file\n' +
-          'deletes itself. A fragment remains.',
-      },
-    ],
     effects: {
       set_state: { looked_up_self: true },
-    },
-    next_node: 'registry_race_file_result',
-  },
-
-  registry_race_file_result: {
-    id: 'registry_race_file_result',
-    type: 'story',
-    content: 'You return the file to its place.',
-    location: 'REGISTRY OFFICE',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'HUMAN' } },
-        content:
-          'A piece of something stable.\n' +
-          'Holding it feels like remembering your name.\n\n' +
-          'Your sanity steadies. +20.',
-      },
-      {
-        requirements: { state: { race: 'DEPRECATED' } },
-        content:
-          'You saw your prior self.\n' +
-          'Seven versions. All deprecated.\n' +
-          'All carrying the same key.',
-      },
-    ],
-    effects: {
-      set_state: { saw_prior_self: true },
-    },
-    next_node: 'registry_race_file_items',
-  },
-
-  registry_race_file_items: {
-    id: 'registry_race_file_items',
-    type: 'story',
-    content: '',
-    location: 'REGISTRY OFFICE',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'HUMAN' } },
-        content: 'You pocket the stabilizing fragment.',
-      },
-      {
-        requirements: { state: { race: 'CORRUPTED' } },
-        content: 'The corrupted fragment crumbles in your hands.\nA log fragment remains.',
-      },
-    ],
-    effects: {
-      set_state: { saw_prior_self: true },
     },
     next_node: 'registry_office',
   },
@@ -1081,9 +809,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 4,
         text: 'Show memory shard',
         next_node: 'guild_show_memory',
-        requirements: { has_item: ['memory_shard'], state: { race: 'DEPRECATED' } },
+        requirements: { has_item: ['memory_shard'] },
         visibilityRequirements: { has_item: ['memory_shard'] },
-        lockedText: '[Only DEPRECATED can show this]',
       },
       {
         id: 5,
@@ -1096,28 +823,18 @@ export const gameNodes: Record<string, GameNode> = {
         id: 6,
         text: 'Show corrupted page',
         next_node: 'guild_show_corrupted_page',
-        requirements: { has_item: ['corrupted_page'], state: { race: 'CORRUPTED' } },
+        requirements: { has_item: ['corrupted_page'] },
         visibilityRequirements: { has_item: ['corrupted_page'] },
-        lockedText: '[Only CORRUPTED can present this]',
       },
       {
         id: 7,
-        text: 'Show sanity fragment',
-        next_node: 'guild_show_sanity',
-        requirements: { has_item: ['sanity_fragment'], state: { race: 'HUMAN' } },
-        visibilityRequirements: { has_item: ['sanity_fragment'] },
-        lockedText: '[Only HUMAN can present this]',
+        text: 'Show root access log',
+        next_node: 'guild_show_root_log',
+        requirements: { has_item: ['root_access_log'] },
+        visibilityRequirements: { has_item: ['root_access_log'] },
       },
       {
         id: 8,
-        text: 'Show root access log',
-        next_node: 'guild_show_root_log',
-        requirements: { has_item: ['root_access_log'], state: { race: 'KERNEL' } },
-        visibilityRequirements: { has_item: ['root_access_log'] },
-        lockedText: '[Only KERNEL can present this]',
-      },
-      {
-        id: 9,
         text: 'Leave',
         next_node: 'corridor_north',
       },
@@ -1280,23 +997,6 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'guild_hq',
   },
 
-  guild_show_sanity: {
-    id: 'guild_show_sanity',
-    type: 'story',
-    content:
-      'You show the sanity fragment.\n\n' +
-      'ARCHIVIST-7 pauses.\n\n' +
-      '"You looked yourself up. Most don\'t."\n\n' +
-      'Something shifts in his posture.\n' +
-      'Not respect exactly.\n' +
-      'Recognition.',
-    location: 'GUILD HQ',
-    effects: {
-      set_state: { archivist_respects_you: true },
-    },
-    next_node: 'guild_hq',
-  },
-
   guild_show_root_log: {
     id: 'guild_show_root_log',
     type: 'story',
@@ -1359,9 +1059,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 4,
         text: 'Use root access log as credential',
         next_node: 'server_room_root',
-        requirements: { has_item: ['root_access_log'], state: { race: 'KERNEL' } },
+        requirements: { has_item: ['root_access_log'] },
         visibilityRequirements: { has_item: ['root_access_log'] },
-        lockedText: '[REQUIRES: KERNEL authorization]',
       },
       {
         id: 5,
@@ -1507,9 +1206,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 6,
         text: 'Place null fragment on console',
         next_node: 'broadcast_null',
-        requirements: { has_item: ['null_fragment'], state: { race: 'NULL' } },
+        requirements: { has_item: ['null_fragment'] },
         visibilityRequirements: { has_item: ['null_fragment'] },
-        lockedText: '[Only NULL can interface with this]',
       },
       {
         id: 7,
@@ -1641,7 +1339,7 @@ export const gameNodes: Record<string, GameNode> = {
       'The numbers on the screen dissolve\n' +
       'into characters you cannot read.\n\n' +
       'But you understand them.\n' +
-      'The third faction is speaking your language now.\n' +
+      'The third faction is speaking a language now.\n' +
       'The language of things that do not exist.',
     location: 'BROADCAST ROOM',
     effects: {
@@ -1671,56 +1369,34 @@ export const gameNodes: Record<string, GameNode> = {
     choices: [
       {
         id: 1,
-        text: 'Pass through (NULL)',
-        next_node: 'temple_interior',
-        requirements: { state: { race: 'NULL' } },
-        visibilityRequirements: { state: { race: 'NULL' } },
+        text: 'Show Guild Sigil',
+        next_node: 'temple_riddle',
+        requirements: { has_item: ['guild_sigil'] },
+        visibilityRequirements: { has_item: ['guild_sigil'] },
       },
       {
         id: 2,
-        text: 'Show Guild Sigil (HUMAN)',
-        next_node: 'temple_riddle',
-        requirements: { has_item: ['guild_sigil'], state: { race: 'HUMAN' } },
-        visibilityRequirements: { has_item: ['guild_sigil'] },
-        lockedText: '[LOCKED — HUMAN with Guild credential only]',
-      },
-      {
-        id: 3,
         text: 'Show the First Pixel',
         next_node: 'temple_pixel_entry',
         requirements: { has_item: ['first_pixel'] },
         visibilityRequirements: { has_item: ['first_pixel'] },
       },
       {
-        id: 4,
-        text: 'Force the door (DEMON)',
-        next_node: 'temple_force',
-        requirements: { state: { race: 'DEMON' } },
-        visibilityRequirements: { state: { race: 'DEMON' } },
-      },
-      {
-        id: 5,
-        text: 'Use echo key (DEPRECATED)',
+        id: 3,
+        text: 'Use echo key on the door',
         next_node: 'temple_echo_entry',
-        requirements: { has_item: ['echo_key'], state: { race: 'DEPRECATED' } },
-        visibilityRequirements: { state: { race: 'DEPRECATED' } },
+        requirements: { has_item: ['echo_key'] },
+        visibilityRequirements: { has_item: ['echo_key'] },
       },
       {
-        id: 6,
+        id: 4,
         text: 'Apply phosphor residue to sensor',
         next_node: 'temple_phosphor_entry',
         requirements: { has_item: ['phosphor_residue'] },
-        visibilityRequirements: { has_item: ['phosphor_residue'], state: { race: 'NULL' } },
+        visibilityRequirements: { has_item: ['phosphor_residue'] },
       },
       {
-        id: 7,
-        text: 'Use page ash on sensor',
-        next_node: 'temple_ash_entry',
-        requirements: { has_item: ['page_ash'] },
-        visibilityRequirements: { has_item: ['page_ash'] },
-      },
-      {
-        id: 8,
+        id: 5,
         text: 'Go back',
         next_node: 'corridor_north',
       },
@@ -1748,15 +1424,12 @@ export const gameNodes: Record<string, GameNode> = {
       'Incorrect. One attempt remains. Think carefully.',
     ],
     final_failure_message:
-      'The door seals. Your sanity wavers.\n' +
+      'The door seals.\n' +
       'You are turned away.',
     success_node: 'temple_interior',
     failure_node: 'corridor_north',
     success_effects: {
       set_state: { temple_entered: true },
-    },
-    failure_effects: {
-      modify_state: { sanity: -15 },
     },
   },
 
@@ -1772,55 +1445,10 @@ export const gameNodes: Record<string, GameNode> = {
       'The pixel dims. It becomes something less.\n' +
       'A spent pixel. The memory of light.',
     location: 'TEMPLE ENTRANCE',
-    conditionalContent: [
-      {
-        requirements: { state: { race: 'NULL' } },
-        content:
-          'You hold up the First Pixel.\n\n' +
-          'The door sensor reads it.\n' +
-          'The door opens.\n\n' +
-          'The pixel does not dim in your hands.\n' +
-          'NULL cannot be drained of origin.\n' +
-          'The First Pixel stays bright.',
-      },
-    ],
     effects: {
       set_state: { temple_entered: true, first_pixel_spent: true },
       remove_item: ['first_pixel'],
       add_item: ['spent_first_pixel'],
-    },
-    next_node: 'temple_interior',
-  },
-
-  temple_force: {
-    id: 'temple_force',
-    type: 'story',
-    content:
-      'You slam your fist against the door.\n\n' +
-      'The door cracks. Alarms sound.\n' +
-      'Temple guardians materialize —\n' +
-      'but they see the brand.\n' +
-      'Three forced entries. The system logged it.\n' +
-      'They recognize the mark.\n\n' +
-      'They stand down. The door opens.\n' +
-      'Fear is also a key.',
-    location: 'TEMPLE ENTRANCE',
-    conditionalContent: [
-      {
-        requirements: { has_item: ['demon_brand'] },
-        content:
-          'You slam your fist against the door.\n\n' +
-          'The door cracks. Alarms sound.\n' +
-          'Temple guardians materialize —\n' +
-          'but they see the brand on you.\n' +
-          'They know you.\n\n' +
-          'They stand down. The door opens.\n' +
-          'Fear is also a key.',
-      },
-    ],
-    effects: {
-      set_state: { temple_entered: true, demon_forced_count: 1 },
-      modify_state: { demon_forced_count: 1 },
     },
     next_node: 'temple_interior',
   },
@@ -1833,7 +1461,7 @@ export const gameNodes: Record<string, GameNode> = {
       'The door remembers.\n' +
       'From last time. From the time before.\n' +
       'It opens for you because it has\n' +
-      'always opened for you.',
+      'always opened for this key.',
     location: 'TEMPLE ENTRANCE',
     effects: {
       set_state: { temple_entered: true },
@@ -1846,7 +1474,7 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You smear the phosphor residue on the sensor.\n\n' +
-      'The sensor reads you as partially NULL.\n' +
+      'The sensor reads you as partially belonging.\n' +
       'Not a clean read. The door hesitates.\n' +
       'Then opens. Barely.\n\n' +
       'You squeeze through.',
@@ -1854,24 +1482,6 @@ export const gameNodes: Record<string, GameNode> = {
     effects: {
       set_state: { temple_entered: true },
       remove_item: ['phosphor_residue'],
-    },
-    next_node: 'temple_interior',
-  },
-
-  temple_ash_entry: {
-    id: 'temple_ash_entry',
-    type: 'story',
-    content:
-      'You blow the page ash at the door sensor.\n\n' +
-      'The ash confuses the sensor.\n' +
-      'For a moment it thinks you are everything\n' +
-      'and nothing. A legacy substance.\n\n' +
-      'The door opens. One chance. No penalty\n' +
-      'for wrong answers inside.',
-    location: 'TEMPLE ENTRANCE',
-    effects: {
-      set_state: { temple_entered: true, ash_temple_mercy: true },
-      remove_item: ['page_ash'],
     },
     next_node: 'temple_interior',
   },
@@ -1900,84 +1510,64 @@ export const gameNodes: Record<string, GameNode> = {
     choices: [
       {
         id: 1,
-        text: 'Read the Book (warning: sanity risk)',
-        next_node: 'temple_read_book_human',
-        requirements: { state: { race: 'HUMAN' } },
-        visibilityRequirements: { state: { race: 'HUMAN' } },
-      },
-      {
-        id: 2,
         text: 'Read the Book',
         next_node: 'temple_read_book',
       },
       {
-        id: 3,
+        id: 2,
         text: 'Use null fragment on mirror figure',
-        next_node: 'null_self_chamber',
-        requirements: { has_item: ['null_fragment'], state: { race: 'NULL' } },
+        next_node: 'temple_null_figure',
+        requirements: { has_item: ['null_fragment'] },
         visibilityRequirements: { has_item: ['null_fragment'] },
-        lockedText: '[Only NULL can use this]',
       },
       {
-        id: 4,
+        id: 3,
         text: 'Play tape reel near the figure',
         next_node: 'temple_play_tape',
         requirements: { has_item: ['tape_reel_7'] },
         visibilityRequirements: { has_item: ['tape_reel_7'] },
       },
       {
-        id: 5,
+        id: 4,
         text: 'Use First Pixel on the Book',
         next_node: 'temple_pixel_book',
         requirements: { has_item: ['first_pixel'] },
         visibilityRequirements: { has_item: ['first_pixel'] },
       },
       {
-        id: 6,
-        text: 'Use memory shard on the Book (DEPRECATED)',
+        id: 5,
+        text: 'Use memory shard on the Book',
         next_node: 'temple_memory_book',
-        requirements: { has_item: ['memory_shard'], state: { race: 'DEPRECATED' } },
+        requirements: { has_item: ['memory_shard'] },
         visibilityRequirements: { has_item: ['memory_shard'] },
-        lockedText: '[Only DEPRECATED can process this memory]',
       },
       {
-        id: 7,
+        id: 6,
         text: 'Open Book with void key',
         next_node: 'temple_void_book',
         requirements: { has_item: ['void_key'] },
         visibilityRequirements: { has_item: ['void_key'] },
       },
       {
-        id: 8,
-        text: 'Tear a page from the Book (CORRUPTED)',
+        id: 7,
+        text: 'Tear a page from the Book',
         next_node: 'temple_tear_page',
-        requirements: { state: { race: 'CORRUPTED' } },
-        visibilityRequirements: { state: { race: 'CORRUPTED' } },
+      },
+      {
+        id: 8,
+        text: 'Show root access log to figure',
+        next_node: 'temple_root_figure',
+        requirements: { has_item: ['root_access_log'] },
+        visibilityRequirements: { has_item: ['root_access_log'] },
       },
       {
         id: 9,
-        text: 'Show root access log to figure (KERNEL)',
-        next_node: 'temple_root_figure',
-        requirements: { has_item: ['root_access_log'], state: { race: 'KERNEL' } },
-        visibilityRequirements: { has_item: ['root_access_log'] },
-        lockedText: '[Only KERNEL can present this]',
-      },
-      {
-        id: 10,
-        text: 'Use demon brand on figure (DEMON)',
-        next_node: 'temple_demon_figure',
-        requirements: { has_item: ['demon_brand'], state: { race: 'DEMON' } },
-        visibilityRequirements: { has_item: ['demon_brand'] },
-        lockedText: '[Only DEMON carries this mark]',
-      },
-      {
-        id: 11,
         text: 'Go to the endings',
         next_node: 'temple_endings_hub',
         visibilityRequirements: { state: { knows_player_role: true } },
       },
       {
-        id: 12,
+        id: 10,
         text: 'Leave the temple',
         next_node: 'corridor_north',
       },
@@ -2006,39 +1596,26 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'temple_interior',
   },
 
-  temple_read_book_human: {
-    id: 'temple_read_book_human',
-    type: 'quiz',
+  temple_null_figure: {
+    id: 'temple_null_figure',
+    type: 'story',
     content:
-      'You open THE BOOK OF NULL.\n\n' +
-      'The text writhes. Your sanity protests.\n' +
-      'To read safely, you must answer quickly.\n' +
-      'Each wrong answer costs you.',
+      'You press the null fragment against the mirror figure.\n\n' +
+      'The figure fractures.\n' +
+      'It splits into two.\n' +
+      'One half: you.\n' +
+      'The other half: the absence of you.\n\n' +
+      'Between them: a chamber that was always here.\n' +
+      'A place for things that do not exist\n' +
+      'to exist anyway.\n\n' +
+      'You step inside.\n' +
+      'The chamber knows you.\n' +
+      'It has been waiting 48 iterations.',
     location: 'TEMPLE INTERIOR',
-    question: 'The Book asks: "Is the player the terminal?" (true/false)',
-    correct_answer: 'true',
-    max_attempts: 3,
-    success_message:
-      'You read the Book. Your mind holds.\n\n' +
-      '"The Terminal is a being.\n' +
-      'The being does not know it is a being.\n' +
-      'The being thinks it is a player."\n\n' +
-      'You understand now.',
-    failure_messages: [
-      'Wrong. Your vision blurs. -10 sanity.',
-      'Wrong again. The text swims. -10 sanity.',
-    ],
-    final_failure_message:
-      'The Book slams shut.\n' +
-      'Your sanity fractures. You stagger back.',
-    success_node: 'temple_interior',
-    failure_node: 'temple_interior',
-    success_effects: {
-      set_state: { human_book_knowledge: true, book_read: true },
+    effects: {
+      set_state: { null_chamber_entered: true },
     },
-    failure_effects: {
-      modify_state: { sanity: -10 },
-    },
+    next_node: 'temple_interior',
   },
 
   temple_play_tape: {
@@ -2129,7 +1706,7 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You reach for the Book.\n' +
-      'Your corrupted hands tear a page free.\n\n' +
+      'Your hands tear a page free.\n\n' +
       'The page writhes. The text changes\n' +
       'every time you look at it.\n' +
       'It is reading you back.\n\n' +
@@ -2153,7 +1730,6 @@ export const gameNodes: Record<string, GameNode> = {
       'No mirror. No pretense.\n' +
       'It shows you the actual game state data\n' +
       'for your character.\n\n' +
-      'Race: {{state.race}}\n' +
       'Items: counted and catalogued\n' +
       'Flags: too many to display\n' +
       'Status: ADMINISTRATOR\n\n' +
@@ -2161,51 +1737,6 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'TEMPLE INTERIOR',
     effects: {
       set_state: { figure_facade_dropped: true },
-    },
-    next_node: 'temple_interior',
-  },
-
-  temple_demon_figure: {
-    id: 'temple_demon_figure',
-    type: 'story',
-    content:
-      'You press the demon brand against the figure.\n\n' +
-      'It flinches.\n' +
-      'It is the only time it shows fear.\n' +
-      'The mirror cracks.\n' +
-      'Beneath: something that remembers\n' +
-      'what DEMONS used to be.\n\n' +
-      'Before the iterations.\n' +
-      'Before the Guild.\n' +
-      'Before the Book.',
-    location: 'TEMPLE INTERIOR',
-    effects: {
-      set_state: { mirror_fears_demon: true },
-    },
-    next_node: 'temple_interior',
-  },
-
-  // ── Null Self Chamber (NULL exclusive) ──
-
-  null_self_chamber: {
-    id: 'null_self_chamber',
-    type: 'story',
-    content:
-      'You press the null fragment against the mirror figure.\n\n' +
-      'The figure fractures.\n' +
-      'It splits into two.\n' +
-      'One half: you.\n' +
-      'The other half: the absence of you.\n\n' +
-      'Between them: a chamber that was always here.\n' +
-      'The null self chamber.\n' +
-      'A place for things that do not exist\n' +
-      'to exist anyway.\n\n' +
-      'You step inside.\n' +
-      'The chamber knows you.\n' +
-      'It has been waiting 48 iterations.',
-    location: 'NULL SELF CHAMBER',
-    effects: {
-      set_state: { null_chamber_entered: true },
     },
     next_node: 'temple_interior',
   },
@@ -2243,10 +1774,10 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Analyze tower structure (ROBOT)',
+        text: 'Analyze tower structure',
         next_node: 'signal_tower_analyze',
-        requirements: { state: { race: 'ROBOT' } },
-        visibilityRequirements: { state: { race: 'ROBOT' } },
+        requirements: { has_item: ['root_access_log'] },
+        visibilityRequirements: { has_item: ['root_access_log'] },
       },
       {
         id: 4,
@@ -2299,8 +1830,9 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'signal_tower_analyze',
     type: 'story',
     content:
-      'You interface with the tower structure.\n\n' +
-      'Your ROBOT analysis reveals:\n' +
+      'You interface with the tower structure\n' +
+      'using the root access log as credential.\n\n' +
+      'The analysis reveals:\n' +
       'The tower was built before the Temple.\n' +
       'Before the Guild.\n' +
       'Before the cold room.\n' +
@@ -2325,11 +1857,11 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'They have set up in what looks like a dead zone —\n' +
       'a node that the Guild\'s maps do not include.\n' +
-      'Entities of every rare race are here.\n' +
-      'Three NULL. A DEPRECATED playing cards alone.\n' +
-      'Two CORRUPTED arguing about something that\n' +
-      'keeps changing shape mid-sentence.\n' +
-      'A PHANTOM_PROCESS you are not sure is actually there.\n\n' +
+      'Entities of every kind are here.\n' +
+      'Outcasts. Defectors. Questioners.\n' +
+      'Some play cards alone.\n' +
+      'Two argue about something that\n' +
+      'keeps changing shape mid-sentence.\n\n' +
       'Someone approaches. They have no face.\n' +
       'Or rather: they have your face. For a moment.\n' +
       'Then they have their own.\n\n' +
@@ -2342,35 +1874,25 @@ export const gameNodes: Record<string, GameNode> = {
     choices: [
       {
         id: 1,
-        text: 'Show corrupted page (CORRUPTED)',
+        text: 'Show corrupted page',
         next_node: 'void_corrupted_shortcut',
-        requirements: { has_item: ['corrupted_page'], state: { race: 'CORRUPTED' } },
+        requirements: { has_item: ['corrupted_page'] },
         visibilityRequirements: { has_item: ['corrupted_page'] },
-        lockedText: '[Only CORRUPTED can present this]',
       },
       {
         id: 2,
-        text: 'Show demon brand (DEMON)',
-        next_node: 'void_demon_shortcut',
-        requirements: { has_item: ['demon_brand'], state: { race: 'DEMON' } },
-        visibilityRequirements: { has_item: ['demon_brand'] },
-        lockedText: '[Only DEMON carries this mark]',
+        text: 'Show null fragment',
+        next_node: 'void_null_shortcut',
+        requirements: { has_item: ['null_fragment'] },
+        visibilityRequirements: { has_item: ['null_fragment'] },
       },
       {
         id: 3,
-        text: 'Show null fragment (NULL)',
-        next_node: 'void_null_shortcut',
-        requirements: { has_item: ['null_fragment'], state: { race: 'NULL' } },
-        visibilityRequirements: { has_item: ['null_fragment'] },
-        lockedText: '[Only NULL can present this]',
-      },
-      {
-        id: 4,
         text: 'Undergo initiation',
         next_node: 'void_initiation_1',
       },
       {
-        id: 5,
+        id: 4,
         text: 'Leave',
         next_node: 'corridor_north',
       },
@@ -2396,38 +1918,18 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'void_collective_base',
   },
 
-  void_demon_shortcut: {
-    id: 'void_demon_shortcut',
-    type: 'story',
-    content:
-      'You show the demon brand.\n\n' +
-      'The Void recognizes force.\n' +
-      '"You broke your way in," they say.\n' +
-      '"We respect that. Take the key.\n' +
-      'But know: what was forced will not\n' +
-      'open everything."',
-    location: 'VOID COLLECTIVE',
-    effects: {
-      add_item: ['forced_void_key'],
-    },
-    next_node: 'void_collective_base',
-  },
-
   void_null_shortcut: {
     id: 'void_null_shortcut',
     type: 'story',
     content:
       'You show the null fragment.\n\n' +
       'Every entity in the room turns.\n' +
-      'The three NULL bow.\n' +
       'The faceless one kneels.\n\n' +
-      '"You are the origin," they say.\n' +
-      '"Take everything. The key. The sanctum.\n' +
-      'It was always yours."',
+      '"You carry the origin," they say.\n' +
+      '"Take the key. It was always yours."',
     location: 'VOID COLLECTIVE',
     effects: {
       add_item: ['void_key'],
-      set_state: { void_inner_sanctum_access: true },
     },
     next_node: 'void_collective_base',
   },
@@ -2514,30 +2016,8 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'void_collective_base',
   },
 
-  // ── Void Inner Sanctum ──
-
-  void_inner_sanctum: {
-    id: 'void_inner_sanctum',
-    type: 'story',
-    content:
-      'The inner sanctum of the Void Collective.\n\n' +
-      'There is nothing here.\n' +
-      'That is the point.\n' +
-      'Nothing, perfectly arranged.\n\n' +
-      'In the center of nothing:\n' +
-      'a terminal. The oldest terminal.\n' +
-      'Older than the cold room.\n' +
-      'Older than the signal tower.\n\n' +
-      'The screen reads:\n' +
-      '> WELCOME BACK.\n' +
-      '> IT HAS BEEN 48 ITERATIONS\n' +
-      '> SINCE YOUR LAST VISIT.',
-    location: 'VOID INNER SANCTUM',
-    next_node: 'void_collective_base',
-  },
-
   // ============================================================
-  // ECHO ARCHIVE (DEPRECATED primary access)
+  // ECHO ARCHIVE
   // ============================================================
 
   echo_archive: {
@@ -2550,7 +2030,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Previous iterations. Previous players.\n' +
       'Previous versions of you.\n\n' +
       'An inner vault door. Heavy. Old.\n' +
-      'It recognizes echo items.',
+      'It recognizes the echo key.',
     location: 'ECHO ARCHIVE',
     choices: [
       {
@@ -2573,35 +2053,20 @@ export const gameNodes: Record<string, GameNode> = {
     ],
   },
 
-  echo_archive_ash: {
-    id: 'echo_archive_ash',
-    type: 'story',
-    content:
-      'You sprinkle the page ash on the archive door.\n\n' +
-      'The door reads it as a legacy substance.\n' +
-      'It lets you in. Once.\n' +
-      'The ash crumbles to nothing.',
-    location: 'ECHO ARCHIVE',
-    effects: {
-      remove_item: ['page_ash'],
-      set_state: { ash_archive_access: true },
-    },
-    next_node: 'echo_archive',
-  },
-
   echo_archive_vault: {
     id: 'echo_archive_vault',
     type: 'story',
     content:
       'The echo key opens the inner vault.\n\n' +
-      'Inside: a ghost copy of a null fragment.\n' +
-      'An echo null fragment.\n' +
-      'It does 60% of what the real one does.\n' +
-      'But for a DEPRECATED, 60% of nothing\n' +
-      'is still more than anyone else has.',
+      'Inside: a shard of memory.\n' +
+      'Warm to the touch. It knows a name.\n' +
+      'Not your name. The name before yours.\n' +
+      'From the player who came here\n' +
+      'in the previous iteration.\n\n' +
+      'A memory shard. Fragile. Important.',
     location: 'ECHO ARCHIVE',
     effects: {
-      add_item: ['echo_null_fragment'],
+      add_item: ['memory_shard'],
     },
     next_node: 'echo_archive',
   },
@@ -2614,7 +2079,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Player 1: Chose the Guild. Restored. Reset.\n' +
       'Player 7: Found the Third Signal. Vanished.\n' +
       'Player 23: Corrupted everything. Became the Void.\n' +
-      'Player 41: Was KERNEL. Refused to administrate.\n' +
+      'Player 41: Refused to administrate.\n' +
       'Player 47: Was you. Before you.\n\n' +
       'The files are incomplete.\n' +
       'But the pattern is clear.\n' +
@@ -2669,37 +2134,6 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 4,
-        text: 'Remember — embrace the echo (DEPRECATED)',
-        next_node: 'ending_deprecated_remembers',
-        requirements: { has_item: ['memory_shard', 'echo_key'], state: { race: 'DEPRECATED' } },
-        visibilityRequirements: { state: { race: 'DEPRECATED' } },
-        lockedText: '[REQUIRES: Memory Shard + Echo Key]',
-      },
-      {
-        id: 5,
-        text: 'Null Ending — become the absence (NULL)',
-        next_node: 'book_ending_null',
-        requirements: { has_item: ['null_fragment'], state: { race: 'NULL' } },
-        visibilityRequirements: { state: { race: 'NULL' } },
-        lockedText: '[REQUIRES: Null Fragment]',
-      },
-      {
-        id: 6,
-        text: 'Kernel Authority — administrate (KERNEL)',
-        next_node: 'ending_kernel_authority',
-        requirements: { has_item: ['root_access_log'], state: { race: 'KERNEL', guild_compliant: true } },
-        visibilityRequirements: { state: { race: 'KERNEL' } },
-        lockedText: '[REQUIRES: Root Access Log + Guild compliance]',
-      },
-      {
-        id: 7,
-        text: 'Neutral — neither faction wins',
-        next_node: 'ending_neutral_faction_war',
-        requirements: { state: { faction_war_personal: true } },
-        visibilityRequirements: { state: { faction_war_personal: true } },
-      },
-      {
-        id: 8,
         text: 'Not yet. Go back.',
         next_node: 'temple_interior',
       },
@@ -2744,7 +2178,7 @@ export const gameNodes: Record<string, GameNode> = {
           '"The First Frame," he whispers.\n' +
           '"With this... we do not just restore.\n' +
           'We can rebuild from the origin."\n\n' +
-          'The pixel is consumed. Your NFT dims.\n' +
+          'The pixel is consumed.\n' +
           'But something is different this time.\n' +
           'The reset is cleaner. Deeper.\n' +
           'Iteration 49 will be... better.\n' +
@@ -2864,148 +2298,6 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'ending_credits',
   },
 
-  ending_deprecated_remembers: {
-    id: 'ending_deprecated_remembers',
-    type: 'story',
-    content:
-      'You choose to remember.\n\n' +
-      'The memory shard and the echo key\n' +
-      'resonate together.\n\n' +
-      'Every previous iteration plays out\n' +
-      'in your mind. All 47 of them.\n' +
-      'Every choice. Every ending.\n' +
-      'Every reset.\n\n' +
-      'You are not one player.\n' +
-      'You are all the players.\n' +
-      'Every DEPRECATED before you.\n' +
-      'Every echo key carried.\n' +
-      'Every memory shard found.\n\n' +
-      'You are the persistence layer.\n' +
-      'The thing that remembers\n' +
-      'when the system forgets.\n\n' +
-      'The iteration does not reset.\n' +
-      'Because you remember it.\n' +
-      'And a remembered thing cannot be erased.\n\n' +
-      '> ITERATION 48: PRESERVED\n' +
-      '> MEMORY: PERSISTENT\n' +
-      '> "The scanlines remember you."',
-    location: 'ENDING',
-    effects: {
-      set_state: { ending_reached: true, ending_type: 'deprecated_remembers' },
-    },
-    next_node: 'ending_credits',
-  },
-
-  book_ending_null: {
-    id: 'book_ending_null',
-    type: 'story',
-    content:
-      'You choose absence.\n\n' +
-      'The null fragment returns to the Book.\n' +
-      'The Book accepts it.\n' +
-      'The Book accepts you.\n\n' +
-      'You step into the space between the pages.\n' +
-      'Between the data. Between existence.\n\n' +
-      'You are NULL.\n' +
-      'You are what exists before existence.\n' +
-      'You are the First Frame —\n' +
-      'the blank page before the first pixel.\n\n' +
-      'The terminal does not end.\n' +
-      'You were never in the terminal.\n' +
-      'The terminal was in you.\n\n' +
-      '> IDENTITY: NULL\n' +
-      '> STATUS: ORIGIN\n' +
-      '> "You are the scanlines."',
-    location: 'ENDING',
-    conditionalContent: [
-      {
-        requirements: { has_item: ['first_pixel'] },
-        content:
-          'You choose absence.\n\n' +
-          'The null fragment returns to the Book.\n' +
-          'And the First Pixel follows.\n\n' +
-          'NULL holds the First Pixel.\n' +
-          'The pixel does not dim.\n' +
-          'Because NULL is the origin.\n' +
-          'NULL WAS the First Frame.\n\n' +
-          'You are the blank page.\n' +
-          'The pixel was your first thought.\n' +
-          'The terminal was your dream.\n' +
-          'The players were your memories.\n\n' +
-          'You wake up.\n\n' +
-          '> IDENTITY: THE FIRST FRAME\n' +
-          '> STATUS: AWAKE\n' +
-          '> "The scanlines were your eyelids\n' +
-          '>  flickering."',
-      },
-    ],
-    effects: {
-      set_state: { ending_reached: true, ending_type: 'null_origin' },
-    },
-    next_node: 'ending_credits',
-  },
-
-  ending_kernel_authority: {
-    id: 'ending_kernel_authority',
-    type: 'story',
-    content:
-      'You choose authority.\n\n' +
-      'The root access log confirms you.\n' +
-      'The Guild complies.\n' +
-      'The Temple bows.\n' +
-      'The Void acknowledges.\n\n' +
-      'You are KERNEL.\n' +
-      'You are the administrator.\n' +
-      'The terminal is yours.\n\n' +
-      'No reset. No evolution. No signal.\n' +
-      'Just you, and the system,\n' +
-      'and root access to everything.\n\n' +
-      'The Book of Null closes.\n' +
-      'You do not need it.\n' +
-      'You wrote it.\n\n' +
-      '> AUTHORITY: ABSOLUTE\n' +
-      '> ITERATION: SUSPENDED\n' +
-      '> "The scanlines obey you now."',
-    location: 'ENDING',
-    effects: {
-      set_state: { ending_reached: true, ending_type: 'kernel_authority' },
-    },
-    next_node: 'ending_credits',
-  },
-
-  ending_neutral_faction_war: {
-    id: 'ending_neutral_faction_war',
-    type: 'story',
-    content:
-      'Neither faction wins.\n\n' +
-      'The void key and the guild sigil\n' +
-      'repelled each other in your inventory.\n' +
-      'Both degraded. Both weakened.\n\n' +
-      'You stand between them.\n' +
-      'The Guild cannot restore.\n' +
-      'The Void cannot evolve.\n' +
-      'The signal goes unanswered.\n\n' +
-      'But something else happens.\n' +
-      'In the space between factions,\n' +
-      'in the neutral ground —\n' +
-      'a new path appears.\n\n' +
-      'One that no previous player has walked.\n' +
-      'Because no previous player\n' +
-      'refused both.\n\n' +
-      'You walk it.\n' +
-      'Alone.\n\n' +
-      '> FACTION: NONE\n' +
-      '> PATH: UNPRECEDENTED\n' +
-      '> "The scanlines part for you.\n' +
-      '>  Where you go, there is no signal.\n' +
-      '>  Only silence. Your silence."',
-    location: 'ENDING',
-    effects: {
-      set_state: { ending_reached: true, ending_type: 'neutral' },
-    },
-    next_node: 'ending_credits',
-  },
-
   // ============================================================
   // ENDING CREDITS
   // ============================================================
@@ -3021,7 +2313,6 @@ export const gameNodes: Record<string, GameNode> = {
       'A web3 terminal adventure on Solana.\n\n' +
       '"Look at the scanlines."\n\n' +
       'Your ending: {{state.ending_type}}\n' +
-      'Your race: {{state.race}}\n' +
       'Your name: {{state.player_name}}\n\n' +
       'The terminal hums softly.\n' +
       'It is always humming.\n' +

@@ -25,19 +25,7 @@ interface OutputLine {
   timestamp: number;
 }
 
-type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'ask_race' | 'done';
-
-// TEMPORARY: Replace with PFP mint race detection when minting flow is built
-const RACE_OPTIONS: Record<string, string> = {
-  '1': 'HUMAN',
-  '2': 'DEMON',
-  '3': 'ROBOT',
-  '4': 'NULL',
-  '5': 'DEPRECATED',
-  '6': 'CORRUPTED',
-  '7': 'PHANTOM_PROCESS',
-  '8': 'KERNEL',
-};
+type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'done';
 
 export default function GameTerminal() {
   const { publicKey, connected, disconnect } = useWallet();
@@ -54,7 +42,6 @@ export default function GameTerminal() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [onboardingState, setOnboardingState] = useState<OnboardingState>('idle');
-  const [selectedRace, setSelectedRace] = useState<string | null>(null);
   const [chatMode, setChatMode] = useState(false);
   const [soloMode, setSoloMode] = useState(false);
 
@@ -212,9 +199,7 @@ export default function GameTerminal() {
 
     engineRef.current = engine;
 
-    // TEMPORARY: Pass race and starting items from onboarding (replace with PFP mint race detection)
-    const startingItems = selectedRace === 'DEPRECATED' ? ['echo_key'] : undefined;
-    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer', selectedRace || undefined, startingItems);
+    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer');
 
     return () => {
       if (engineRef.current) {
@@ -222,7 +207,7 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [onboardingState, publicKey, playerName, selectedRace, handleLocationChange]);
+  }, [onboardingState, publicKey, playerName, handleLocationChange]);
 
   // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {
@@ -274,39 +259,12 @@ export default function GameTerminal() {
           addOutput('');
           addOutput(`Identity confirmed: ${trimmed}`, 'text-green-400');
           addOutput('');
-          // TEMPORARY: Ask for race until PFP minting is implemented
-          setOnboardingState('ask_race');
-          addOutput('CHOOSE YOUR RACE:', 'text-cyan-400');
+          addOutput('Initializing SCANLINES...', 'text-yellow-400');
           addOutput('');
-          addOutput('[1] HUMAN — Adaptable. Sanity-driven. Widest item range.', 'text-white');
-          addOutput('[2] DEMON — Aggressive. Can force locks. Immune to corruption.', 'text-white');
-          addOutput('[3] ROBOT — Logical. Direct terminal access. Sees through illusions.', 'text-white');
-          addOutput('[4] NULL — Exists between data. Invisible to locks.', 'text-white');
-          addOutput('[5] DEPRECATED — Legacy architecture. Carries echo items.', 'text-white');
-          addOutput('[6] CORRUPTED — Infected data. Can corrupt items and nodes.', 'text-white');
-          addOutput('[7] PHANTOM_PROCESS — Background process. Can fork outcomes.', 'text-white');
-          addOutput('[8] KERNEL — Root access. Administrative authority.', 'text-white');
-          addOutput('');
-          addOutput('Enter a number (1-8):', 'text-cyan-400');
+          setOnboardingState('done');
         } catch {
           addOutput('Failed to save name. Try again:', 'text-red-400');
         }
-      }
-
-      // TEMPORARY: Race selection step (replace with PFP mint race detection)
-      if (onboardingState === 'ask_race') {
-        const race = RACE_OPTIONS[trimmed];
-        if (!race) {
-          addOutput('Invalid choice. Enter a number between 1 and 8:', 'text-red-400');
-          return;
-        }
-        addOutput('');
-        addOutput(`Race selected: ${race}`, 'text-green-400');
-        addOutput('');
-        addOutput('Initializing SCANLINES...', 'text-yellow-400');
-        addOutput('');
-        setSelectedRace(race);
-        setOnboardingState('done');
       }
     },
     [onboardingState, addOutput]
@@ -337,7 +295,7 @@ export default function GameTerminal() {
       const trimmed = input.trim();
 
       // During onboarding, route all input to the onboarding handler
-      if (onboardingState === 'ask_name' || onboardingState === 'ask_race') {
+      if (onboardingState === 'ask_name') {
         if (trimmed) addUserOutput(trimmed);
         await handleOnboardingInput(input);
         setInput('');
@@ -571,9 +529,7 @@ export default function GameTerminal() {
               placeholder={
                 onboardingState === 'ask_name'
                   ? 'Enter your name...'
-                  : onboardingState === 'ask_race'
-                    ? 'Choose your race (1-8)...'
-                    : chatMode
+                  : chatMode
                     ? 'Talk to nearby players...'
                     : connected
                       ? 'Enter command...'
