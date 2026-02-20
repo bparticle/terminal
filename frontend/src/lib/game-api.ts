@@ -64,6 +64,17 @@ export async function startNewGame(
  * Save current game state
  * This triggers achievement/campaign evaluation on the backend
  */
+/**
+ * Fully reset the player's game data (save, achievements, campaign wins)
+ */
+export async function resetGame(): Promise<void> {
+  const response = await fetchWithAuth('game/reset', { method: 'POST' });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to reset game');
+  }
+}
+
 export async function saveGame(data: {
   current_node_id: string;
   location: string;

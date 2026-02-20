@@ -15,6 +15,8 @@ const ALLOWED_PATHS = [
   'game/load',
   'game/save',
   'game/action',
+  'game/reset',
+  'game/admin',
   'game/users',
   'game/metadata',
   'campaigns',

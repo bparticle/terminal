@@ -1,6 +1,6 @@
-import { GameNode, GameSave } from './types/game';
+import { GameNode, GameSave, Requirements, GameEffects } from './types/game';
 import { gameNodes } from '@/data/game-nodes';
-import { loadGame, startNewGame, saveGame } from './game-api';
+import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
 
 type OutputFn = (text: string, className?: string) => void;
@@ -26,6 +26,8 @@ export class GameEngine {
     nodeId: string;
     attempts: number;
   } | null = null;
+  // Maps displayed choice number (1,2,3...) to the actual choice object
+  private displayedChoiceMap: Map<number, { id: number; next_node: string }> = new Map();
 
   constructor(
     private outputFn: OutputFn,
@@ -38,7 +40,12 @@ export class GameEngine {
   // LIFECYCLE
   // ==========================================
 
-  async initialize(walletAddress: string, playerName: string = 'Wanderer'): Promise<void> {
+  async initialize(
+    walletAddress: string,
+    playerName: string = 'Wanderer',
+    race?: string,
+    startingItems?: string[],
+  ): Promise<void> {
     this.walletAddress = walletAddress;
 
     // Try to load existing save
@@ -46,18 +53,15 @@ export class GameEngine {
       const response = await loadGame(walletAddress);
       if (response) {
         this.save = response.save as unknown as GameSave;
-        // Update the name in save to match current profile
         this.save.name = playerName;
         this.save.game_state.player_name = playerName;
       } else {
-        // No save found, create new game
         const newResponse = await startNewGame('start', playerName);
         this.save = newResponse.save as unknown as GameSave;
         this.save.game_state = { player_name: playerName };
       }
     } catch (error) {
       console.error('Failed to initialize game:', error);
-      // Create a local-only save as fallback
       this.save = {
         wallet_address: walletAddress,
         current_node_id: 'start',
@@ -67,6 +71,21 @@ export class GameEngine {
         name: playerName,
       };
       this.outputFn('Playing in offline mode.', 'text-yellow-400');
+    }
+
+    // Set race before first display (new players get it from onboarding; returning players already have it in save)
+    if (race && !this.save.game_state.race) {
+      this.save.game_state.race = race;
+    }
+
+    // Grant race-specific starting items before first display
+    if (startingItems) {
+      for (const item of startingItems) {
+        if (!this.save.inventory.includes(item)) {
+          this.save.inventory.push(item);
+        }
+      }
+      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
     }
 
     // Load current node
@@ -128,25 +147,50 @@ export class GameEngine {
         break;
     }
 
-    // Render content
-    const content = this.renderTemplate(node.content);
+    // Resolve conditional content (first matching override wins, else base content)
+    let resolvedContent = node.content;
+    if (node.conditionalContent) {
+      for (const variant of node.conditionalContent) {
+        if (this.checkRequirements(variant.requirements)) {
+          resolvedContent = variant.content;
+          break;
+        }
+      }
+    }
+
+    const content = this.renderTemplate(resolvedContent);
     const lines = content.split('\n');
     for (const line of lines) {
       this.outputFn(line, 'text-white');
     }
 
-    // Show choices
+    // Show choices with 3-tier visibility: hidden / locked / enabled
+    // Display numbers are sequential (1, 2, 3...) regardless of internal choice IDs
     if (node.choices && node.choices.length > 0) {
       this.outputFn('');
-      const visibleChoices = node.choices.filter((c) =>
-        this.checkRequirements(c.requirements)
-      );
+      this.displayedChoiceMap.clear();
+      let displayNum = 0;
+      let anyShown = false;
 
-      if (visibleChoices.length > 0) {
-        for (const choice of visibleChoices) {
-          this.outputFn(`[${choice.id}] ${choice.text}`, 'text-cyan-400');
+      for (const choice of node.choices) {
+        const isVisible = this.checkRequirements(choice.visibilityRequirements);
+        if (!isVisible) continue;
+
+        const isEnabled = this.checkRequirements(choice.requirements);
+        anyShown = true;
+        displayNum++;
+
+        this.displayedChoiceMap.set(displayNum, { id: choice.id, next_node: choice.next_node });
+
+        if (isEnabled) {
+          this.outputFn(`[${displayNum}] ${choice.text}`, 'text-cyan-400');
+        } else {
+          const suffix = choice.lockedText || '[LOCKED]';
+          this.outputFn(`[${displayNum}] ${choice.text} — ${suffix}`, 'choice-locked');
         }
-      } else {
+      }
+
+      if (!anyShown) {
         this.outputFn('There are no available options. Type "look" to re-examine or go back.', 'text-gray-400');
       }
     } else if (node.next_node) {
@@ -287,16 +331,19 @@ export class GameEngine {
       return;
     }
 
-    // Check for numbered choice
+    // Check for numbered choice (display number maps to actual choice)
     const choiceNum = parseInt(trimmed);
     if (!isNaN(choiceNum) && this.currentNode.choices) {
-      const choice = this.currentNode.choices.find((c) => c.id === choiceNum);
-      if (choice && this.checkRequirements(choice.requirements)) {
-        await this.moveToNode(choice.next_node);
-        return;
-      } else if (choice) {
-        this.outputFn('You don\'t meet the requirements for that choice.', 'text-red-400');
-        return;
+      const mapped = this.displayedChoiceMap.get(choiceNum);
+      if (mapped) {
+        const choice = this.currentNode.choices.find((c) => c.id === mapped.id);
+        if (choice && this.checkRequirements(choice.requirements)) {
+          await this.moveToNode(choice.next_node);
+          return;
+        } else if (choice) {
+          this.outputFn('You don\'t meet the requirements for that choice.', 'text-red-400');
+          return;
+        }
       }
     }
 
@@ -323,10 +370,10 @@ export class GameEngine {
     // Quiz mode
     if (this.quizState) return true;
 
-    // Numbered choice
+    // Numbered choice (check against displayed choice numbers)
     const choiceNum = parseInt(trimmed);
     if (!isNaN(choiceNum) && this.currentNode?.choices) {
-      return this.currentNode.choices.some((c) => c.id === choiceNum);
+      return this.displayedChoiceMap.has(choiceNum);
     }
 
     // Enter for linear progression
@@ -341,11 +388,9 @@ export class GameEngine {
     const node = gameNodes[this.quizState.nodeId];
     if (!node) return;
 
-    const correctAnswer = String(node.correct_answer || '').toLowerCase().trim();
     const userAnswer = answer.toLowerCase().trim();
 
     if (!userAnswer) {
-      // Allow exit from quiz
       if (node.exit_node) {
         this.quizState = null;
         await this.moveToNode(node.exit_node);
@@ -357,14 +402,18 @@ export class GameEngine {
 
     this.quizState.attempts++;
 
-    // Update quiz state in game_state
     const quizKey = `quiz_${node.id}`;
     this.save.game_state[quizKey] = {
       attempts: this.quizState.attempts,
       completed: false,
     };
 
-    if (userAnswer === correctAnswer) {
+    // Support both single correct_answer and correct_answers array
+    const acceptedAnswers: string[] = node.correct_answers
+      ? node.correct_answers.map(a => String(a).toLowerCase().trim())
+      : [String(node.correct_answer || '').toLowerCase().trim()];
+
+    if (acceptedAnswers.includes(userAnswer)) {
       // Correct!
       this.save.game_state[quizKey].completed = true;
 
@@ -569,7 +618,7 @@ export class GameEngine {
   // REQUIREMENTS & EFFECTS
   // ==========================================
 
-  checkRequirements(requirements?: any): boolean {
+  checkRequirements(requirements?: Requirements): boolean {
     if (!requirements || !this.save) return true;
 
     // Check item requirements
@@ -599,11 +648,7 @@ export class GameEngine {
     return true;
   }
 
-  private applyEffects(effects: {
-    add_item?: string[];
-    remove_item?: string[];
-    set_state?: Record<string, any>;
-  }): void {
+  private applyEffects(effects: GameEffects): void {
     if (!this.save) return;
 
     if (effects.add_item) {
@@ -632,6 +677,14 @@ export class GameEngine {
         ...this.save.game_state,
         ...effects.set_state,
       };
+    }
+
+    if (effects.modify_state) {
+      for (const [key, delta] of Object.entries(effects.modify_state)) {
+        const current = typeof this.save.game_state[key] === 'number'
+          ? this.save.game_state[key] : 0;
+        this.save.game_state[key] = current + delta;
+      }
     }
   }
 
@@ -713,21 +766,21 @@ export class GameEngine {
     if (!this.walletAddress) return;
 
     try {
-      // Reset local state
+      await resetGame();
+
       this.save = {
         wallet_address: this.walletAddress,
         current_node_id: 'start',
         location: 'HUB',
-        game_state: { player_name: this.save?.name || 'Wanderer' },
+        game_state: {},
         inventory: [],
         name: this.save?.name || 'Wanderer',
       };
 
-      await this.autoSave();
       this.currentNode = gameNodes['start'];
       this.quizState = null;
       this.minigameGate = null;
-      this.outputFn('Game restarted!', 'text-green-400');
+      this.outputFn('Game reset! Starting fresh. Your achievements and campaign wins are preserved.', 'text-green-400');
       this.outputFn('');
       this.displayCurrentNode();
     } catch (error) {
@@ -764,6 +817,23 @@ export class GameEngine {
     if (this.save) {
       this.save.name = name;
       this.save.game_state.player_name = name;
+    }
+  }
+
+  getRace(): string | undefined {
+    return this.save?.game_state?.race;
+  }
+
+  setRace(race: string): void {
+    if (this.save) {
+      this.save.game_state.race = race;
+    }
+  }
+
+  grantStartingItem(item: string): void {
+    if (this.save && !this.save.inventory.includes(item)) {
+      this.save.inventory.push(item);
+      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
     }
   }
 }

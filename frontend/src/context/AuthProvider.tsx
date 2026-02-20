@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import bs58 from 'bs58';
+import { setAuthContext } from '@/lib/api';
 
 interface AuthContextType {
   session: Session | null;
@@ -187,6 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session?.token) return {};
     return { Authorization: `Bearer ${session.token}` };
   }, [session]);
+
+  useEffect(() => {
+    setAuthContext({ getAuthHeaders, authenticate });
+  }, [getAuthHeaders, authenticate]);
 
   return (
     <AuthContext.Provider

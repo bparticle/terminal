@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getGameUsers, getGameMetadata, type GameUser, type GameMetadata } from '@/lib/admin-api';
+import { getGameUsers, getGameMetadata, resetPlayer, type GameUser, type GameMetadata } from '@/lib/admin-api';
 
 export default function GameUserStatus() {
   const [users, setUsers] = useState<GameUser[]>([]);
@@ -16,6 +16,8 @@ export default function GameUserStatus() {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [showStateFilter, setShowStateFilter] = useState(false);
   const [showItemFilter, setShowItemFilter] = useState(false);
+  const [resettingPlayer, setResettingPlayer] = useState<string | null>(null);
+  const [confirmResetWallet, setConfirmResetWallet] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -111,6 +113,19 @@ export default function GameUserStatus() {
     setSearchQuery('');
     setSelectedStates(new Set());
     setSelectedItems(new Set());
+  };
+
+  const handleResetPlayer = async (walletAddress: string) => {
+    setResettingPlayer(walletAddress);
+    try {
+      await resetPlayer(walletAddress);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to reset player:', err);
+    } finally {
+      setResettingPlayer(null);
+      setConfirmResetWallet(null);
+    }
   };
 
   // --- CSV Export ---
@@ -343,6 +358,34 @@ export default function GameUserStatus() {
                     {user.is_admin && (
                       <span className="text-yellow-400">Admin user</span>
                     )}
+
+                    <div className="pt-2 border-t border-gray-800 flex items-center gap-2">
+                      {confirmResetWallet === user.wallet_address ? (
+                        <>
+                          <span className="text-red-400 text-xs">Reset all game data for this player?</span>
+                          <button
+                            onClick={() => handleResetPlayer(user.wallet_address)}
+                            disabled={resettingPlayer === user.wallet_address}
+                            className="px-3 py-1 text-xs bg-red-900/50 text-red-300 border border-red-700 hover:bg-red-800/50"
+                          >
+                            {resettingPlayer === user.wallet_address ? 'RESETTING...' : 'CONFIRM'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmResetWallet(null)}
+                            className="px-3 py-1 text-xs bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700"
+                          >
+                            CANCEL
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmResetWallet(user.wallet_address)}
+                          className="px-3 py-1 text-xs bg-gray-800 text-red-400 border border-gray-700 hover:bg-red-900/30 hover:border-red-800"
+                        >
+                          RESET PLAYER
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

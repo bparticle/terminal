@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
-import { findGameSave, createGameSave, updateGameSave } from '../services/game.service';
+import { findGameSave, createGameSave, updateGameSave, resetPlayerData, resetAllPlayerData } from '../services/game.service';
 import { processAchievements, evaluateCampaigns } from '../services/campaign.service';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
@@ -206,6 +206,50 @@ router.get('/metadata', requireAuth, requireAdmin, async (_req: AuthenticatedReq
   } catch (error) {
     console.error('Get game metadata error:', error);
     res.status(500).json({ error: 'Failed to fetch game metadata' });
+  }
+});
+
+/**
+ * POST /api/v1/game/reset
+ * Player resets their own game data (save + achievements + campaign wins)
+ */
+router.post('/reset', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const wallet_address = req.user!.walletAddress;
+    await resetPlayerData(wallet_address);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Player reset error:', error);
+    res.status(500).json({ error: 'Failed to reset game data' });
+  }
+});
+
+/**
+ * POST /api/v1/game/admin/reset-all
+ * Admin: reset all players' game data (for new story deployments)
+ */
+router.post('/admin/reset-all', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await resetAllPlayerData();
+    res.json(result);
+  } catch (error) {
+    console.error('Admin reset-all error:', error);
+    res.status(500).json({ error: 'Failed to reset all player data' });
+  }
+});
+
+/**
+ * POST /api/v1/game/admin/reset-player/:wallet_address
+ * Admin: reset a specific player's game data
+ */
+router.post('/admin/reset-player/:wallet_address', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { wallet_address } = req.params;
+    await resetPlayerData(wallet_address);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin reset-player error:', error);
+    res.status(500).json({ error: 'Failed to reset player data' });
   }
 });
 

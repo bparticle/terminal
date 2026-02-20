@@ -8,8 +8,9 @@ import { useAuth } from '@/context/AuthProvider';
 import { checkAdminStatus } from '@/lib/admin-api';
 import Campaigns from './components/Campaigns';
 import GameUserStatus from './components/GameUserStatus';
+import GameReset from './components/GameReset';
 
-type AdminTab = 'campaigns' | 'game-users';
+type AdminTab = 'campaigns' | 'game-users' | 'game-reset';
 
 export default function AdminPage() {
   const { publicKey, connected } = useWallet();
@@ -98,6 +99,7 @@ export default function AdminPage() {
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'campaigns', label: 'Campaigns' },
     { id: 'game-users', label: 'Game Users' },
+    { id: 'game-reset', label: 'Game Reset' },
   ];
 
   return (
@@ -140,6 +142,7 @@ export default function AdminPage() {
         <div>
           {activeTab === 'campaigns' && <Campaigns />}
           {activeTab === 'game-users' && <GameUserStatus />}
+          {activeTab === 'game-reset' && <GameReset />}
         </div>
       </div>
     </div>

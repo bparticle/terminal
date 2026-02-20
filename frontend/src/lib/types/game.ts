@@ -1,26 +1,40 @@
+export interface Requirements {
+  has_item?: string[];
+  has_item_negate?: boolean[];
+  state?: Record<string, any>;
+  has_nft?: string;
+  has_nft_negate?: boolean;
+}
+
+export interface GameEffects {
+  add_item?: string[];
+  remove_item?: string[];
+  set_state?: Record<string, any>;
+  modify_state?: Record<string, number>;
+}
+
+export interface GameChoice {
+  id: number;
+  text: string;
+  next_node: string;
+  requirements?: Requirements;
+  visibilityRequirements?: Requirements;
+  lockedText?: string;
+}
+
 export interface GameNode {
   id: string;
   type: 'story' | 'choice' | 'puzzle' | 'nft_check' | 'item_check' | 'location' | 'quiz' | 'godot_game';
   content: string;
   location?: string;
-  choices?: Array<{
-    id: number;
-    text: string;
-    next_node: string;
-    requirements?: {
-      has_item?: string[];
-      has_item_negate?: boolean[];
-      state?: Record<string, any>;
-      has_nft?: string;
-      has_nft_negate?: boolean;
-    };
-  }>;
-  effects?: {
-    add_item?: string[];
-    remove_item?: string[];
-    set_state?: Record<string, any>;
-  };
+  choices?: GameChoice[];
+  effects?: GameEffects;
   next_node?: string;
+
+  conditionalContent?: Array<{
+    requirements: Requirements;
+    content: string;
+  }>;
 
   // NFT Check fields
   nft_id?: string;
@@ -33,6 +47,7 @@ export interface GameNode {
   // Quiz fields
   question?: string;
   correct_answer?: string | number;
+  correct_answers?: string[];
   hint?: string;
   max_attempts?: number;
   success_node?: string;
@@ -41,16 +56,8 @@ export interface GameNode {
   success_message?: string;
   failure_messages?: string[];
   final_failure_message?: string;
-  success_effects?: {
-    add_item?: string[];
-    remove_item?: string[];
-    set_state?: Record<string, any>;
-  };
-  failure_effects?: {
-    add_item?: string[];
-    remove_item?: string[];
-    set_state?: Record<string, any>;
-  };
+  success_effects?: GameEffects;
+  failure_effects?: GameEffects;
 
   // Godot/mini-game fields
   game_id?: string;
@@ -73,11 +80,7 @@ export interface GameNode {
       op?: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
       value?: number;
     };
-    effects?: {
-      add_item?: string[];
-      remove_item?: string[];
-      set_state?: Record<string, any>;
-    };
+    effects?: GameEffects;
     message?: string;
     next_node?: string;
   }>;

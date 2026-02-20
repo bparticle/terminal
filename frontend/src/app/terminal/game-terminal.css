@@ -193,6 +193,15 @@
 .text-gray-400 { color: #9ca3af; }
 .text-gray-500 { color: #6b7280; }
 
+/* Locked choices (visible but not enabled) */
+.terminal-line.choice-locked {
+  color: var(--primary-dim);
+  opacity: 0.4;
+  cursor: default;
+  user-select: none;
+  font-style: italic;
+}
+
 /* Quiz question with glitch effect */
 .quiz-question {
   color: var(--primary-light);

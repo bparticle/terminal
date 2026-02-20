@@ -1,4 +1,4 @@
-import { query, transaction } from '../config/database';
+import { query } from '../config/database';
 import { GameSave, CreateGameSaveInput } from '../types';
 
 /**
@@ -85,4 +85,36 @@ export async function updateGameSaveState(
     `UPDATE game_saves SET game_state = game_state || $1::jsonb WHERE wallet_address = $2`,
     [JSON.stringify(stateUpdates), walletAddress]
   );
+}
+
+/**
+ * Reset a single player's game save (node, state, inventory).
+ * Achievements and campaign wins are preserved as immutable records.
+ */
+export async function resetPlayerData(walletAddress: string): Promise<void> {
+  await query(
+    `UPDATE game_saves SET
+      current_node_id = 'start',
+      location = 'HUB',
+      game_state = '{}'::jsonb,
+      inventory = '[]'::jsonb
+     WHERE wallet_address = $1`,
+    [walletAddress]
+  );
+}
+
+/**
+ * Reset all players' game saves (node, state, inventory).
+ * Achievements and campaign wins are preserved as immutable records.
+ * Used when deploying a new story/world.
+ */
+export async function resetAllPlayerData(): Promise<{ playersReset: number }> {
+  const result = await query(
+    `UPDATE game_saves SET
+      current_node_id = 'start',
+      location = 'HUB',
+      game_state = '{}'::jsonb,
+      inventory = '[]'::jsonb`
+  );
+  return { playersReset: result.rowCount || 0 };
 }

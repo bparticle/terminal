@@ -53,3 +53,26 @@ export async function getGameMetadata(): Promise<GameMetadata> {
   }
   return response.json();
 }
+
+/**
+ * Admin: reset all players' game data (save, achievements, campaign wins)
+ */
+export async function resetAllPlayers(): Promise<{ playersReset: number }> {
+  const response = await fetchWithAuth('game/admin/reset-all', { method: 'POST' });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to reset all players');
+  }
+  return response.json();
+}
+
+/**
+ * Admin: reset a specific player's game data
+ */
+export async function resetPlayer(walletAddress: string): Promise<void> {
+  const response = await fetchWithAuth(`game/admin/reset-player/${walletAddress}`, { method: 'POST' });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to reset player');
+  }
+}

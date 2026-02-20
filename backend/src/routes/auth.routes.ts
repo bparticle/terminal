@@ -7,6 +7,7 @@ import {
   generateToken,
 } from '../services/auth.service';
 import { query } from '../config/database';
+import { config } from '../config/constants';
 import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
@@ -62,6 +63,10 @@ router.post('/verify-wallet', async (req: Request, res: Response) => {
     }
 
     // Find or create user
+    // ADMIN_WALLETS env var can grant admin on creation or promote existing users,
+    // but never revokes DB-level admin status (database is the source of truth)
+    const isAdminWallet = config.adminWallets.includes(wallet_address);
+
     let userResult = await query(
       'SELECT * FROM users WHERE wallet_address = $1',
       [wallet_address]
@@ -69,17 +74,16 @@ router.post('/verify-wallet', async (req: Request, res: Response) => {
 
     let user;
     if (userResult.rows.length === 0) {
-      // Create new user
       const createResult = await query(
-        'INSERT INTO users (wallet_address, last_active_at) VALUES ($1, NOW()) RETURNING *',
-        [wallet_address]
+        'INSERT INTO users (wallet_address, is_admin, last_active_at) VALUES ($1, $2, NOW()) RETURNING *',
+        [wallet_address, isAdminWallet]
       );
       user = createResult.rows[0];
     } else {
-      // Update last active
+      // Env var can promote to admin but never demote — DB is source of truth
       const updateResult = await query(
-        'UPDATE users SET last_active_at = NOW() WHERE id = $1 RETURNING *',
-        [userResult.rows[0].id]
+        'UPDATE users SET is_admin = is_admin OR $1, last_active_at = NOW() WHERE id = $2 RETURNING *',
+        [isAdminWallet, userResult.rows[0].id]
       );
       user = updateResult.rows[0];
     }
