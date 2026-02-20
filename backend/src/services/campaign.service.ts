@@ -1,6 +1,7 @@
 import { query } from '../config/database';
 import { Achievement, Campaign, CampaignWinner } from '../types';
 import { updateGameSaveState } from './game.service';
+import validAchievementStates from '../data/valid-achievement-states.json';
 
 /**
  * Record a single achievement if not already recorded
@@ -32,19 +33,10 @@ export async function getUserAchievements(wallet: string): Promise<Achievement[]
 
 /**
  * Allowlist of state keys that can be recorded as achievements.
- * Only states set by game nodes (via set_state effects) should be here.
- * This prevents clients from forging arbitrary achievement states.
+ * Auto-generated from game-nodes.ts by scripts/extract-achievement-states.js.
+ * Run `npm run extract-states` at the project root to regenerate.
  */
-const VALID_ACHIEVEMENT_STATES = new Set([
-  'riddle_solved',
-  'archives_accessed',
-  'lab_accessed',
-  'ancient_key_found',
-  'snake_master',
-  'guardian_defeated',
-  'vault_opened',
-  'quest_complete',
-]);
+const VALID_ACHIEVEMENT_STATES: ReadonlySet<string> = new Set(validAchievementStates);
 
 /**
  * Scan game_state for achievement-worthy flags and record them.

@@ -4,6 +4,7 @@
 import '../helpers/setup';
 import { getMockQuery, mockQueryResult, TEST_USER_ID, TEST_WALLET } from '../helpers/setup';
 import { processAchievements, recordCampaignWin } from '../../services/campaign.service';
+import validAchievementStates from '../../data/valid-achievement-states.json';
 
 describe('Campaign Service', () => {
   beforeEach(() => {
@@ -79,21 +80,17 @@ describe('Campaign Service', () => {
     });
   });
 
-  describe('VALID_ACHIEVEMENT_STATES contains expected keys', () => {
-    it('includes all expected game achievement states', async () => {
-      const expectedStates = [
-        'riddle_solved',
-        'archives_accessed',
-        'lab_accessed',
-        'ancient_key_found',
-        'snake_master',
-        'guardian_defeated',
-        'vault_opened',
-        'quest_complete',
-      ];
+  describe('valid-achievement-states.json is well-formed', () => {
+    it('is a non-empty array of strings', () => {
+      expect(Array.isArray(validAchievementStates)).toBe(true);
+      expect(validAchievementStates.length).toBeGreaterThan(0);
+      for (const state of validAchievementStates) {
+        expect(typeof state).toBe('string');
+      }
+    });
 
-      // Test each by trying to process it
-      for (const state of expectedStates) {
+    it('every state in the JSON is accepted by processAchievements', async () => {
+      for (const state of validAchievementStates) {
         const mockQuery = getMockQuery();
         mockQuery.mockReset();
         mockQuery.mockResolvedValue({ rows: [], rowCount: 0 });
@@ -101,6 +98,14 @@ describe('Campaign Service', () => {
         await processAchievements(TEST_USER_ID, TEST_WALLET, { [state]: true });
         expect(mockQuery).toHaveBeenCalledTimes(1);
       }
+    });
+
+    it('a state NOT in the JSON is rejected', async () => {
+      const mockQuery = getMockQuery();
+      await processAchievements(TEST_USER_ID, TEST_WALLET, {
+        definitely_not_a_real_state: true,
+      });
+      expect(mockQuery).not.toHaveBeenCalled();
     });
   });
 

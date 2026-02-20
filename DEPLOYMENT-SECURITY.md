@@ -76,16 +76,17 @@ Previously may have been permissive. Now in production, only the exact `FRONTEND
 
 Previously-accepted oversized payloads will now be rejected.
 
-### 5. Achievement Allowlist
+### 5. Achievement Allowlist (auto-generated)
 
-Only these state keys are recorded as achievements:
+Valid achievement state keys are auto-extracted from `frontend/src/data/game-nodes.ts` into `backend/src/data/valid-achievement-states.json`. The extraction runs automatically during `npm run build`.
 
+To regenerate manually after changing game content:
+
+```bash
+npm run extract-states
 ```
-riddle_solved, archives_accessed, lab_accessed, ancient_key_found,
-snake_master, guardian_defeated, vault_opened, quest_complete
-```
 
-**Maintenance note:** Adding new game nodes with `set_state` effects requires updating `VALID_ACHIEVEMENT_STATES` in `backend/src/services/campaign.service.ts`.
+The script scans all `set_state` effects in game nodes, filtering out internal (`_`-prefixed) and quiz (`quiz_`-prefixed) keys. No manual backend changes are needed when adding or removing game states.
 
 ---
 
