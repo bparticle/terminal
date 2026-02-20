@@ -1,5 +1,7 @@
-// Quick script to run migrations and seed against your database
-// Usage: node database/run-migration.js
+// Run just the seed.sql against the database (safe to run multiple times
+// if the seed uses INSERT ... ON CONFLICT or separate campaign names).
+//
+// Usage: node database/run-seed.js
 
 const fs = require('fs');
 const path = require('path');
@@ -25,41 +27,25 @@ async function run() {
     const client = await pool.connect();
     console.log('Connected!\n');
 
-    // Run migration
-    console.log('--- Running migration 001_initial_schema.sql ---');
-    const migrationSQL = fs.readFileSync(
-      path.join(__dirname, 'migrations', '001_initial_schema.sql'),
-      'utf-8'
-    );
-    await client.query(migrationSQL);
-    console.log('Migration complete.\n');
-
-    // Run seed
-    console.log('--- Running seed.sql ---');
     const seedSQL = fs.readFileSync(
       path.join(__dirname, 'seed.sql'),
       'utf-8'
     );
+
+    console.log('Running seed.sql...');
     await client.query(seedSQL);
     console.log('Seed complete.\n');
 
-    // Verify
-    const tables = await client.query(`
-      SELECT table_name FROM information_schema.tables
-      WHERE table_schema = 'public'
-      ORDER BY table_name
-    `);
-    console.log('Tables created:');
-    tables.rows.forEach((r) => console.log(`  - ${r.table_name}`));
-
-    const campaigns = await client.query('SELECT id, name, target_states FROM campaigns');
-    console.log('\nSeeded campaigns:');
+    const campaigns = await client.query(
+      'SELECT id, name, is_active, max_winners, target_states, expires_at FROM campaigns ORDER BY created_at DESC'
+    );
+    console.log(`Campaigns in database (${campaigns.rows.length}):`);
     campaigns.rows.forEach((r) =>
-      console.log(`  - ${r.name} (targets: ${r.target_states.join(', ')})`)
+      console.log(`  - [${r.is_active ? 'ACTIVE' : 'INACTIVE'}] ${r.name} (max: ${r.max_winners}, targets: ${r.target_states.join(', ')}, expires: ${r.expires_at || 'never'})`)
     );
 
     client.release();
-    console.log('\nAll done!');
+    console.log('\nDone!');
   } catch (err) {
     console.error('Error:', err.message);
     process.exit(1);

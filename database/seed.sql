@@ -1,10 +1,11 @@
--- Seed data for testing
--- Run after schema migration
+-- Seed data for SCANLINES campaign
+-- Run via: node database/run-seed.js
 
 BEGIN;
 
--- Sample campaign: "Terminal Explorer"
--- Players must achieve 3 state flags to complete it
+-- SCANLINES: First 100
+-- The inaugural campaign for the first 100 players to complete SCANLINES.
+-- Requires entering the Temple, discovering the truth, and reaching an ending.
 INSERT INTO campaigns (
   name,
   description,
@@ -15,17 +16,19 @@ INSERT INTO campaigns (
   max_winners,
   reward_description,
   is_active,
+  expires_at,
   created_by
 ) VALUES (
-  'Terminal Explorer',
-  'Complete the core quest line: solve the riddle, find the key, and defeat the guardian.',
-  ARRAY['riddle_solved', 'ancient_key_found', 'guardian_defeated'],
+  'SCANLINES: First 100',
+  'Complete the SCANLINES story. Enter the Temple of Null, discover what you truly are, and choose how this iteration ends. The first 100 players to finish will be recorded permanently on the leaderboard.',
+  ARRAY['temple_entered', 'knows_player_role', 'ending_reached'],
   'true',
   true,
-  'campaign_terminal_explorer_complete',
-  50,
-  'Terminal Explorer Badge - Proof of completing the core quest',
+  'campaign_scanlines_first_100',
+  100,
+  'SCANLINES Pioneer — Proof of being among the first 100 to complete the story',
   true,
+  '2026-12-31T23:59:59Z',
   'ADMIN_WALLET_ADDRESS'
 );
 
