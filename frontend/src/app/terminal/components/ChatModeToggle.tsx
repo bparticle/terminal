@@ -5,6 +5,7 @@ interface ChatModeToggleProps {
   onToggle: () => void;
   isSocketConnected: boolean;
   disabled?: boolean;
+  disabledReason?: 'solo' | 'private';
 }
 
 export default function ChatModeToggle({
@@ -12,7 +13,12 @@ export default function ChatModeToggle({
   onToggle,
   isSocketConnected,
   disabled = false,
+  disabledReason = 'solo',
 }: ChatModeToggleProps) {
+  const disabledTitle = disabledReason === 'private'
+    ? 'No one can hear you here'
+    : 'Chat disabled (solo mode)';
+
   return (
     <button
       type="button"
@@ -20,7 +26,7 @@ export default function ChatModeToggle({
       onClick={disabled ? undefined : onToggle}
       title={
         disabled
-          ? 'Chat disabled (solo mode)'
+          ? disabledTitle
           : chatMode
             ? 'Switch to command mode (Tab)'
             : 'Switch to talk mode (Tab)'

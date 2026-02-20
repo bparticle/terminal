@@ -44,21 +44,27 @@ export default function GameTerminal() {
   const [onboardingState, setOnboardingState] = useState<OnboardingState>('idle');
   const [chatMode, setChatMode] = useState(false);
   const [soloMode, setSoloMode] = useState(false);
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentNodeIdRef = useRef<string | null>(null);
 
-  // ── Solo mode ref for use in stable callbacks ──────────
+  // ── Refs for use in stable callbacks ──────────
   const soloModeRef = useRef(soloMode);
   useEffect(() => {
     soloModeRef.current = soloMode;
   }, [soloMode]);
 
+  const isPrivateRoomRef = useRef(isPrivateRoom);
+  useEffect(() => {
+    isPrivateRoomRef.current = isPrivateRoom;
+  }, [isPrivateRoom]);
+
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
-    if (soloModeRef.current) return;
+    if (soloModeRef.current || isPrivateRoomRef.current) return;
     const isMe = msg.sender === playerName;
     const prefix = isMe ? '[You]' : `[${msg.sender}]`;
     setOutput((prev) => [
@@ -72,7 +78,7 @@ export default function GameTerminal() {
   }, [playerName]);
 
   const handleSystemEvent = useCallback((evt: ChatSystemEvent) => {
-    if (soloModeRef.current) return;
+    if (soloModeRef.current || isPrivateRoomRef.current) return;
     setOutput((prev) => [
       ...prev,
       {
@@ -83,19 +89,30 @@ export default function GameTerminal() {
     ]);
   }, []);
 
-  const { isConnected: isSocketConnected, joinRoom, sendMessage } = useSocket({
+  const { isConnected: isSocketConnected, joinRoom, leaveRoom, sendMessage } = useSocket({
     onChatMessage: handleChatMessage,
     onSystemEvent: handleSystemEvent,
   });
 
-  // Wraps setCurrentLocation to also join the Socket.IO room
+  // Wraps setCurrentLocation to also join/leave the Socket.IO room
   const handleLocationChange = useCallback((location: string, nodeId?: string) => {
     setCurrentLocation(location);
     if (nodeId) {
       currentNodeIdRef.current = nodeId;
-      joinRoom(nodeId);
+
+      // Check if the node is social (chat-enabled) or private (isolated)
+      const isSocial = engineRef.current?.isSocialNode() ?? true;
+      setIsPrivateRoom(!isSocial);
+
+      if (isSocial) {
+        joinRoom(nodeId);
+      } else {
+        // Leave room so other players can't see or message you here
+        leaveRoom();
+        setChatMode(false);
+      }
     }
-  }, [joinRoom]);
+  }, [joinRoom, leaveRoom]);
 
   // Set auth context for API client
   useEffect(() => {
@@ -282,11 +299,11 @@ export default function GameTerminal() {
     });
   }, []);
 
-  // Toggle chat mode (blocked by solo mode)
+  // Toggle chat mode (blocked by solo mode or private rooms)
   const toggleChatMode = useCallback(() => {
-    if (soloMode) return;
+    if (soloMode || isPrivateRoom) return;
     setChatMode((prev) => !prev);
-  }, [soloMode]);
+  }, [soloMode, isPrivateRoom]);
 
   // Handle form submit
   const handleSubmit = useCallback(
@@ -507,7 +524,8 @@ export default function GameTerminal() {
                 chatMode={chatMode}
                 onToggle={toggleChatMode}
                 isSocketConnected={isSocketConnected}
-                disabled={soloMode}
+                disabled={soloMode || isPrivateRoom}
+                disabledReason={isPrivateRoom ? 'private' : 'solo'}
               />
             ) : (
               <span className="terminal-prompt">&gt;_</span>
@@ -518,7 +536,7 @@ export default function GameTerminal() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Tab' && connected && onboardingState === 'done' && !soloMode) {
+                if (e.key === 'Tab' && connected && onboardingState === 'done' && !soloMode && !isPrivateRoom) {
                   e.preventDefault();
                   toggleChatMode();
                 }
@@ -567,7 +585,7 @@ export default function GameTerminal() {
           <Monitor />
           <StatsBox walletAddress={publicKey?.toBase58() || null} />
           <InventoryBox items={inventory} />
-          <PlayersPanel currentPlayerName={playerName} />
+          <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
         </div>
 
         {/* Mobile Sidebar */}
@@ -580,7 +598,7 @@ export default function GameTerminal() {
               <Monitor />
               <StatsBox walletAddress={publicKey?.toBase58() || null} />
               <InventoryBox items={inventory} />
-              <PlayersPanel currentPlayerName={playerName} />
+              <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
             </div>
           </div>
         )}

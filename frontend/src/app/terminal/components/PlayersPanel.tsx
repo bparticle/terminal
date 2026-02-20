@@ -10,9 +10,10 @@ interface Player {
 
 interface PlayersPanelProps {
   currentPlayerName: string | null;
+  isolated?: boolean;
 }
 
-export default function PlayersPanel({ currentPlayerName }: PlayersPanelProps) {
+export default function PlayersPanel({ currentPlayerName, isolated = false }: PlayersPanelProps) {
   const [players, setPlayers] = useState<Player[]>([]);
 
   const fetchPlayers = useCallback(async () => {
@@ -63,7 +64,9 @@ export default function PlayersPanel({ currentPlayerName }: PlayersPanelProps) {
     <div className="panel-box players-panel">
       <div className="panel-title">Players Online</div>
 
-      {displayPlayers.length === 0 ? (
+      {isolated ? (
+        <div className="players-empty">You are alone here...</div>
+      ) : displayPlayers.length === 0 ? (
         <div className="players-empty">No travelers nearby...</div>
       ) : (
         <div className="players-list">
@@ -87,9 +90,13 @@ export default function PlayersPanel({ currentPlayerName }: PlayersPanelProps) {
         </div>
       )}
 
-      <div className="players-count">
-        {displayPlayers.length} {displayPlayers.length === 1 ? 'traveler' : 'travelers'} online
-      </div>
+      {isolated ? (
+        <div className="players-count">No signal</div>
+      ) : (
+        <div className="players-count">
+          {displayPlayers.length} {displayPlayers.length === 1 ? 'traveler' : 'travelers'} online
+        </div>
+      )}
     </div>
   );
 }

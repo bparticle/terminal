@@ -22,6 +22,7 @@ export const gameNodes: Record<string, GameNode> = {
   start: {
     id: 'start',
     type: 'story',
+    social: false,
     content:
       'SYSTEM BOOT...\n' +
       'MEMORY CHECK... OK\n' +
@@ -50,6 +51,7 @@ export const gameNodes: Record<string, GameNode> = {
   cold_room: {
     id: 'cold_room',
     type: 'choice',
+    social: false,
     content:
       'The cold room.\n\n' +
       'Concrete walls. A terminal built into the east wall,\n' +
@@ -1023,6 +1025,7 @@ export const gameNodes: Record<string, GameNode> = {
   guild_server_room: {
     id: 'guild_server_room',
     type: 'choice',
+    social: false,
     content:
       'Racks of servers floor to ceiling.\n' +
       'Each one labeled with an iteration number.\n' +
@@ -1748,6 +1751,7 @@ export const gameNodes: Record<string, GameNode> = {
   signal_tower: {
     id: 'signal_tower',
     type: 'choice',
+    social: false,
     content:
       'A tower that should not fit inside a corridor.\n' +
       'It goes up past where the ceiling should be.\n' +
@@ -2023,6 +2027,7 @@ export const gameNodes: Record<string, GameNode> = {
   echo_archive: {
     id: 'echo_archive',
     type: 'choice',
+    social: false,
     content:
       'The Echo Archive.\n\n' +
       'A room of ghosts. Data ghosts.\n' +

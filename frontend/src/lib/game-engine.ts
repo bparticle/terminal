@@ -795,6 +795,10 @@ export class GameEngine {
     this.ownedNFTs = nfts;
   }
 
+  isSocialNode(): boolean {
+    return this.currentNode?.social !== false;
+  }
+
   setPlayerName(name: string): void {
     if (this.save) {
       this.save.name = name;

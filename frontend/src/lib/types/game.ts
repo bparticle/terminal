@@ -59,6 +59,10 @@ export interface GameNode {
   success_effects?: GameEffects;
   failure_effects?: GameEffects;
 
+  // Social: whether chat and player presence is enabled in this room.
+  // Defaults to true (social). Set to false for isolated/private rooms.
+  social?: boolean;
+
   // Godot/mini-game fields
   game_id?: string;
   start_prompt?: string;
