@@ -27,30 +27,27 @@ This project follows [Semantic Versioning](https://semver.org). We are in the **
 - [x] Achievement state auto-generation from game node data
 - [x] Simplified onboarding (removed race mechanics)
 - [x] Enhanced game engine: conditional content, visibility requirements, locked choices
+- [x] Monitor component image display system (listens for `display-image` events)
+- [x] NFT-gated game interactions (`nft_check` node type, `has_nft` requirements)
 
 ## Upcoming
 
-### 0.6.0-beta — NFT Monitor Display
-- [ ] Display owned NFTs visually in the Monitor component
-- [ ] NFT gallery/carousel view with metadata
-- [ ] NFT-specific game interactions based on held assets
-
-### 0.7.0-beta — cNFT Minting in CLI
+### 0.6.0-beta — cNFT Minting in CLI
 - [ ] Mint compressed NFTs directly from the terminal CLI
 - [ ] Mint transaction status and confirmation flow
 - [ ] Collection management for minted assets
 
-### 0.8.0-beta — Soulbound Inventory Items
+### 0.7.0-beta — Soulbound Inventory Items
 - [ ] Mint soulbound (non-transferable) tokens for inventory items
 - [ ] On-chain inventory verification
 - [ ] Soulbound item display and management in the inventory UI
 
-### 0.9.0-beta — Content & Polish
+### 0.8.0-beta — Content & Polish
 - [ ] Expanded game content and story nodes
 - [ ] Improved mobile experience
 - [ ] Performance optimizations
 
-### 0.10.0-beta — Pre-release
+### 0.9.0-beta — Pre-release
 - [ ] End-to-end testing suite
 - [ ] Documentation and onboarding
 - [ ] Bug fixes and stability

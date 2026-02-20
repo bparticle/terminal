@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Significantly expanded game content: full story arc with cold room, corridors, registry office, guild district, broadcast room, temple, signal tower, void collective, echo archive, and multiple endings
 - Game node example file (`game-nodes.example.ts`) for content authoring reference
 - Deployment security documentation (`DEPLOYMENT-SECURITY.md`)
+- Monitor component image display system (`display-image` custom event listener)
+- NFT-gated game interactions: `nft_check` node type with owned/missing branching, `has_nft` choice requirements
 
 ### Changed
 - Refactored onboarding flow: removed race selection, simplified to name-only character creation
