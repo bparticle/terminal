@@ -9,8 +9,9 @@ import { checkAdminStatus } from '@/lib/admin-api';
 import Campaigns from './components/Campaigns';
 import GameUserStatus from './components/GameUserStatus';
 import GameReset from './components/GameReset';
+import SiteSettings from './components/SiteSettings';
 
-type AdminTab = 'campaigns' | 'game-users' | 'game-reset';
+type AdminTab = 'campaigns' | 'game-users' | 'game-reset' | 'site-settings';
 
 export default function AdminPage() {
   const { publicKey, connected } = useWallet();
@@ -100,6 +101,7 @@ export default function AdminPage() {
     { id: 'campaigns', label: 'Campaigns' },
     { id: 'game-users', label: 'Game Users' },
     { id: 'game-reset', label: 'Game Reset' },
+    { id: 'site-settings', label: 'Site Settings' },
   ];
 
   return (
@@ -143,6 +145,7 @@ export default function AdminPage() {
           {activeTab === 'campaigns' && <Campaigns />}
           {activeTab === 'game-users' && <GameUserStatus />}
           {activeTab === 'game-reset' && <GameReset />}
+          {activeTab === 'site-settings' && <SiteSettings />}
         </div>
       </div>
     </div>

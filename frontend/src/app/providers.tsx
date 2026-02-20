@@ -1,14 +1,21 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { AuthProvider } from '@/context/AuthProvider';
+import ComingSoon from '@/app/coming-soon';
 
 require('@solana/wallet-adapter-react-ui/styles.css');
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [maintenanceChecked, setMaintenanceChecked] = useState(false);
+
   const endpoint = useMemo(() => {
     if (typeof window !== 'undefined') {
       return `${window.location.origin}/api/rpc`;
@@ -18,6 +25,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const wallets = useMemo(() => [new SolflareWalletAdapter()], []);
+
+  useEffect(() => {
+    fetch('/api/proxy/site/status')
+      .then((res) => res.json())
+      .then((data) => {
+        setMaintenance(data.maintenance || false);
+        setMaintenanceMessage(data.message || 'COMING SOON');
+      })
+      .catch(() => {
+        // If the check fails, allow access
+        setMaintenance(false);
+      })
+      .finally(() => setMaintenanceChecked(true));
+  }, []);
+
+  const isAdminRoute = pathname?.startsWith('/admin');
+
+  if (maintenanceChecked && maintenance && !isAdminRoute) {
+    return <ComingSoon message={maintenanceMessage} />;
+  }
 
   return (
     <ConnectionProvider endpoint={endpoint}>

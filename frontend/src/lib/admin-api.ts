@@ -76,3 +76,28 @@ export async function resetPlayer(walletAddress: string): Promise<void> {
     throw new Error(err.error || 'Failed to reset player');
   }
 }
+
+/**
+ * Get site maintenance status (public, no auth required)
+ */
+export async function getSiteStatus(): Promise<{ maintenance: boolean; message: string }> {
+  const response = await fetch('/api/proxy/site/status');
+  if (!response.ok) {
+    return { maintenance: false, message: '' };
+  }
+  return response.json();
+}
+
+/**
+ * Admin: update site settings (maintenance mode toggle + message)
+ */
+export async function updateSiteSettings(enabled: boolean, message: string): Promise<void> {
+  const response = await fetchWithAuth('site/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ enabled, message }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update site settings');
+  }
+}

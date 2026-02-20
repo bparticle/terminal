@@ -11,6 +11,7 @@ import usersRoutes from './routes/users.routes';
 import gameRoutes from './routes/game.routes';
 import campaignsRoutes from './routes/campaigns.routes';
 import walletRoutes from './routes/wallet.routes';
+import siteRoutes from './routes/site.routes';
 import { registerChatHandlers } from './sockets/chat.socket';
 import { verifyToken } from './services/auth.service';
 import { authLimiter, apiLimiter, writeLimiter } from './middleware/rateLimiter';
@@ -109,6 +110,7 @@ app.use('/api/v1/users', apiLimiter, usersRoutes);
 app.use('/api/v1/game', writeLimiter, gameRoutes);
 app.use('/api/v1/campaigns', apiLimiter, campaignsRoutes);
 app.use('/api/v1/wallet', apiLimiter, walletRoutes);
+app.use('/api/v1/site', apiLimiter, siteRoutes);
 
 // Health check
 app.get('/api/v1/health', (_req, res) => {

@@ -90,6 +90,13 @@ CREATE TABLE campaign_winners (
 CREATE INDEX idx_campaign_winners_campaign ON campaign_winners(campaign_id);
 CREATE INDEX idx_campaign_winners_wallet ON campaign_winners(wallet_address);
 
+-- Site settings: key-value store for global configuration
+CREATE TABLE site_settings (
+  key VARCHAR(100) PRIMARY KEY,
+  value JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ============================================
 -- TRIGGER: auto-update updated_at
 -- ============================================
@@ -111,4 +118,8 @@ CREATE TRIGGER update_game_saves_updated_at
 
 CREATE TRIGGER update_campaigns_updated_at
   BEFORE UPDATE ON campaigns
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_site_settings_updated_at
+  BEFORE UPDATE ON site_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

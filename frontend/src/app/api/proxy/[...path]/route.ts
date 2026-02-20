@@ -25,6 +25,8 @@ const ALLOWED_PATHS = [
   'campaigns/simulate-achievement',
   'wallet',
   'nft',
+  'site/status',
+  'site/settings',
 ];
 
 function isPathAllowed(path: string): boolean {
