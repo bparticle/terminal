@@ -42,7 +42,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const isAdminRoute = pathname?.startsWith('/admin');
 
-  if (maintenanceChecked && maintenance && !isAdminRoute) {
+  // Block rendering until maintenance check completes (except admin routes)
+  if (!maintenanceChecked && !isAdminRoute) {
+    return <div style={{ position: 'fixed', inset: 0, backgroundColor: '#0a0a0a' }} />;
+  }
+
+  if (maintenance && !isAdminRoute) {
     return <ComingSoon message={maintenanceMessage} />;
   }
 

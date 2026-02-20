@@ -9,8 +9,6 @@ interface ComingSoonProps {
 export default function ComingSoon({ message = 'COMING SOON' }: ComingSoonProps) {
   const [cursorVisible, setCursorVisible] = useState(true);
   const [displayedText, setDisplayedText] = useState('');
-  const [typingDone, setTypingDone] = useState(false);
-
   // Blinking cursor
   useEffect(() => {
     const interval = setInterval(() => setCursorVisible((v) => !v), 530);
@@ -22,13 +20,12 @@ export default function ComingSoon({ message = 'COMING SOON' }: ComingSoonProps)
     const fullText = `> ${message}`;
     let i = 0;
     setDisplayedText('');
-    setTypingDone(false);
+
     const interval = setInterval(() => {
       i++;
       setDisplayedText(fullText.slice(0, i));
       if (i >= fullText.length) {
         clearInterval(interval);
-        setTypingDone(true);
       }
     }, 80);
     return () => clearInterval(interval);
@@ -114,19 +111,6 @@ export default function ComingSoon({ message = 'COMING SOON' }: ComingSoonProps)
             █
           </span>
         </div>
-
-        {typingDone && (
-          <div
-            style={{
-              marginTop: '3rem',
-              fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
-              color: '#00ff4166',
-              letterSpacing: '0.1em',
-            }}
-          >
-            INITIALIZING SYSTEMS...
-          </div>
-        )}
 
         <div
           style={{
