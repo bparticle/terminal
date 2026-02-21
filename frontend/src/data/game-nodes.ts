@@ -236,7 +236,8 @@ export const gameNodes: Record<string, GameNode> = {
       'It opens — not mechanically. Reluctantly.\n' +
       'Like it was hoping you would not find it.\n\n' +
       'Inside: a physical key.\n' +
-      'Strange to find here, in a place made of data.\n' +
+      'Strange to find here. It feels wrong —\n' +
+      'too solid, too real for a place like this.\n' +
       'It has no manufacturer markings.\n' +
       'The teeth are shaped like a waveform.\n' +
       'It is warm. It should not be warm.',
@@ -453,7 +454,7 @@ export const gameNodes: Record<string, GameNode> = {
       'A tower. Inside a corridor. It rises past\n' +
       'where the ceiling should be, into darkness\n' +
       'that is not darkness but absence — the space\n' +
-      'above was never rendered. Never needed to be.\n\n' +
+      'above was never finished. Never needed to be.\n\n' +
       'The geometry is wrong and your eyes know it.\n' +
       'You can hear sounds from above: a low thrum,\n' +
       'rhythmic, patient. Like a heartbeat\n' +
@@ -508,7 +509,7 @@ export const gameNodes: Record<string, GameNode> = {
       'The walls narrow. The light source\n' +
       'is unclear. You are descending into\n' +
       'the part of the terminal that exists\n' +
-      'below the architecture. Below the code.\n' +
+      'below the architecture. Below the foundations.\n' +
       'The place where meaning is stored\n' +
       'before it becomes language.',
     location: 'TEMPLE DESCENT',
@@ -1602,7 +1603,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Every screen in the server room displays\n' +
       'the same message:\n' +
       '"WE HEAR YOU."\n\n' +
-      'The Guild NPCs in the corridor outside\n' +
+      'The Guild archivists in the corridor outside\n' +
       'have gone silent.',
     location: 'GUILD SERVER ROOM',
     effects: {

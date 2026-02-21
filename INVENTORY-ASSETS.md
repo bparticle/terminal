@@ -2,9 +2,45 @@
 
 All item images should be placed in `frontend/public/items/`.
 
-**Format**: PNG with transparency
-**Size**: 32×32 or 48×48 px
-**Style**: Monochrome / limited-palette pixel art, glowing on dark background, matching CRT terminal aesthetic
+**Format**: PNG-24 with alpha transparency
+**Canvas size**: 48×48 px (1:1 square — do not use rectangular images)
+**Color depth**: 8-bit RGBA
+**Style**: Pixel art, limited palette, designed to read clearly at small sizes on a dark background
+
+The inventory slots render at roughly 50–70px on desktop and ~40px on mobile. At these sizes, 48×48 source art with `image-rendering: pixelated` scales cleanly at both 1× and 2× device pixel ratios without blurring. Avoid anti-aliased edges — use hard pixel boundaries so the pixelated rendering looks intentional.
+
+**Do not** bake glow, shadow, or background color into the image. The slot background is dark (`rgba(0,0,0,0.3)`) and the border is theme-colored, so the image should be the item only on a fully transparent background.
+
+---
+
+## How Inventory Assets Work
+
+The inventory UI (`frontend/src/app/terminal/components/InventoryBox.tsx`) renders each item by attempting to load an image from `/items/{item_name}.png`. If no image is found (404 or load error), it falls back to a keyword-matched emoji via `getItemEmoji()`.
+
+### Adding a new inventory asset
+
+1. **Identify the exact item name** used in `game-nodes.ts`. Items are added via `effects.add_item` — the string in that array is the item's canonical name. Example: `add_item: ['cold_room_key']` means the name is `cold_room_key`.
+
+2. **Create the image file** named `{item_name}.png` — the filename must match the item name exactly (snake_case, lowercase). Place it at:
+   ```
+   frontend/public/items/{item_name}.png
+   ```
+   Example: `frontend/public/items/cold_room_key.png`
+
+3. **That's it.** No code changes are needed. The `ItemIcon` component automatically resolves `/items/{item_name}.png` at render time. If the file exists, it displays; if not, the emoji fallback kicks in.
+
+### Filename convention
+
+| Item name in `game-nodes.ts` | Image file path |
+|------------------------------|-----------------|
+| `cold_room_key` | `frontend/public/items/cold_room_key.png` |
+| `echo_key` | `frontend/public/items/echo_key.png` |
+| `phosphor_residue` | `frontend/public/items/phosphor_residue.png` |
+| `tape_reel_7` | `frontend/public/items/tape_reel_7.png` |
+
+### Emoji fallback
+
+When no image is found, `getItemEmoji()` maps keywords in the item name to an emoji (e.g. "key" → 🔑, "tape" → 📼). Items that don't match any keyword get 📦. This fallback is defined at the bottom of `InventoryBox.tsx`.
 
 ---
 

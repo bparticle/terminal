@@ -185,6 +185,7 @@
   },
   "active": "99b320bab24cea14",
   "lastOpenFiles": [
+    "frontend/public/items/ps8B3C.tmp",
     "frontend/src/data/game-nodes.ts.tmp.16192.1771657360953",
     "frontend/src/data/game-nodes.ts.tmp.16192.1771657356437",
     "frontend/src/data/game-nodes.ts.tmp.16192.1771657351921",
@@ -195,7 +196,6 @@
     "scripts/lint-ai-prose.js.tmp.16192.1771657299234",
     "package.json.tmp.16192.1771657268783",
     "scripts/lint-ai-prose.js",
-    "scripts/lint-ai-prose.js.tmp.16192.1771657264345",
     "frontend/public/items/phosphor_residue.png",
     "frontend/public/items/echo_key.png",
     "frontend/public/items/cold_room_key.png",

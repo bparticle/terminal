@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 
 interface InventoryBoxProps {
   items: Array<{ name: string }>;
@@ -9,12 +10,33 @@ interface InventoryBoxProps {
 
 const ITEMS_PER_PAGE = 2;
 
+function ItemIcon({ name }: { name: string }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  const handleError = useCallback(() => setImgFailed(true), []);
+
+  if (imgFailed) {
+    return <span className="item-icon">{getItemEmoji(name)}</span>;
+  }
+
+  return (
+    <Image
+      src={`/items/${name}.png`}
+      alt={name.replace(/_/g, ' ')}
+      width={48}
+      height={48}
+      className="item-icon-img"
+      onError={handleError}
+      draggable={false}
+    />
+  );
+}
+
 export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps) {
   const [page, setPage] = useState(0);
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
   const prevItemsRef = useRef<string[]>([]);
 
-  // Detect new items for highlight
   useEffect(() => {
     const prevNames = prevItemsRef.current;
     const currentNames = items.map((i) => i.name);
@@ -32,7 +54,6 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const startIdx = page * ITEMS_PER_PAGE;
   const pageItems = items.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-  // Fill empty slots
   const slots = [...pageItems];
   while (slots.length < ITEMS_PER_PAGE) {
     slots.push({ name: '' });
@@ -60,12 +81,10 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
             <div
               key={`${startIdx + i}-${item.name}`}
               className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''}`}
-              title={item.name || 'Empty'}
+              title={item.name ? item.name.replace(/_/g, ' ') : 'Empty'}
             >
               {item.name ? (
-                <span className="item-icon">
-                  {getItemEmoji(item.name)}
-                </span>
+                <ItemIcon name={item.name} />
               ) : (
                 <span className="empty-slot">-</span>
               )}
