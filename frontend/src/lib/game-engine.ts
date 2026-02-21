@@ -2,10 +2,15 @@ import { GameNode, GameSave, Requirements, GameEffects } from './types/game';
 import { gameNodes } from '@/data/game-nodes';
 import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
+import { checkWhitelistStatus, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems } from './mint-api';
+import { checkPfpStatus, mintPfp } from './pfp-api';
+
+// Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
+const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1';
 
 type OutputFn = (text: string, className?: string) => void;
 type LocationChangeFn = (location: string, nodeId?: string) => void;
-type InventoryChangeFn = (items: Array<{ name: string }>) => void;
+type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean }>) => void;
 type MiniGameStartFn = (gameId: string) => void;
 
 interface MinigameGate {
@@ -21,6 +26,7 @@ export class GameEngine {
   private save: GameSave | null = null;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private ownedNFTs: OwnedNFT[] = [];
+  private soulboundItemNames: Set<string> = new Set();
   private minigameGate: MinigameGate | null = null;
   private quizState: {
     nodeId: string;
@@ -98,6 +104,14 @@ export class GameEngine {
     } catch (error) {
       console.error('Failed to fetch NFTs:', error);
     }
+
+    // Fetch soulbound items in parallel
+    try {
+      const { items } = await fetchSoulboundItems();
+      this.soulboundItemNames = new Set(items.map((i) => i.item_name));
+    } catch (error) {
+      console.error('Failed to fetch soulbound items:', error);
+    }
   }
 
   // ==========================================
@@ -124,6 +138,12 @@ export class GameEngine {
         return;
       case 'godot_game':
         this.handleGodotGameNode(node);
+        return;
+      case 'mint_action':
+        this.handleMintActionNode(node);
+        return;
+      case 'pfp_mint':
+        this.handlePfpMintNode(node);
         return;
       default:
         break;
@@ -202,7 +222,7 @@ export class GameEngine {
       if (node.item_name && !this.save.inventory.includes(node.item_name)) {
         this.save.inventory.push(node.item_name);
         this.outputFn(`[Item obtained: ${node.item_name}]`, 'text-yellow-400');
-        this.inventoryChangeFn?.(this.save.inventory.map((n) => ({ name: n })));
+        this.inventoryChangeFn?.(this.buildInventoryItems());
       }
 
       const content = this.renderTemplate(node.nft_owned_content || 'Access granted.');
@@ -275,6 +295,163 @@ export class GameEngine {
 
     this.outputFn('');
     this.outputFn(node.start_prompt || 'Press ENTER to start the game!', 'text-cyan-400');
+  }
+
+  private async handleMintActionNode(node: GameNode): Promise<void> {
+    if (!this.save || !node.mint_config) return;
+
+    // Display node content
+    const content = this.renderTemplate(node.content);
+    content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
+    this.outputFn('');
+
+    // Check whitelist
+    this.outputFn('Checking mint eligibility...', 'text-gray-400');
+    try {
+      const status = await checkWhitelistStatus();
+      if (!status.whitelisted) {
+        this.outputFn('You are not whitelisted for minting.', 'text-red-400');
+        if (node.mint_not_whitelisted_node) {
+          this.outputFn('');
+          this.outputFn('Press ENTER to continue...', 'text-gray-400');
+          this.currentNode = { ...node, next_node: node.mint_not_whitelisted_node, choices: undefined };
+        }
+        return;
+      }
+
+      // Execute mint
+      this.outputFn('Minting...', 'text-yellow-400');
+      const mintConfig = node.mint_config;
+
+      let result: any;
+      if (mintConfig.soulbound) {
+        result = await mintSoulbound(mintConfig);
+        this.soulboundItemNames.add(mintConfig.itemName || mintConfig.name);
+      } else {
+        result = await executeMint(mintConfig);
+      }
+
+      this.outputFn(`Mint successful! Asset: ${result.assetId.slice(0, 16)}...`, 'text-green-400');
+
+      // Add to inventory if itemName configured
+      if (mintConfig.itemName && !this.save.inventory.includes(mintConfig.itemName)) {
+        this.save.inventory.push(mintConfig.itemName);
+        this.outputFn(`[Item obtained: ${mintConfig.itemName}]`, 'text-yellow-400');
+        this.inventoryChangeFn?.(this.buildInventoryItems());
+      }
+
+      // Set state flags
+      this.save.game_state[`minted_${node.id}`] = true;
+      this.save.game_state[`asset_${node.id}`] = result.assetId;
+
+      if (node.mint_success_node) {
+        this.outputFn('');
+        this.outputFn('Press ENTER to continue...', 'text-gray-400');
+        this.currentNode = { ...node, next_node: node.mint_success_node, choices: undefined };
+      }
+
+      await this.autoSave();
+    } catch (error: any) {
+      this.outputFn(`Minting failed: ${error.message || 'Unknown error'}`, 'text-red-400');
+      if (node.mint_failure_node) {
+        this.outputFn('');
+        this.outputFn('Press ENTER to continue...', 'text-gray-400');
+        this.currentNode = { ...node, next_node: node.mint_failure_node, choices: undefined };
+      }
+    }
+  }
+
+  private async handlePfpMintNode(node: GameNode): Promise<void> {
+    if (!this.save) return;
+
+    // Display node content
+    const content = this.renderTemplate(node.content);
+    content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
+    this.outputFn('');
+
+    // Check eligibility
+    this.outputFn('Checking PFP mint eligibility...', 'text-gray-400');
+    try {
+      const status = await checkPfpStatus();
+
+      if (!status.whitelisted) {
+        this.outputFn('You are not eligible for PFP minting.', 'text-red-400');
+        if (node.pfp_mint_not_eligible_node) {
+          this.outputFn('');
+          this.outputFn('Press ENTER to continue...', 'text-gray-400');
+          this.currentNode = { ...node, next_node: node.pfp_mint_not_eligible_node, choices: undefined };
+        }
+        return;
+      }
+
+      if (!status.canMint) {
+        this.outputFn(`You've used all ${status.maxMints} of your PFP mints.`, 'text-yellow-400');
+        if (status.pfpCount > 0) {
+          this.outputFn(`You own ${status.pfpCount} Scanlines PFP${status.pfpCount > 1 ? 's' : ''}.`, 'text-gray-400');
+        }
+        if (node.pfp_mint_limit_node) {
+          this.outputFn('');
+          this.outputFn('Press ENTER to continue...', 'text-gray-400');
+          this.currentNode = { ...node, next_node: node.pfp_mint_limit_node, choices: undefined };
+        }
+        return;
+      }
+
+      const remaining = status.mintsRemaining === -1 ? '∞' : status.mintsRemaining;
+      this.outputFn(`Mints remaining: ${remaining}/${status.maxMints}`, 'text-cyan-400');
+      this.outputFn('');
+      this.outputFn('Generating your unique Scanlines PFP...', 'text-yellow-400');
+
+      // Execute mint — the big reveal
+      const result = await mintPfp();
+
+      this.outputFn('');
+      this.outputFn('╔══════════════════════════════════════╗', 'text-green-400');
+      this.outputFn('║     YOUR SCANLINES PFP IS READY!     ║', 'text-green-400');
+      this.outputFn('╚══════════════════════════════════════╝', 'text-green-400');
+      this.outputFn('');
+      this.outputFn(`  Palette:    ${result.traits.paletteName}`, 'text-white');
+      this.outputFn(`  Face:       ${result.traits.faceShape}`, 'text-white');
+      this.outputFn(`  Eyes:       ${result.traits.eyeType}`, 'text-white');
+      this.outputFn(`  Mouth:      ${result.traits.mouthStyle}`, 'text-white');
+      this.outputFn(`  Hair:       ${result.traits.hairStyle}`, 'text-white');
+      this.outputFn(`  Accessory:  ${result.traits.accessory}`, 'text-white');
+      this.outputFn(`  Clothing:   ${result.traits.clothing}`, 'text-white');
+      this.outputFn(`  Background: ${result.traits.bgPattern}`, 'text-white');
+      this.outputFn(`  Style:      ${result.traits.pixelStyle}`, 'text-white');
+      this.outputFn('');
+      this.outputFn(`Asset: ${result.assetId.slice(0, 20)}...`, 'text-gray-400');
+
+      // Set state flags
+      this.save.game_state.has_pfp = true;
+      this.save.game_state.pfp_count = (this.save.game_state.pfp_count || 0) + 1;
+
+      if (node.pfp_mint_success_node) {
+        this.outputFn('');
+        this.outputFn('Press ENTER to continue...', 'text-gray-400');
+        this.currentNode = { ...node, next_node: node.pfp_mint_success_node, choices: undefined };
+      }
+
+      await this.autoSave();
+    } catch (error: any) {
+      this.outputFn(`PFP mint failed: ${error.message || 'Unknown error'}`, 'text-red-400');
+      if (node.pfp_mint_failure_node) {
+        this.outputFn('');
+        this.outputFn('Press ENTER to continue...', 'text-gray-400');
+        this.currentNode = { ...node, next_node: node.pfp_mint_failure_node, choices: undefined };
+      }
+    }
+  }
+
+  /**
+   * Build inventory items with soulbound annotation
+   */
+  private buildInventoryItems(): Array<{ name: string; soulbound?: boolean }> {
+    if (!this.save) return [];
+    return this.save.inventory.map((name) => ({
+      name,
+      soulbound: this.soulboundItemNames.has(name) || undefined,
+    }));
   }
 
   // ==========================================
@@ -638,9 +815,15 @@ export class GameEngine {
         if (!this.save.inventory.includes(item)) {
           this.save.inventory.push(item);
           this.outputFn(`[Item obtained: ${item}]`, 'text-yellow-400');
+
+          // Background soulbound mint — fire-and-forget, one per user per item
+          if (!this.soulboundItemNames.has(item)) {
+            this.soulboundItemNames.add(item);
+            mintSoulboundBackground(item, INVENTORY_ITEM_URI);
+          }
         }
       }
-      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
+      this.inventoryChangeFn?.(this.buildInventoryItems());
     }
 
     if (effects.remove_item) {
@@ -651,7 +834,7 @@ export class GameEngine {
           this.outputFn(`[Item removed: ${item}]`, 'text-gray-400');
         }
       }
-      this.inventoryChangeFn?.(this.save.inventory.map((name) => ({ name })));
+      this.inventoryChangeFn?.(this.buildInventoryItems());
     }
 
     if (effects.set_state) {
@@ -790,6 +973,10 @@ export class GameEngine {
 
   getLocation(): string {
     return this.save?.location || 'HUB';
+  }
+
+  getInventoryItems(): Array<{ name: string; soulbound?: boolean }> {
+    return this.buildInventoryItems();
   }
 
   setOwnedNFTs(nfts: OwnedNFT[]): void {

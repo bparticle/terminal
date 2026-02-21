@@ -76,3 +76,78 @@ export interface CreateGameSaveInput {
   inventory: string[];
   name: string;
 }
+
+// ── Mint / Soulbound Types ─────────────────────
+
+export interface WhitelistEntry {
+  id: string;
+  wallet_address: string;
+  max_mints: number;
+  mints_used: number;
+  is_active: boolean;
+  added_by: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MintLogEntry {
+  id: string;
+  user_id: string;
+  wallet_address: string;
+  mint_type: 'standard' | 'soulbound';
+  asset_id: string | null;
+  signature: string | null;
+  nft_name: string;
+  nft_metadata: Record<string, any>;
+  status: 'pending' | 'confirmed' | 'failed';
+  error_message: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+}
+
+export interface SoulboundItem {
+  id: string;
+  user_id: string;
+  wallet_address: string;
+  asset_id: string;
+  item_name: string;
+  mint_log_id: string | null;
+  is_frozen: boolean;
+  freeze_signature: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MintParams {
+  name: string;
+  uri: string;
+  symbol?: string;
+  description?: string;
+  image?: string;
+  externalUrl?: string;
+  attributes?: Array<{ trait_type: string; value: string }>;
+  sellerFeeBasisPoints?: number;
+  collection?: 'pfp' | 'items';
+  soulbound?: boolean;
+  itemName?: string;
+}
+
+export interface MintLeafData {
+  owner: string;
+  delegate: string;
+  nonce: number;
+  dataHash: Uint8Array;
+  creatorHash: Uint8Array;
+  collectionHash?: Uint8Array;
+  assetDataHash?: Uint8Array;
+  flags?: number;
+}
+
+export interface MintResult {
+  assetId: string;
+  signature: string;
+  mintLogId: string;
+  leafData?: MintLeafData;
+}

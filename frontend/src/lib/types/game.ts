@@ -22,9 +22,22 @@ export interface GameChoice {
   lockedText?: string;
 }
 
+export interface MintConfig {
+  name: string;
+  uri: string;
+  symbol?: string;
+  description?: string;
+  image?: string;
+  externalUrl?: string;
+  attributes?: Array<{ trait_type: string; value: string }>;
+  collection?: 'pfp' | 'items';
+  soulbound?: boolean;
+  itemName?: string;
+}
+
 export interface GameNode {
   id: string;
-  type: 'story' | 'choice' | 'puzzle' | 'nft_check' | 'item_check' | 'location' | 'quiz' | 'godot_game';
+  type: 'story' | 'choice' | 'puzzle' | 'nft_check' | 'item_check' | 'location' | 'quiz' | 'godot_game' | 'mint_action' | 'pfp_mint';
   content: string;
   location?: string;
   choices?: GameChoice[];
@@ -58,6 +71,18 @@ export interface GameNode {
   final_failure_message?: string;
   success_effects?: GameEffects;
   failure_effects?: GameEffects;
+
+  // Mint action fields
+  mint_config?: MintConfig;
+  mint_success_node?: string;
+  mint_failure_node?: string;
+  mint_not_whitelisted_node?: string;
+
+  // PFP mint fields
+  pfp_mint_success_node?: string;
+  pfp_mint_failure_node?: string;
+  pfp_mint_not_eligible_node?: string;
+  pfp_mint_limit_node?: string;
 
   // Social: whether chat and player presence is enabled in this room.
   // Defaults to true (social). Set to false for isolated/private rooms.

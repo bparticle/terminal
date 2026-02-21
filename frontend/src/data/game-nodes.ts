@@ -616,6 +616,11 @@ export const gameNodes: Record<string, GameNode> = {
         text: 'Try the recessed door — Phosphor Lab',
         next_node: 'lab_door',
       },
+      {
+        id: 10,
+        text: 'Approach the identity terminal',
+        next_node: 'pfp_booth_approach',
+      },
     ],
   },
 
@@ -3252,5 +3257,115 @@ export const gameNodes: Record<string, GameNode> = {
       'There is no wrong choice here.\n' +
       'There never was.',
     location: 'CREDITS',
+  },
+
+  // ============================================================
+  // PFP MINT BOOTH — Scanlines Identity Terminal
+  // ============================================================
+
+  pfp_booth_approach: {
+    id: 'pfp_booth_approach',
+    type: 'choice',
+    content:
+      'Between two dead monitors, set into the wall\n' +
+      'like a confession booth, sits a machine you\n' +
+      'have not noticed before.\n\n' +
+      'Its screen is dark except for a single line:\n\n' +
+      '> SCANLINES IDENTITY TERMINAL v0.1\n' +
+      '> "Every face is a seed."\n\n' +
+      'A small plaque reads:\n' +
+      '"Insert yourself. Receive yourself.\n' +
+      ' No two outputs are alike.\n' +
+      ' No previews. No refunds.\n' +
+      ' What the machine sees, it renders.\n' +
+      ' What it renders, it mints.\n' +
+      ' What it mints, is you."',
+    location: 'IDENTITY TERMINAL',
+    choices: [
+      {
+        id: 1,
+        text: 'Sit in the booth',
+        next_node: 'pfp_booth_mint',
+      },
+      {
+        id: 2,
+        text: 'Walk away',
+        next_node: 'corridor_north',
+      },
+    ],
+  },
+
+  pfp_booth_mint: {
+    id: 'pfp_booth_mint',
+    type: 'pfp_mint',
+    content:
+      'You sit down. The booth hums to life.\n' +
+      'A scanner passes over your face —\n' +
+      'not your real face, but the one\n' +
+      'this place has given you.\n\n' +
+      'The machine processes.\n' +
+      'Pixels arrange themselves.\n' +
+      'CRT phosphors ignite in patterns\n' +
+      'that have never existed before.',
+    location: 'IDENTITY TERMINAL',
+    pfp_mint_success_node: 'pfp_booth_success',
+    pfp_mint_failure_node: 'pfp_booth_failure',
+    pfp_mint_not_eligible_node: 'pfp_booth_not_eligible',
+    pfp_mint_limit_node: 'pfp_booth_limit',
+  },
+
+  pfp_booth_success: {
+    id: 'pfp_booth_success',
+    type: 'story',
+    content:
+      'The machine prints. The image burns onto the chain.\n' +
+      'Permanent. Immutable. Yours.\n\n' +
+      'The booth powers down with a satisfied click.\n' +
+      'You have a face now. Or rather —\n' +
+      'the system has acknowledged the face\n' +
+      'you always had.',
+    location: 'IDENTITY TERMINAL',
+    next_node: 'pfp_booth_approach',
+  },
+
+  pfp_booth_failure: {
+    id: 'pfp_booth_failure',
+    type: 'story',
+    content:
+      'The machine stutters. Static fills the screen.\n' +
+      'Something went wrong in the rendering pipeline.\n\n' +
+      '> ERROR: IDENTITY_COMMIT_FAILED\n' +
+      '> "Try again. The machine forgets nothing,\n' +
+      '>  but sometimes it stutters."',
+    location: 'IDENTITY TERMINAL',
+    next_node: 'pfp_booth_approach',
+  },
+
+  pfp_booth_not_eligible: {
+    id: 'pfp_booth_not_eligible',
+    type: 'story',
+    content:
+      'The scanner passes over you and stops.\n' +
+      'The screen displays:\n\n' +
+      '> ACCESS DENIED\n' +
+      '> IDENTITY NOT REGISTERED\n' +
+      '> "Not everyone gets a face.\n' +
+      '>  Not yet."',
+    location: 'IDENTITY TERMINAL',
+    next_node: 'pfp_booth_approach',
+  },
+
+  pfp_booth_limit: {
+    id: 'pfp_booth_limit',
+    type: 'story',
+    content:
+      'The scanner recognizes you.\n' +
+      'The screen displays:\n\n' +
+      '> ALLOCATION EXHAUSTED\n' +
+      '> "You have all the faces you were meant to have.\n' +
+      '>  Each one is unique. Each one is you.\n' +
+      '>  That is enough."',
+    location: 'IDENTITY TERMINAL',
+    next_node: 'pfp_booth_approach',
   },
 };

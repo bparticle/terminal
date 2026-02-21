@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 interface InventoryBoxProps {
-  items: Array<{ name: string }>;
+  items: Array<{ name: string; soulbound?: boolean }>;
   maxItems?: number;
 }
 
@@ -54,7 +54,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const startIdx = page * ITEMS_PER_PAGE;
   const pageItems = items.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-  const slots = [...pageItems];
+  const slots: Array<{ name: string; soulbound?: boolean }> = [...pageItems];
   while (slots.length < ITEMS_PER_PAGE) {
     slots.push({ name: '' });
   }
@@ -80,11 +80,15 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
           {slots.map((item, i) => (
             <div
               key={`${startIdx + i}-${item.name}`}
-              className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''}`}
-              title={item.name ? item.name.replace(/_/g, ' ') : 'Empty'}
+              className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
+              title={item.name ? `${item.name.replace(/_/g, ' ')}${item.soulbound ? ' (Soulbound)' : ''}` : 'Empty'}
             >
               {item.name ? (
-                <ItemIcon name={item.name} />
+                item.soulbound ? (
+                  <span className="item-icon">🔗</span>
+                ) : (
+                  <ItemIcon name={item.name} />
+                )
               ) : (
                 <span className="empty-slot">-</span>
               )}

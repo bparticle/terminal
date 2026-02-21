@@ -27,6 +27,9 @@ const ALLOWED_PATHS = [
   'nft',
   'site/status',
   'site/settings',
+  'mint',
+  'soulbound',
+  'pfp',
 ];
 
 function isPathAllowed(path: string): boolean {

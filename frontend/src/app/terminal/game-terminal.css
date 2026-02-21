@@ -693,6 +693,16 @@
   image-rendering: pixelated;
 }
 
+.inventory-slot.soulbound {
+  border-color: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4), inset 0 0 4px rgba(168, 85, 247, 0.1);
+}
+
+.inventory-slot.soulbound:hover {
+  border-color: #c084fc;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.6), inset 0 0 6px rgba(168, 85, 247, 0.15);
+}
+
 .inventory-slot .empty-slot {
   color: rgba(var(--primary-rgb), 0.15);
   font-size: 20px;

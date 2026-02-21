@@ -46,4 +46,9 @@ export const config = {
   heliusApiKey: process.env.HELIUS_API_KEY || '',
   collectionMintAddress: process.env.COLLECTION_MINT_ADDRESS || '',
   adminWallets: (process.env.ADMIN_WALLETS || '').split(',').map(w => w.trim()).filter(Boolean),
+  collectionAuthorityKeypair: process.env.COLLECTION_AUTHORITY_KEYPAIR || '',
+  mintCreatorAddress: process.env.MINT_CREATOR_ADDRESS || '',
+  merkleTree: process.env.MERKLE_TREE || '',
+  pfpCollectionMint: process.env.PFP_COLLECTION_MINT || '',
+  itemsCollectionMint: process.env.ITEMS_COLLECTION_MINT || '',
 };

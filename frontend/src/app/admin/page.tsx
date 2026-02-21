@@ -10,8 +10,9 @@ import Campaigns from './components/Campaigns';
 import GameUserStatus from './components/GameUserStatus';
 import GameReset from './components/GameReset';
 import SiteSettings from './components/SiteSettings';
+import MintWhitelist from './components/MintWhitelist';
 
-type AdminTab = 'campaigns' | 'game-users' | 'game-reset' | 'site-settings';
+type AdminTab = 'campaigns' | 'game-users' | 'game-reset' | 'site-settings' | 'mint-whitelist';
 
 export default function AdminPage() {
   const { publicKey, connected } = useWallet();
@@ -99,6 +100,7 @@ export default function AdminPage() {
   // Admin dashboard
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'campaigns', label: 'Campaigns' },
+    { id: 'mint-whitelist', label: 'Mint Whitelist' },
     { id: 'game-users', label: 'Game Users' },
     { id: 'game-reset', label: 'Game Reset' },
     { id: 'site-settings', label: 'Site Settings' },
@@ -143,6 +145,7 @@ export default function AdminPage() {
         {/* Tab Content */}
         <div>
           {activeTab === 'campaigns' && <Campaigns />}
+          {activeTab === 'mint-whitelist' && <MintWhitelist />}
           {activeTab === 'game-users' && <GameUserStatus />}
           {activeTab === 'game-reset' && <GameReset />}
           {activeTab === 'site-settings' && <SiteSettings />}

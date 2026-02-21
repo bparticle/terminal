@@ -12,6 +12,9 @@ import gameRoutes from './routes/game.routes';
 import campaignsRoutes from './routes/campaigns.routes';
 import walletRoutes from './routes/wallet.routes';
 import siteRoutes from './routes/site.routes';
+import mintRoutes from './routes/mint.routes';
+import soulboundRoutes from './routes/soulbound.routes';
+import pfpRoutes from './routes/pfp.routes';
 import { registerChatHandlers } from './sockets/chat.socket';
 import { verifyToken } from './services/auth.service';
 import { authLimiter, apiLimiter, writeLimiter } from './middleware/rateLimiter';
@@ -111,6 +114,9 @@ app.use('/api/v1/game', writeLimiter, gameRoutes);
 app.use('/api/v1/campaigns', apiLimiter, campaignsRoutes);
 app.use('/api/v1/wallet', apiLimiter, walletRoutes);
 app.use('/api/v1/site', apiLimiter, siteRoutes);
+app.use('/api/v1/mint', writeLimiter, mintRoutes);
+app.use('/api/v1/soulbound', writeLimiter, soulboundRoutes);
+app.use('/api/v1/pfp', writeLimiter, pfpRoutes);
 
 // Health check
 app.get('/api/v1/health', (_req, res) => {
