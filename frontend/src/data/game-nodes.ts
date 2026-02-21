@@ -543,6 +543,8 @@ export const gameNodes: Record<string, GameNode> = {
       'To the east: a heavy door marked ARCHIVES.\n' +
       'To the west: a corridor continues toward\n' +
       'what sounds like voices.\n' +
+      'Between two dead monitors: a recessed door,\n' +
+      'half-hidden behind a nest of conduit pipes.\n' +
       'At the far end: something tall.\n' +
       'A tower that should not fit inside.',
     location: 'CORRIDOR NORTH',
@@ -557,6 +559,7 @@ export const gameNodes: Record<string, GameNode> = {
           'To the west: voices — the Guild, and beyond,\n' +
           'a fork you did not notice before.\n' +
           'A dead zone. Off the maps.\n' +
+          'Between two dead monitors: a recessed door.\n' +
           'At the far end: the signal tower.',
       },
     ],
@@ -607,6 +610,11 @@ export const gameNodes: Record<string, GameNode> = {
         next_node: 'temple_entrance',
         visibilityRequirements: { state: { temple_known: true } },
       },
+      {
+        id: 9,
+        text: 'Try the recessed door — Phosphor Lab',
+        next_node: 'lab_door',
+      },
     ],
   },
 
@@ -628,7 +636,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_monitor: {
     id: 'corridor_north_monitor',
-    type: 'story',
+    type: 'choice',
     content:
       'The cracked monitor.\n\n' +
       'You press your face close to the glass.\n' +
@@ -643,14 +651,14 @@ export const gameNodes: Record<string, GameNode> = {
       'The oldest thing that exists.\n' +
       'It was here before the corridor.\n' +
       'Before the cold room. Before you.\n\n' +
-      'You scrape the inside of the crack.\n' +
-      'Phosphor residue comes away on your fingers.\n' +
-      'It glows faintly. It tastes like static —\n' +
-      'the flavor of electricity remembering\n' +
-      'what it was before it became light.',
+      'Inside the crack, a faint glow.\n' +
+      'Phosphor residue clings to the fractured glass —\n' +
+      'luminescent, unstable, alive with the memory\n' +
+      'of every image this screen ever displayed.\n' +
+      'It would crumble between your fingers.\n' +
+      'You need something to collect it in.',
     location: 'CORRIDOR NORTH',
     effects: {
-      add_item: ['phosphor_residue'],
       set_state: { saw_first_frame: true, temple_known: true },
     },
     conditionalContent: [
@@ -658,7 +666,7 @@ export const gameNodes: Record<string, GameNode> = {
         requirements: { has_item: ['phosphor_residue'] },
         content:
           'You return to the cracked monitor.\n\n' +
-          'You already scraped the phosphor residue.\n' +
+          'You already collected the phosphor residue.\n' +
           'But now, knowing what you saw — the First Frame —\n' +
           'you look again. The monitor\'s warmth\n' +
           'is familiar now. Almost welcoming.\n\n' +
@@ -669,7 +677,28 @@ export const gameNodes: Record<string, GameNode> = {
           'It feels like holding a heartbeat.',
       },
     ],
-    next_node: 'corridor_north_monitor_pixel',
+    choices: [
+      {
+        id: 1,
+        text: 'Scrape the residue into your vial',
+        next_node: 'corridor_north_monitor_scrape',
+        requirements: { has_item: ['glass_vial'] },
+        visibilityRequirements: { has_item: ['phosphor_residue'], has_item_negate: [true] },
+        lockedText: '[You need a container to collect this]',
+      },
+      {
+        id: 2,
+        text: 'Take the First Pixel',
+        next_node: 'corridor_north_take_pixel',
+        requirements: { has_item: ['phosphor_residue'] },
+        visibilityRequirements: { has_item: ['phosphor_residue'] },
+      },
+      {
+        id: 3,
+        text: 'Return to corridor',
+        next_node: 'corridor_north',
+      },
+    ],
   },
 
   corridor_north_monitor_pixel: {
@@ -692,6 +721,32 @@ export const gameNodes: Record<string, GameNode> = {
         next_node: 'corridor_north',
       },
     ],
+  },
+
+  corridor_north_monitor_scrape: {
+    id: 'corridor_north_monitor_scrape',
+    type: 'story',
+    content:
+      'You uncork the glass vial and hold it\n' +
+      'beneath the crack.\n\n' +
+      'Carefully — the way you\'d handle something\n' +
+      'that remembers being alive — you scrape\n' +
+      'the phosphor residue from the fractured glass.\n\n' +
+      'It falls into the vial in soft, luminous flakes.\n' +
+      'Each grain carries a tiny charge,\n' +
+      'a whisper of every image this monitor\n' +
+      'ever held on its surface.\n\n' +
+      'You seal the vial. The residue glows\n' +
+      'against the glass — green-white, pulsing\n' +
+      'with a slow, patient rhythm.\n' +
+      'Like a heartbeat. Like a signal\n' +
+      'waiting to be received.',
+    location: 'CORRIDOR NORTH',
+    effects: {
+      remove_item: ['glass_vial'],
+      add_item: ['phosphor_residue'],
+    },
+    next_node: 'corridor_north_monitor',
   },
 
   corridor_north_take_pixel: {
@@ -728,6 +783,211 @@ export const gameNodes: Record<string, GameNode> = {
       remove_item: ['phosphor_residue'],
     },
     next_node: 'temple_entrance',
+  },
+
+  // ============================================================
+  // PHOSPHOR CALIBRATION LAB — Off Corridor North
+  // ============================================================
+
+  lab_door: {
+    id: 'lab_door',
+    type: 'story',
+    content:
+      'You push aside the conduit pipes.\n' +
+      'They resist — years of corrosion have fused them\n' +
+      'into a single copper-green thicket —\n' +
+      'but they bend enough to reveal the door.\n\n' +
+      'Industrial steel. A porthole window,\n' +
+      'clouded with age, showing nothing inside.\n' +
+      'Stenciled letters, half-eaten by time:\n\n' +
+      '  PHOSPHOR CALIBRATION LABORATORY\n' +
+      '  DISPLAY SYSTEMS DIVISION\n' +
+      '  AUTHORIZED PERSONNEL ONLY\n\n' +
+      'The lock is broken. Has been for years.\n' +
+      'The door groans open on rusted hinges,\n' +
+      'releasing air that tastes of dust\n' +
+      'and something faintly chemical —\n' +
+      'the ghost of solvents that evaporated\n' +
+      'long before you arrived.',
+    location: 'PHOSPHOR LAB',
+    effects: {
+      set_state: { found_lab: true },
+    },
+    next_node: 'lab_interior',
+  },
+
+  lab_interior: {
+    id: 'lab_interior',
+    type: 'choice',
+    content:
+      'The phosphor calibration lab.\n\n' +
+      'A long room, narrow as a coffin,\n' +
+      'lit by a single emergency strip that flickers\n' +
+      'in a tired, orange rhythm. The light catches\n' +
+      'on surfaces that were once precise:\n' +
+      'stainless steel workbenches, now tarnished\n' +
+      'to the color of old teeth.\n\n' +
+      'This is where they built the light.\n\n' +
+      'Calibration rigs line the left wall —\n' +
+      'mechanical arms frozen mid-gesture,\n' +
+      'each one holding a dead CRT tube\n' +
+      'like a specimen in an autopsy.\n' +
+      'Spectral analyzers sit dark on their mounts,\n' +
+      'their dials still pointing to the last reading\n' +
+      'anyone ever cared to take.\n\n' +
+      'The right wall: workbenches cluttered\n' +
+      'with the debris of abandoned research.\n' +
+      'Racks of shattered glass. Chemical stains\n' +
+      'that have become permanent features\n' +
+      'of the countertop — topographical maps\n' +
+      'of spills no one cleaned up.\n\n' +
+      'At the far end: a clipboard hanging\n' +
+      'from a nail on the wall. Paper yellowed.\n' +
+      'Someone\'s last shift.',
+    location: 'PHOSPHOR LAB',
+    choices: [
+      {
+        id: 1,
+        text: 'Examine the workbenches',
+        next_node: 'lab_workbench',
+      },
+      {
+        id: 2,
+        text: 'Study the calibration equipment',
+        next_node: 'lab_equipment',
+      },
+      {
+        id: 3,
+        text: 'Read the clipboard',
+        next_node: 'lab_records',
+      },
+      {
+        id: 4,
+        text: 'Return to corridor',
+        next_node: 'corridor_north',
+      },
+    ],
+  },
+
+  lab_equipment: {
+    id: 'lab_equipment',
+    type: 'story',
+    content:
+      'You approach the calibration rigs.\n\n' +
+      'Each rig holds a cathode ray tube\n' +
+      'in a precision clamp — the kind of device\n' +
+      'that measures things in angstroms,\n' +
+      'in wavelengths of light the eye\n' +
+      'was never meant to distinguish.\n\n' +
+      'The spectral analyzer nearest to you\n' +
+      'still has a reading frozen on its display:\n\n' +
+      '  P22 GREEN — 525nm — DECAY: 60\u03BCs\n\n' +
+      'The phosphor type. The exact wavelength\n' +
+      'of the green that coats every monitor\n' +
+      'in this facility. Someone chose this green.\n' +
+      'Not because it was the brightest\n' +
+      'or the most efficient,\n' +
+      'but because it was the most human —\n' +
+      'the wavelength closest to what the eye\n' +
+      'wants to see in the dark.\n\n' +
+      'You run your finger along a tube.\n' +
+      'The glass is cold, but deep inside,\n' +
+      'you feel it: a faint charge,\n' +
+      'residual and patient,\n' +
+      'like a body that doesn\'t know\n' +
+      'it has stopped breathing.',
+    location: 'PHOSPHOR LAB',
+    next_node: 'lab_interior',
+  },
+
+  lab_records: {
+    id: 'lab_records',
+    type: 'story',
+    content:
+      'The clipboard. Maintenance log.\n' +
+      'Last entry dated — the date is smudged.\n' +
+      'It doesn\'t matter. It was a long time ago.\n\n' +
+      'You read the final entries:\n\n' +
+      '  "Batch 31 phosphor compound showing\n' +
+      '   anomalous persistence. Decay rate\n' +
+      '   exceeds predicted half-life by factor\n' +
+      '   of 200. Glow sustains without input.\n' +
+      '   Recommending containment protocol."\n\n' +
+      '  "Batch 31 moved to cold storage.\n' +
+      '   Lab sealed per directive."\n\n' +
+      '  "UPDATE: Batch 31 not in cold storage.\n' +
+      '   Traces found on monitors in north\n' +
+      '   corridor. Source unknown. Phosphor\n' +
+      '   appears to have migrated on its own.\n' +
+      '   This should not be possible."\n\n' +
+      'The last entry is just one line,\n' +
+      'written in a different hand —\n' +
+      'shakier, pressed harder into the paper:\n\n' +
+      '  "It remembers."',
+    location: 'PHOSPHOR LAB',
+    effects: {
+      set_state: { read_lab_records: true },
+    },
+    next_node: 'lab_interior',
+  },
+
+  lab_workbench: {
+    id: 'lab_workbench',
+    type: 'choice',
+    content:
+      'You lean over the workbench.\n\n' +
+      'Decades of careful work reduced to debris.\n' +
+      'Mortar and pestle, crusted with dried compound.\n' +
+      'A precision scale, its needle bent\n' +
+      'to an angle that measures nothing.\n' +
+      'Pipettes snapped in half. Filter paper\n' +
+      'stained the color of old bruises.\n\n' +
+      'Behind the debris: a test tube rack.\n' +
+      'Most of the tubes are shattered —\n' +
+      'thermal stress, maybe, or just time\n' +
+      'doing what time does to glass.\n\n' +
+      'A few small vials remain intact.\n' +
+      'Laboratory-grade borosilicate,\n' +
+      'designed to hold reactive compounds\n' +
+      'without degrading. Clear glass, cork stoppers.\n' +
+      'They have outlasted everything else\n' +
+      'in this room.',
+    location: 'PHOSPHOR LAB',
+    choices: [
+      {
+        id: 1,
+        text: 'Take a glass vial',
+        next_node: 'lab_take_vial',
+        requirements: { has_item: ['glass_vial'], has_item_negate: [true] },
+        visibilityRequirements: { has_item: ['glass_vial'], has_item_negate: [true] },
+      },
+      {
+        id: 2,
+        text: 'Return to the lab',
+        next_node: 'lab_interior',
+      },
+    ],
+  },
+
+  lab_take_vial: {
+    id: 'lab_take_vial',
+    type: 'story',
+    content:
+      'You select a vial from the rack.\n\n' +
+      'It\'s lighter than you expected.\n' +
+      'The glass is cool and smooth,\n' +
+      'unmarked by whatever happened here.\n' +
+      'The cork stopper is dry but intact —\n' +
+      'it seats firmly when you press it.\n\n' +
+      'A good container. Built to hold\n' +
+      'things that glow, things that react,\n' +
+      'things that remember what they were.\n\n' +
+      'You pocket it.',
+    location: 'PHOSPHOR LAB',
+    effects: {
+      add_item: ['glass_vial'],
+    },
+    next_node: 'lab_interior',
   },
 
   // ============================================================

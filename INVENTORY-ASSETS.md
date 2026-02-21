@@ -55,15 +55,16 @@ Information items stored on physical or digital media. All represent "knowledge 
 
 ---
 
-### Group D: Phosphor Residue (1 item, multi-use consumable)
+### Group D: Phosphor & Lab Equipment (2 items)
 
-A glowing substance that gets used up across several interactions.
+Items related to the Phosphor Calibration Lab and CRT monitor chemistry.
 
 | # | File | Description |
 |---|------|-------------|
-| 9 | `frontend/public/items/phosphor_residue.png` | A glowing substance scraped from a flickering monitor in the north corridor. Multi-use utility: reveals hidden paths (vent, NULL door), accesses the `/null` terminal directory, searches the broadcast room, activates a Temple sensor. Consumed on several uses. |
+| 9 | `frontend/public/items/phosphor_residue.png` | Phosphor residue collected in a glass vial from the cracked monitor in the north corridor. Multi-use utility: reveals hidden paths (vent, NULL door), accesses the `/null` terminal directory, searches the broadcast room, activates a Temple sensor. Consumed on several uses. |
+| 16 | `frontend/public/items/glass_vial.png` | A laboratory-grade borosilicate vial found in the abandoned Phosphor Calibration Lab. Cork-stoppered, designed to hold reactive compounds. Used to collect phosphor residue from the cracked monitor in corridor north. Consumed when filled with residue. |
 
-**Design note**: Should look like a vial, smear, or glob of luminescent material. Bright, unstable glow.
+**Design note**: `phosphor_residue` should look like a corked vial filled with luminescent green-white material, pulsing glow. `glass_vial` should look like the same vial shape but empty/clear, with the cork stopper visible.
 
 ---
 
@@ -120,10 +121,10 @@ Items tied to the broadcast room and signal tower. Both involve transmission and
 | A | `first_pixel`, `spent_first_pixel` | Same object, 2 visual states (bright → drained) |
 | B | `cold_room_key`, `echo_key`, `void_key` | Three keys, each with distinct aesthetic |
 | C | `archivist_log_9`, `root_access_log`, `guild_access_files` | Data/documents, escalating clearance level |
-| D | `phosphor_residue` | Glowing consumable substance |
+| D | `phosphor_residue`, `glass_vial` | Phosphor & lab equipment |
 | E | `guild_sigil` | Faction badge |
 | F | `corrupted_page`, `memory_shard` | Temple/Book of Null artifacts |
 | G | `tape_reel_7`, `signal_tower_code` | Broadcast/signal media |
 | H | `null_fragment` | Void-touched shard |
 
-**Total: 15 assets** (13 unique objects + 1 state variant + 1 faction emblem)
+**Total: 16 assets** (14 unique objects + 1 state variant + 1 faction emblem)

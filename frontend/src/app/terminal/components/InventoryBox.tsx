@@ -92,7 +92,7 @@ function getItemEmoji(name: string): string {
   if (lower.includes('crystal')) return '💎';
   if (lower.includes('interface') || lower.includes('neural')) return '🧠';
   if (lower.includes('sword') || lower.includes('blade')) return '⚔️';
-  if (lower.includes('potion')) return '🧪';
+  if (lower.includes('vial') || lower.includes('potion')) return '🧪';
   if (lower.includes('book') || lower.includes('note')) return '📖';
   if (lower.includes('map')) return '🗺️';
   if (lower.includes('shield')) return '🛡️';

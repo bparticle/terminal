@@ -750,13 +750,14 @@ export class GameEngine {
     try {
       await resetGame();
 
+      const name = this.save?.name || 'Wanderer';
       this.save = {
         wallet_address: this.walletAddress,
         current_node_id: 'start',
         location: 'HUB',
-        game_state: {},
+        game_state: { player_name: name },
         inventory: [],
-        name: this.save?.name || 'Wanderer',
+        name,
       };
 
       this.currentNode = gameNodes['start'];
