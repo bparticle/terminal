@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "extract-states": "node scripts/extract-achievement-states.js",
+    "lint:prose": "node scripts/lint-ai-prose.js",
     "dev": "concurrently -n backend,frontend -c blue,magenta \"pnpm --filter terminal-game-backend dev\" \"pnpm --filter frontend dev\"",
     "build": "node scripts/extract-achievement-states.js && pnpm --filter terminal-game-backend build && pnpm --filter frontend build",
     "start": "concurrently -n backend,frontend -c blue,magenta \"pnpm --filter terminal-game-backend start\" \"pnpm --filter frontend start\""

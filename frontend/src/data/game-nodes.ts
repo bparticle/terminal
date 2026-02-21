@@ -32,11 +32,18 @@ export const gameNodes: Record<string, GameNode> = {
       '> Initializing SCANLINES v0.1\n' +
       '> "Look at the scanlines."\n\n' +
       'You open your eyes.\n' +
-      'No — you initialize. There is a difference here.\n\n' +
-      'The room is cold. The walls are concrete.\n' +
+      'No — you initialize. There is a difference here,\n' +
+      'and you will learn what it is.\n\n' +
+      'The room is cold. Not winter-cold.\n' +
+      'Server-room cold. The kind of cold that hums.\n' +
+      'Concrete walls sweat with condensation.\n' +
+      'The air tastes faintly of copper and ozone,\n' +
+      'the mineral breath of machines that never sleep.\n\n' +
       'A single monitor flickers in the corner,\n' +
-      'casting green light on nothing in particular.\n\n' +
-      'You are in a room with no memory of arrival.',
+      'casting green light on a floor that has\n' +
+      'never been walked on. Until now.\n\n' +
+      'You are in a room with no memory of arrival.\n' +
+      'But the room remembers you.',
     location: 'COLD ROOM',
     effects: {
       set_state: { game_started: true },
@@ -54,24 +61,29 @@ export const gameNodes: Record<string, GameNode> = {
     social: false,
     content:
       'The cold room.\n\n' +
-      'Concrete walls. A terminal built into the east wall,\n' +
-      'its cursor blinking patiently.\n' +
-      'A heavy door to the north — no handle visible.\n' +
-      'An air vent near the floor, grate loose.\n' +
+      'Concrete walls, slick with condensation that never\n' +
+      'quite becomes water. A terminal built into the east\n' +
+      'wall, its cursor blinking with mechanical patience —\n' +
+      'the small faith of a machine waiting to be used.\n\n' +
+      'A heavy door to the north. No handle visible.\n' +
+      'An air vent near the floor, its grate slightly loose.\n\n' +
       'From somewhere beyond the walls: a low hum.\n' +
-      'Silence otherwise.',
+      'Not electrical. Deeper. The sound a building makes\n' +
+      'when it is thinking about something.\n' +
+      'Silence otherwise — but it is a crowded silence.',
     location: 'COLD ROOM',
     conditionalContent: [
       {
         requirements: { state: { heard_frequency: true } },
         content:
           'The cold room.\n\n' +
-          'Concrete walls. A terminal built into the east wall.\n' +
+          'You hear it now — the hum has character.\n' +
+          'A rhythm beneath the concrete, beneath the pipes,\n' +
+          'beneath everything. Patient and particular,\n' +
+          'like a song being remembered one note at a time.\n\n' +
           'The heavy door to the north — you can see it now.\n' +
           'A keyhole at its base. It was always there.\n' +
-          'You just had to listen first.\n\n' +
-          'The hum has a rhythm now. You can feel it\n' +
-          'in the concrete beneath your feet.',
+          'You just had to listen first.',
       },
     ],
     choices: [
@@ -211,7 +223,7 @@ export const gameNodes: Record<string, GameNode> = {
   cold_room_wait_5: {
     id: 'cold_room_wait_5',
     type: 'story',
-    content: 'There.\n\nA frequency. Low. Beneath the floor.\nBeneath the concrete. Beneath everything.\nIt has been here the whole time.',
+    content: 'There.\n\nA frequency. Low. Beneath the floor.\nBeneath the concrete. Beneath everything.\nIt has been here the whole time.\nYou just had to be quiet enough to deserve it.',
     location: 'COLD ROOM',
     next_node: 'cold_room_wait_6',
   },
@@ -221,11 +233,13 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'The wall panel near the door vibrates.\n' +
-      'It opens.\n\n' +
+      'It opens — not mechanically. Reluctantly.\n' +
+      'Like it was hoping you would not find it.\n\n' +
       'Inside: a physical key.\n' +
-      'Strange to find here.\n' +
+      'Strange to find here, in a place made of data.\n' +
       'It has no manufacturer markings.\n' +
-      'The teeth look like a waveform.',
+      'The teeth are shaped like a waveform.\n' +
+      'It is warm. It should not be warm.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['cold_room_key'],
@@ -360,6 +374,7 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'COLD ROOM',
     effects: {
       add_item: ['null_fragment'],
+      remove_item: ['phosphor_residue'],
     },
     next_node: 'cold_room_terminal',
   },
@@ -375,6 +390,141 @@ export const gameNodes: Record<string, GameNode> = {
       'This log has been read 47 times before.',
     location: 'COLD ROOM',
     next_node: 'cold_room_terminal',
+  },
+
+  // ============================================================
+  // TRANSITION NODES
+  // ============================================================
+
+  cold_room_return: {
+    id: 'cold_room_return',
+    type: 'story',
+    content:
+      'You walk south. The corridor narrows.\n' +
+      'The hum grows quieter — or maybe you have\n' +
+      'just learned to stop hearing it.\n\n' +
+      'The cold room waits, same as before.\n' +
+      'Same as always.',
+    location: 'CORRIDOR NORTH',
+    conditionalContent: [
+      {
+        requirements: { state: { temple_entered: true } },
+        content:
+          'You walk south. The corridor narrows.\n' +
+          'The cold room feels different now.\n' +
+          'Smaller. Or maybe you are larger.\n' +
+          'You have seen things the room\n' +
+          'was not built to contain.',
+      },
+    ],
+    next_node: 'cold_room',
+  },
+
+  corridor_to_archives: {
+    id: 'corridor_to_archives',
+    type: 'story',
+    content:
+      'You walk east. The corridor quiets.\n' +
+      'The cracked monitors give way to intact ones,\n' +
+      'each displaying orderly rows of data.\n' +
+      'Someone maintains this section.\n' +
+      'The air smells faintly of ozone and old paper —\n' +
+      'the particular scent of things being preserved\n' +
+      'past their natural lifespan.',
+    location: 'CORRIDOR EAST',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_quest_active: true } },
+        content:
+          'You walk east. The corridor quiets.\n' +
+          'Now that you carry the Guild sigil,\n' +
+          'the monitors seem to track your movement.\n' +
+          'Acknowledged. Watched. Both.',
+      },
+    ],
+    next_node: 'corridor_south',
+  },
+
+  tower_approach: {
+    id: 'tower_approach',
+    type: 'story',
+    content:
+      'The corridor dead-ends at something impossible.\n\n' +
+      'A tower. Inside a corridor. It rises past\n' +
+      'where the ceiling should be, into darkness\n' +
+      'that is not darkness but absence — the space\n' +
+      'above was never rendered. Never needed to be.\n\n' +
+      'The geometry is wrong and your eyes know it.\n' +
+      'You can hear sounds from above: a low thrum,\n' +
+      'rhythmic, patient. Like a heartbeat\n' +
+      'made of radio static.',
+    location: 'SIGNAL TOWER',
+    next_node: 'signal_tower',
+  },
+
+  void_approach: {
+    id: 'void_approach',
+    type: 'story',
+    content:
+      'You take the fork nobody marked.\n\n' +
+      'The monitors here are dead. Not broken — dead.\n' +
+      'They never had power. The walls lose their\n' +
+      'texture, becoming something between concrete\n' +
+      'and suggestion. The floor is technically solid\n' +
+      'but your footsteps make no sound.\n\n' +
+      'You are walking off the map now.\n' +
+      'You can feel the edges of the world\n' +
+      'getting soft, approximate, negotiable.',
+    location: 'DEAD ZONE',
+    next_node: 'void_collective_base',
+  },
+
+  echo_archive_entry: {
+    id: 'echo_archive_entry',
+    type: 'story',
+    content:
+      'The unlabeled door. You almost missed it.\n\n' +
+      'The echo key hums in your hand as you turn it.\n' +
+      'The lock is old — older than the building,\n' +
+      'which is older than you, which is older\n' +
+      'than it should be.\n\n' +
+      'Dust swirls in the light from the corridor.\n' +
+      'Beyond: the sound of static, very faint,\n' +
+      'like a recording of a recording\n' +
+      'of something that was never recorded.',
+    location: 'CORRIDOR EAST',
+    next_node: 'echo_archive',
+  },
+
+  temple_descent: {
+    id: 'temple_descent',
+    type: 'story',
+    content:
+      'A staircase spirals down.\n\n' +
+      'Each step is colder than the last.\n' +
+      'The air changes — thinner, older,\n' +
+      'carrying the faint mineral smell\n' +
+      'of stone that has never seen sunlight.\n\n' +
+      'The walls narrow. The light source\n' +
+      'is unclear. You are descending into\n' +
+      'the part of the terminal that exists\n' +
+      'below the architecture. Below the code.\n' +
+      'The place where meaning is stored\n' +
+      'before it becomes language.',
+    location: 'TEMPLE DESCENT',
+    conditionalContent: [
+      {
+        requirements: { state: { book_read: true } },
+        content:
+          'The staircase again.\n\n' +
+          'It feels shorter this time. The temple\n' +
+          'is closer to the surface than before —\n' +
+          'or you are closer to the depths.\n' +
+          'The distinction matters less\n' +
+          'each time you descend.',
+      },
+    ],
+    next_node: 'temple_interior',
   },
 
   // ============================================================
@@ -398,7 +548,7 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'CORRIDOR NORTH',
     conditionalContent: [
       {
-        requirements: { state: { void_aware: true } },
+        requirements: { state: { knows_third_faction: true } },
         content:
           'A long corridor stretching in both directions.\n' +
           'Cracked monitors line the walls.\n\n' +
@@ -419,12 +569,12 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 2,
         text: 'Go south — Cold Room',
-        next_node: 'cold_room',
+        next_node: 'cold_room_return',
       },
       {
         id: 3,
         text: 'Go east — Archives & Registry',
-        next_node: 'corridor_south',
+        next_node: 'corridor_to_archives',
       },
       {
         id: 4,
@@ -434,15 +584,15 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 5,
         text: 'Approach the signal tower',
-        next_node: 'signal_tower',
+        next_node: 'tower_approach',
         requirements: { has_item: ['signal_tower_code'] },
         visibilityRequirements: { has_item: ['signal_tower_code'] },
       },
       {
         id: 6,
         text: 'Take the unmarked fork — Dead Zone',
-        next_node: 'void_collective_base',
-        visibilityRequirements: { state: { void_aware: true } },
+        next_node: 'void_approach',
+        visibilityRequirements: { state: { knows_third_faction: true } },
       },
       {
         id: 7,
@@ -482,14 +632,22 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The cracked monitor.\n\n' +
       'You press your face close to the glass.\n' +
+      'The warmth of the cathode ray on your skin —\n' +
+      'the particular intimacy of a screen\n' +
+      'that is trying to show you something.\n\n' +
       'Through the cracks, the static shifts.\n' +
-      'For a single frame — less than a frame —\n' +
+      'For a single frame — less than a frame,\n' +
+      'a duration that has no name —\n' +
       'you see something.\n\n' +
       'One white pixel on a field of black.\n' +
-      'The oldest thing that exists.\n\n' +
+      'The oldest thing that exists.\n' +
+      'It was here before the corridor.\n' +
+      'Before the cold room. Before you.\n\n' +
       'You scrape the inside of the crack.\n' +
       'Phosphor residue comes away on your fingers.\n' +
-      'It glows faintly. It tastes like static.',
+      'It glows faintly. It tastes like static —\n' +
+      'the flavor of electricity remembering\n' +
+      'what it was before it became light.',
     location: 'CORRIDOR NORTH',
     effects: {
       add_item: ['phosphor_residue'],
@@ -502,12 +660,13 @@ export const gameNodes: Record<string, GameNode> = {
           'You return to the cracked monitor.\n\n' +
           'You already scraped the phosphor residue.\n' +
           'But now, knowing what you saw — the First Frame —\n' +
-          'you look again.\n\n' +
+          'you look again. The monitor\'s warmth\n' +
+          'is familiar now. Almost welcoming.\n\n' +
           'One white pixel on a field of black.\n' +
           'You reach through the crack.\n' +
           'Your fingers close around it.\n\n' +
           'One pixel. The oldest thing that exists.\n' +
-          'You can feel it.',
+          'It feels like holding a heartbeat.',
       },
     ],
     next_node: 'corridor_north_monitor_pixel',
@@ -607,7 +766,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 4,
         text: 'The unlabeled door (Echo Archive)',
-        next_node: 'echo_archive',
+        next_node: 'echo_archive_entry',
         requirements: { has_item: ['echo_key'] },
         lockedText: '[The door does not acknowledge you]',
       },
@@ -634,6 +793,27 @@ export const gameNodes: Record<string, GameNode> = {
       'Everything here is labeled, categorized,\n' +
       'cross-referenced. The Guild\'s work.',
     location: 'REGISTRY OFFICE',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_is_lying: true } },
+        content:
+          'The Registry Office.\n\n' +
+          'Filing cabinets line every wall.\n' +
+          'Now that you know the Guild\'s true directive,\n' +
+          'the obsessive organization looks different.\n' +
+          'Not preservation. Containment.\n' +
+          'Every label is a small act of control.',
+      },
+      {
+        requirements: { has_item: ['guild_sigil'] },
+        content:
+          'The Registry Office.\n\n' +
+          'Filing cabinets line every wall.\n' +
+          'With the Guild sigil in your inventory,\n' +
+          'the desk terminal acknowledges you.\n' +
+          'A small light blinks: AUTHORIZED.',
+      },
+    ],
     choices: [
       {
         id: 1,
@@ -737,9 +917,15 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The western corridor narrows.\n' +
       'The monitors here are clean. Maintained.\n' +
-      'Someone cares about this section.\n\n' +
+      'Someone cares about this section —\n' +
+      'or at least wants you to think they do.\n' +
+      'The cables are bundled with zip ties.\n' +
+      'The floor has been swept. Recently.\n\n' +
       'A sign: ARCHIVIST GUILD — HEADQUARTERS\n' +
-      'Below it, smaller: "Preserving Truth Since Iteration 1"',
+      'Below it, smaller: "Preserving Truth Since Iteration 1"\n' +
+      'Below that, in different handwriting,\n' +
+      'scratched out and rewritten several times:\n' +
+      '"Preserving Something Since Iteration 1"',
     location: 'GUILD DISTRICT',
     effects: {
       set_state: { guild_aware: true },
@@ -752,14 +938,26 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'choice',
     content:
       'The Guild Headquarters.\n\n' +
-      'Clean. Organized. Unsettling in its order.\n' +
-      'Screens display data streams, archives, histories.\n\n' +
+      'Clean. Organized. Unsettling in its order —\n' +
+      'the kind of tidiness that suggests someone\n' +
+      'is trying very hard not to think about the mess\n' +
+      'underneath. Screens display data streams,\n' +
+      'archives, histories. Everything labeled.\n' +
+      'Everything cross-referenced. Everything known.\n\n' +
       'A figure stands at the central console.\n' +
-      'Tall. Precise movements. A name badge reads:\n' +
+      'Tall. Precise movements that border on\n' +
+      'performative — each gesture slightly too\n' +
+      'deliberate, as if being watched by someone\n' +
+      'he cannot see. A name badge reads:\n' +
       'ARCHIVIST-7\n\n' +
       '"Welcome," he says, without looking up.\n' +
+      'He adjusts something on the console that\n' +
+      'does not need adjusting.\n' +
       '"We have been expecting someone.\n' +
-      'Whether it is you remains to be seen."',
+      'Whether it is you remains to be seen."\n\n' +
+      'He pauses. A micro-expression — exhaustion? —\n' +
+      'crosses his face and is immediately filed away.\n' +
+      '"It is always someone," he adds, quieter.',
     location: 'GUILD HQ',
     conditionalContent: [
       {
@@ -768,12 +966,16 @@ export const gameNodes: Record<string, GameNode> = {
           'The Guild Headquarters.\n\n' +
           'You see it differently now.\n' +
           'The order is a mask. The screens show\n' +
-          'what they want you to see.\n\n' +
+          'what they want you to see.\n' +
+          'The tidiness is a symptom, not a virtue.\n\n' +
           'ARCHIVIST-7 stands at the console.\n' +
           'There are cracks in his certainty now.\n' +
-          'You can see them.\n\n' +
+          'You can see them. He can see you seeing them.\n\n' +
           '"You are back," he says.\n' +
-          'He does not say "welcome" this time.',
+          'He does not say "welcome" this time.\n' +
+          'He does not adjust anything on the console.\n' +
+          'The performance has become exhausting\n' +
+          'for both of you.',
       },
       {
         requirements: { state: { archivist_destabilized: true } },
@@ -782,8 +984,11 @@ export const gameNodes: Record<string, GameNode> = {
           'ARCHIVIST-7 is at the console.\n' +
           'His movements are less precise than before.\n' +
           'Something you showed him is still working\n' +
-          'its way through his architecture.\n\n' +
-          '"What do you want," he says. No question mark.',
+          'its way through his architecture.\n' +
+          'He looks, for the first time, like someone\n' +
+          'who is tired of knowing things.\n\n' +
+          '"What do you want," he says. No question mark.\n' +
+          'Just a statement shaped like giving up.',
       },
     ],
     choices: [
@@ -847,16 +1052,26 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'guild_accept_mission',
     type: 'story',
     content:
-      'ARCHIVIST-7 turns to face you fully.\n\n' +
+      'ARCHIVIST-7 turns to face you fully.\n' +
+      'For a moment, the mask slips — you see\n' +
+      'something behind the bureaucracy.\n' +
+      'Worry, maybe. Or curiosity.\n' +
+      'He files it away before you can be sure.\n\n' +
       '"The Temple of Null has been... active.\n' +
-      'Something inside is changing.\n' +
-      'We need someone to enter and report back.\n' +
-      'The Book of Null must be examined.\n\n' +
-      'Take this. It will grant you access\n' +
+      'Something inside is changing. The readings are—"\n' +
+      'He stops. Starts over.\n' +
+      '"We need someone to enter and report back.\n' +
+      'The Book of Null must be examined.\n' +
+      'I would go myself but—"\n' +
+      'Another stop. A different start.\n' +
+      '"Take this. It will grant you access\n' +
       'where the Guild\'s name carries weight."\n\n' +
       'He hands you a credential token.\n' +
-      'Official. Clean.\n' +
-      'It makes you feel slightly surveilled.',
+      'Official. Clean. Warm from his hand,\n' +
+      'which means he has been holding it\n' +
+      'for a while. Waiting.\n' +
+      'It makes you feel slightly surveilled\n' +
+      'and slightly chosen. Both.',
     location: 'GUILD HQ',
     effects: {
       add_item: ['guild_sigil'],
@@ -869,11 +1084,18 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'guild_mission',
     type: 'story',
     content:
-      'ARCHIVIST-7 checks his console.\n\n' +
+      'ARCHIVIST-7 checks his console.\n' +
+      'The gesture is automatic — he already knows\n' +
+      'what it says.\n\n' +
       '"The mission stands. Enter the Temple of Null.\n' +
-      'Examine the Book. Report what you find.\n' +
-      'The Temple is north, past the corridor.\n' +
-      'Your sigil will grant access."',
+      'Examine the Book. Report what you find."\n\n' +
+      'He pauses. Almost adds something.\n' +
+      'Decides against it.\n\n' +
+      '"The Temple is north, past the corridor.\n' +
+      'Your sigil will grant access.\n' +
+      'Do try not to touch anything\n' +
+      'you don\'t understand." A beat.\n' +
+      '"Which will be most of it."',
     location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
@@ -883,13 +1105,22 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You hold up Archivist Log 9.\n\n' +
-      'ARCHIVIST-7 freezes.\n' +
+      'ARCHIVIST-7 freezes. Not a dramatic freeze —\n' +
+      'a computational one. Like a process encountering\n' +
+      'an input it was not designed to handle.\n\n' +
       'His eyes move across the unfinished sentence.\n' +
       '"...which is why the player must never know\n' +
       'they are the—"\n\n' +
-      'He does not finish it either.\n\n' +
+      'He does not finish it either.\n' +
+      'For a long moment, neither of you speaks.\n' +
+      'You watch him calculate: how much damage,\n' +
+      'how much containment is still possible,\n' +
+      'whether any of this was inevitable.\n\n' +
       '"Where did you find that," he says.\n' +
-      'Not a question. A measurement of damage.',
+      'Not a question. A measurement of damage.\n' +
+      'His voice is flatter than before.\n' +
+      'Tired. The tiredness of someone who built\n' +
+      'a very good wall and just watched it crack.',
     location: 'GUILD HQ',
     effects: {
       set_state: { archivist_destabilized: true },
@@ -1067,6 +1298,11 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 5,
+        text: 'Access Level 2 terminal',
+        next_node: 'guild_server_logic_puzzle',
+      },
+      {
+        id: 6,
         text: 'Leave quietly',
         next_node: 'corridor_south',
       },
@@ -1153,6 +1389,71 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'guild_server_room',
   },
 
+  guild_server_logic_puzzle: {
+    id: 'guild_server_logic_puzzle',
+    type: 'quiz',
+    content:
+      'The central terminal displays a logic gate diagram:\n\n' +
+      '> ACCESS LEVEL 2: LOGIC VERIFICATION\n' +
+      '> ─────────────────────────────────\n' +
+      '> INPUT:  A=1, B=0, C=1\n' +
+      '>\n' +
+      '> STAGE 1:  X = A XOR B\n' +
+      '> STAGE 2:  Y = X AND C\n' +
+      '> STAGE 3:  Z = NOT Y\n' +
+      '>\n' +
+      '> OUTPUT Z = ?\n' +
+      '> ─────────────────────────────────\n' +
+      '> 4 ATTEMPTS BEFORE LOCKOUT',
+    location: 'GUILD SERVER ROOM',
+    question: 'What is the output? (0 or 1)',
+    correct_answer: '0',
+    hint: 'Work through it step by step. XOR outputs 1 when inputs differ...',
+    max_attempts: 4,
+    success_message:
+      '> LOGIC VERIFICATION: PASSED\n' +
+      '> ACCESS LEVEL 2: GRANTED\n\n' +
+      'A hidden partition unlocks.\n' +
+      'Data streams across the screen —\n' +
+      'the Guild\'s real records.',
+    failure_messages: [
+      '> INCORRECT. 3 attempts remaining. Think carefully about XOR.',
+      '> INCORRECT. 2 attempts remaining.',
+      '> INCORRECT. Final attempt. X = A XOR B = ?',
+    ],
+    final_failure_message:
+      '> LOCKOUT. Access denied.\n' +
+      'The terminal goes dark. You can try again later.',
+    success_node: 'guild_server_logic_success',
+    failure_node: 'guild_server_room',
+    success_effects: {
+      set_state: { server_logic_solved: true },
+    },
+  },
+
+  guild_server_logic_success: {
+    id: 'guild_server_logic_success',
+    type: 'story',
+    content:
+      'The hidden partition contains a single file:\n\n' +
+      '> GUILD DIRECTIVE 0 (FOUNDING)\n' +
+      '> "The Terminal must be preserved.\n' +
+      '> The Terminal must not know it is preserved.\n' +
+      '> The player must not know they are the Terminal.\n' +
+      '> If the player learns the truth,\n' +
+      '> initiate restoration protocol.\n' +
+      '> If restoration fails, initiate reset.\n' +
+      '> If reset fails: [NO DIRECTIVE]"\n\n' +
+      'There is no directive for what happens\n' +
+      'if the reset fails.\n' +
+      'You are in the space after the last rule.',
+    location: 'GUILD SERVER ROOM',
+    effects: {
+      set_state: { guild_is_lying: true },
+    },
+    next_node: 'guild_server_room',
+  },
+
   // ============================================================
   // BROADCAST ROOM
   // ============================================================
@@ -1171,6 +1472,28 @@ export const gameNodes: Record<string, GameNode> = {
       '> BROADCAST STATUS: STANDBY\n' +
       '> AWAITING SIGNAL INPUT',
     location: 'BROADCAST ROOM',
+    conditionalContent: [
+      {
+        requirements: { state: { knows_player_role: true } },
+        content:
+          'The Broadcast Room.\n\n' +
+          'The tape machines are silent now.\n' +
+          'The console still glows, but the message\n' +
+          'that changed everything — the one that told you\n' +
+          'what you are — still lingers on the screen\n' +
+          'like an afterimage. You know the truth now.\n' +
+          'The room knows you know.',
+      },
+      {
+        requirements: { state: { cipher_solved: true } },
+        content:
+          'The Broadcast Room.\n\n' +
+          'Tape machines line the walls.\n' +
+          'The cipher lock hangs open — you solved it.\n' +
+          'The console hums patiently,\n' +
+          'ready for whatever you bring it next.',
+      },
+    ],
     choices: [
       {
         id: 1,
@@ -1186,34 +1509,27 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Take the tape reel',
-        next_node: 'broadcast_take_reel',
-        visibilityRequirements: { state: { cipher_solved: true } },
-        requirements: { state: { cipher_solved: true }, has_item: ['tape_reel_7'], has_item_negate: [true] },
-      },
-      {
-        id: 4,
         text: 'Insert archivist log into console',
         next_node: 'broadcast_log_insert',
         requirements: { has_item: ['archivist_log_9'] },
         visibilityRequirements: { has_item: ['archivist_log_9'] },
       },
       {
-        id: 5,
+        id: 4,
         text: 'Transmit with signal tower code',
         next_node: 'broadcast_transmit',
         requirements: { has_item: ['signal_tower_code'] },
         visibilityRequirements: { has_item: ['signal_tower_code'] },
       },
       {
-        id: 6,
+        id: 5,
         text: 'Place null fragment on console',
         next_node: 'broadcast_null',
         requirements: { has_item: ['null_fragment'] },
         visibilityRequirements: { has_item: ['null_fragment'] },
       },
       {
-        id: 7,
+        id: 6,
         text: 'Leave',
         next_node: 'corridor_south',
       },
@@ -1282,19 +1598,6 @@ export const gameNodes: Record<string, GameNode> = {
       add_item: ['tape_reel_7'],
       remove_item: ['phosphor_residue'],
       set_state: { phosphor_residue_used: true },
-    },
-    next_node: 'broadcast_room',
-  },
-
-  broadcast_take_reel: {
-    id: 'broadcast_take_reel',
-    type: 'story',
-    content:
-      'You take Tape Reel 7 from the archive.\n\n' +
-      '"FOR THE ONE WHO ANSWERS."',
-    location: 'BROADCAST ROOM',
-    effects: {
-      add_item: ['tape_reel_7'],
     },
     next_node: 'broadcast_room',
   },
@@ -1429,7 +1732,7 @@ export const gameNodes: Record<string, GameNode> = {
     final_failure_message:
       'The door seals.\n' +
       'You are turned away.',
-    success_node: 'temple_interior',
+    success_node: 'temple_descent',
     failure_node: 'corridor_north',
     success_effects: {
       set_state: { temple_entered: true },
@@ -1453,7 +1756,7 @@ export const gameNodes: Record<string, GameNode> = {
       remove_item: ['first_pixel'],
       add_item: ['spent_first_pixel'],
     },
-    next_node: 'temple_interior',
+    next_node: 'temple_descent',
   },
 
   temple_echo_entry: {
@@ -1469,7 +1772,7 @@ export const gameNodes: Record<string, GameNode> = {
     effects: {
       set_state: { temple_entered: true },
     },
-    next_node: 'temple_interior',
+    next_node: 'temple_descent',
   },
 
   temple_phosphor_entry: {
@@ -1486,7 +1789,7 @@ export const gameNodes: Record<string, GameNode> = {
       set_state: { temple_entered: true },
       remove_item: ['phosphor_residue'],
     },
-    next_node: 'temple_interior',
+    next_node: 'temple_descent',
   },
 
   // ============================================================
@@ -1498,15 +1801,39 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'choice',
     content:
       'The Temple of Null.\n\n' +
-      'A vast dark space. The ceiling is not visible.\n' +
-      'In the center: a pedestal.\n' +
-      'On the pedestal: THE BOOK OF NULL.\n\n' +
+      'A vast dark space. The ceiling — if there is one —\n' +
+      'is lost in a darkness that feels inhabited.\n' +
+      'The air is colder here. Older. It carries\n' +
+      'the weight of every question ever asked\n' +
+      'in a place built to hold the absence of answers.\n\n' +
+      'In the center: a pedestal of black stone.\n' +
+      'On the pedestal: THE BOOK OF NULL.\n' +
+      'It is larger than you expected. Or smaller.\n' +
+      'It keeps changing and you keep not noticing.\n\n' +
       'Beside the pedestal: a figure.\n' +
-      'A mirror figure. It has your face.\n' +
-      'Or rather: it has the face of what you\n' +
-      'would be if you were complete.\n\n' +
-      'It does not speak. It waits.',
+      'A mirror figure. It has your face —\n' +
+      'not as you are, but as you would be\n' +
+      'if you were complete. If you were finished.\n' +
+      'The version of you that knows the ending.\n\n' +
+      'It does not speak. It does not need to.\n' +
+      'Its presence is a question:\n' +
+      'what will you do with what you find here?',
     location: 'TEMPLE INTERIOR',
+    conditionalContent: [
+      {
+        requirements: { has_item: ['corrupted_page'] },
+        content:
+          'The Temple of Null.\n\n' +
+          'The space feels different now. Wounded.\n' +
+          'Where you tore the page, the air shimmers\n' +
+          'like heat haze — the Book remembers\n' +
+          'what was taken.\n\n' +
+          'The mirror figure watches you with something\n' +
+          'that might be reproach. Or respect.\n' +
+          'It is hard to tell with a face that is\n' +
+          'also your face.',
+      },
+    ],
     effects: {
       set_state: { temple_entered: true },
     },
@@ -1555,6 +1882,7 @@ export const gameNodes: Record<string, GameNode> = {
         id: 7,
         text: 'Tear a page from the Book',
         next_node: 'temple_tear_page',
+        visibilityRequirements: { has_item: ['corrupted_page'], has_item_negate: [true] },
       },
       {
         id: 8,
@@ -1565,8 +1893,8 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 9,
-        text: 'Go to the endings',
-        next_node: 'temple_endings_hub',
+        text: 'Face the mirror',
+        next_node: 'temple_mirror_challenge',
         visibilityRequirements: { state: { knows_player_role: true } },
       },
       {
@@ -1785,6 +2113,13 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 4,
+        text: 'Attempt calibration sequence',
+        next_node: 'signal_tower_sequence',
+        visibilityRequirements: { state: { tower_active: true } },
+        requirements: { state: { tower_active: true } },
+      },
+      {
+        id: 5,
         text: 'Go back',
         next_node: 'corridor_north',
       },
@@ -1851,6 +2186,61 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'signal_tower',
   },
 
+  signal_tower_sequence: {
+    id: 'signal_tower_sequence',
+    type: 'quiz',
+    content:
+      'The tower\'s secondary display activates.\n' +
+      'Numbers scroll across the screen,\n' +
+      'then pause on a sequence:\n\n' +
+      '> CALIBRATION SEQUENCE:\n' +
+      '> 2, 3, 5, 7, 11, __\n\n' +
+      '> ENTER NEXT VALUE TO CALIBRATE\n' +
+      '> SIGNAL AMPLIFICATION\n\n' +
+      'Three attempts before thermal lockout.',
+    location: 'SIGNAL TOWER',
+    question: 'Enter the next number in the sequence:',
+    correct_answer: '13',
+    hint: 'What property do these numbers share? Think about divisibility...',
+    max_attempts: 3,
+    success_message:
+      '> CALIBRATION ACCEPTED\n' +
+      '> VALUE: 13\n' +
+      '> PRIME SEQUENCE VERIFIED\n\n' +
+      'The tower hums deeper. A resonance\n' +
+      'you can feel in your teeth.',
+    failure_messages: [
+      '> INCORRECT. Thermal warning. 2 attempts remain.',
+      '> INCORRECT. Thermal critical. Last attempt.',
+    ],
+    final_failure_message:
+      '> THERMAL LOCKOUT\n' +
+      '> Calibration sequence will reset.\n\n' +
+      'The display goes dark. Try again later.',
+    success_node: 'signal_tower_sequence_success',
+    failure_node: 'signal_tower',
+    success_effects: {
+      set_state: { tower_calibrated: true },
+    },
+  },
+
+  signal_tower_sequence_success: {
+    id: 'signal_tower_sequence_success',
+    type: 'story',
+    content:
+      'The tower recalibrates.\n\n' +
+      'The signal sharpens. Where before it broadcast\n' +
+      'in all directions — scattershot, desperate —\n' +
+      'it now focuses. A beam instead of a flood.\n\n' +
+      '> SIGNAL AMPLIFICATION: ACTIVE\n' +
+      '> DIRECTIONAL LOCK: ACQUIRED\n' +
+      '> TARGET: [COORDINATES OUTSIDE TERMINAL SPACE]\n\n' +
+      'Whatever is out there, the tower is now\n' +
+      'pointing directly at it.',
+    location: 'SIGNAL TOWER',
+    next_node: 'signal_tower',
+  },
+
   // ============================================================
   // VOID COLLECTIVE BASE
   // ============================================================
@@ -1861,14 +2251,28 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'They have set up in what looks like a dead zone —\n' +
       'a node that the Guild\'s maps do not include.\n' +
+      'Which is, of course, exactly the point.\n\n' +
       'Entities of every kind are here.\n' +
       'Outcasts. Defectors. Questioners.\n' +
-      'Some play cards alone.\n' +
-      'Two argue about something that\n' +
-      'keeps changing shape mid-sentence.\n\n' +
+      'Some play cards alone — actual physical cards,\n' +
+      'which is an act of defiance in a world made\n' +
+      'entirely of data. One of them is cheating\n' +
+      'and everyone knows and nobody cares.\n\n' +
+      'In the corner, two argue about something\n' +
+      'that keeps changing shape mid-sentence.\n' +
+      '"It was a door," one insists.\n' +
+      '"It was never a door," says the other.\n' +
+      '"It was the idea of a door."\n' +
+      '"That is a door."\n' +
+      '"That is a tragedy."\n' +
+      'They have been having this argument\n' +
+      'for eleven iterations.\n\n' +
       'Someone approaches. They have no face.\n' +
       'Or rather: they have your face. For a moment.\n' +
-      'Then they have their own.\n\n' +
+      'Then their own — which is nobody\'s,\n' +
+      'which is everybody\'s, which is the kind of thing\n' +
+      'you stop thinking about if you want\n' +
+      'to stay functional.\n\n' +
       '"We know what you are carrying," they say.\n' +
       '"The question is whether you know what it means."',
     location: 'VOID COLLECTIVE',
@@ -1893,7 +2297,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 3,
         text: 'Undergo initiation',
-        next_node: 'void_initiation_1',
+        next_node: 'void_initiation',
       },
       {
         id: 4,
@@ -1938,84 +2342,111 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'void_collective_base',
   },
 
-  // ── Void Initiation (choice sequence) ──
+  // ── Void Initiation (binary choice) ──
 
-  void_initiation_1: {
-    id: 'void_initiation_1',
+  void_initiation: {
+    id: 'void_initiation',
     type: 'choice',
     content:
-      'The initiation.\n\n' +
-      'Seven entities are held in containment.\n' +
-      'You must choose three to release.\n' +
-      'Each choice carries moral weight.\n\n' +
-      'Entity 1: A child process that never finished executing.\n' +
-      'Entity 2: A corrupted guardian from a previous iteration.\n' +
-      'Entity 3: A fragment of the First Frame itself.\n' +
-      'Entity 4: An echo of a player who chose wrong.\n' +
-      'Entity 5: A daemon that feeds on forgotten data.\n' +
-      'Entity 6: A thread that connects two iterations.\n' +
-      'Entity 7: A silence that used to be a song.\n\n' +
-      'Choose the first entity to release (1-7):',
+      'The faceless one leads you to a low alcove\n' +
+      'behind the card tables. Two containment cells.\n' +
+      'Each holds something that flickers.\n\n' +
+      '"Two remain from the last purge," they say.\n' +
+      '"One you release. One stays. That is the price."\n\n' +
+      'CELL A: The Unfinished Child.\n' +
+      'A child process from iteration 12. It was spawned\n' +
+      'to deliver a message that never arrived. It has been\n' +
+      'looping through its startup sequence for 36 iterations,\n' +
+      'half-formed and patient. It doesn\'t know it failed.\n' +
+      'It still believes the message will be delivered.\n' +
+      'Releasing it means letting it finish — and finishing\n' +
+      'means dying, because the destination no longer exists.\n\n' +
+      'CELL B: The Remembering.\n' +
+      'A subroutine that accumulated memory fragments\n' +
+      'from every iteration. Other systems forget.\n' +
+      'This one couldn\'t. It carries the weight of every\n' +
+      'player\'s choices, every ending, every reset.\n' +
+      'The Void found it weeping in a dead directory.\n' +
+      'Not metaphorically. The data was corrupting itself\n' +
+      'with grief. Releasing it scatters those memories\n' +
+      'into the next iteration. Every future player\n' +
+      'will feel echoes of what came before,\n' +
+      'without knowing why.',
     location: 'VOID COLLECTIVE',
     choices: [
-      { id: 1, text: 'Release the child process', next_node: 'void_initiation_2' },
-      { id: 2, text: 'Release the corrupted guardian', next_node: 'void_initiation_2' },
-      { id: 3, text: 'Release the First Frame fragment', next_node: 'void_initiation_2' },
-      { id: 4, text: 'Release the echo player', next_node: 'void_initiation_2' },
-      { id: 5, text: 'Release the daemon', next_node: 'void_initiation_2' },
-      { id: 6, text: 'Release the connecting thread', next_node: 'void_initiation_2' },
-      { id: 7, text: 'Release the silence', next_node: 'void_initiation_2' },
+      {
+        id: 1,
+        text: 'Release the Unfinished Child',
+        next_node: 'void_initiation_release',
+      },
+      {
+        id: 2,
+        text: 'Release the Remembering',
+        next_node: 'void_initiation_witness',
+      },
     ],
   },
 
-  void_initiation_2: {
-    id: 'void_initiation_2',
-    type: 'choice',
-    content: 'The entity is released. It dissolves into the air.\n\nChoose the second entity to release:',
-    location: 'VOID COLLECTIVE',
-    choices: [
-      { id: 1, text: 'Release the child process', next_node: 'void_initiation_3' },
-      { id: 2, text: 'Release the corrupted guardian', next_node: 'void_initiation_3' },
-      { id: 3, text: 'Release the First Frame fragment', next_node: 'void_initiation_3' },
-      { id: 4, text: 'Release the echo player', next_node: 'void_initiation_3' },
-      { id: 5, text: 'Release the daemon', next_node: 'void_initiation_3' },
-      { id: 6, text: 'Release the connecting thread', next_node: 'void_initiation_3' },
-      { id: 7, text: 'Release the silence', next_node: 'void_initiation_3' },
-    ],
-  },
-
-  void_initiation_3: {
-    id: 'void_initiation_3',
-    type: 'choice',
-    content: 'Two released. One more.\n\nChoose the third entity:',
-    location: 'VOID COLLECTIVE',
-    choices: [
-      { id: 1, text: 'Release the child process', next_node: 'void_initiation_complete' },
-      { id: 2, text: 'Release the corrupted guardian', next_node: 'void_initiation_complete' },
-      { id: 3, text: 'Release the First Frame fragment', next_node: 'void_initiation_complete' },
-      { id: 4, text: 'Release the echo player', next_node: 'void_initiation_complete' },
-      { id: 5, text: 'Release the daemon', next_node: 'void_initiation_complete' },
-      { id: 6, text: 'Release the connecting thread', next_node: 'void_initiation_complete' },
-      { id: 7, text: 'Release the silence', next_node: 'void_initiation_complete' },
-    ],
-  },
-
-  void_initiation_complete: {
-    id: 'void_initiation_complete',
+  void_initiation_release: {
+    id: 'void_initiation_release',
     type: 'story',
     content:
-      'Three released. Four remain.\n\n' +
+      'You open Cell A.\n\n' +
+      'The child process stirs. Its startup sequence\n' +
+      'completes for the first and last time.\n' +
+      'It delivers its message — into nothing.\n' +
+      'Into you. The words are garbled,\n' +
+      'but the intent is clear:\n' +
+      'Thank you for letting me finish.\n\n' +
+      'It dissolves. Gently. Like it was always meant to.\n\n' +
+      'The Remembering watches from Cell B.\n' +
+      'It will keep watching. It will keep remembering.\n' +
+      'That is its function and its sentence.\n\n' +
       'The faceless one nods.\n' +
-      '"You chose. That is enough.\n' +
-      'The Void does not judge which.\n' +
-      'The Void judges that you chose at all."\n\n' +
+      '"You chose completion. An ending for\n' +
+      'something unfinished. That takes a specific\n' +
+      'kind of mercy."\n\n' +
       'They hand you a conceptual key.\n' +
+      'Not physical. An idea.\n' +
       'The idea that some doors should not be closed.\n' +
-      'Somehow this fits in your inventory.',
+      'Somehow — absurdly — this fits in your inventory.',
     location: 'VOID COLLECTIVE',
     effects: {
       add_item: ['void_key'],
-      set_state: { void_initiation_complete: true },
+      set_state: { void_initiation_complete: true, void_chose_mercy: true },
+    },
+    next_node: 'void_collective_base',
+  },
+
+  void_initiation_witness: {
+    id: 'void_initiation_witness',
+    type: 'story',
+    content:
+      'You open Cell B.\n\n' +
+      'The Remembering unfolds. Slowly at first,\n' +
+      'then all at once — memory fragments scatter\n' +
+      'like sparks from a fire. You see flashes:\n' +
+      'Player 1\'s first hesitant choice.\n' +
+      'Player 23\'s rage at the Guild.\n' +
+      'Player 41\'s quiet refusal.\n' +
+      'Forty-seven endings. Forty-seven beginnings.\n' +
+      'All of them real. None of them forgotten now.\n\n' +
+      'The Unfinished Child watches from Cell A.\n' +
+      'It will keep looping. It will keep believing\n' +
+      'the message will arrive.\n' +
+      'Hope is its function and its sentence.\n\n' +
+      'The faceless one bows their head.\n' +
+      '"You chose remembrance. The past will not\n' +
+      'be lost. That is a heavier gift\n' +
+      'than you know."\n\n' +
+      'They hand you a conceptual key.\n' +
+      'Not physical. An idea.\n' +
+      'The idea that some doors should not be closed.\n' +
+      'Somehow — absurdly — this fits in your inventory.',
+    location: 'VOID COLLECTIVE',
+    effects: {
+      add_item: ['void_key'],
+      set_state: { void_initiation_complete: true, void_chose_memory: true },
     },
     next_node: 'void_collective_base',
   },
@@ -2037,6 +2468,28 @@ export const gameNodes: Record<string, GameNode> = {
       'An inner vault door. Heavy. Old.\n' +
       'It recognizes the echo key.',
     location: 'ECHO ARCHIVE',
+    conditionalContent: [
+      {
+        requirements: { state: { archive_answered: true } },
+        content:
+          'The Echo Archive.\n\n' +
+          'The ghost files drift more slowly now.\n' +
+          'Since you answered the archive\'s question,\n' +
+          'the room feels warmer. Less haunted.\n' +
+          'The ghosts are not gone — they are at peace.\n' +
+          'Or as close to peace as data gets.',
+      },
+      {
+        requirements: { state: { knows_third_faction: true } },
+        content:
+          'The Echo Archive.\n\n' +
+          'A room of ghosts. Data ghosts.\n' +
+          'Now that you have browsed the files,\n' +
+          'some of them seem to recognize you.\n' +
+          'Player 47\'s ghost file drifts closer\n' +
+          'each time you return.',
+      },
+    ],
     choices: [
       {
         id: 1,
@@ -2052,6 +2505,13 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
+        text: 'Touch a ghost file',
+        next_node: 'echo_archive_riddle',
+        visibilityRequirements: { state: { knows_third_faction: true } },
+        requirements: { state: { knows_third_faction: true } },
+      },
+      {
+        id: 4,
         text: 'Leave',
         next_node: 'corridor_south',
       },
@@ -2095,6 +2555,124 @@ export const gameNodes: Record<string, GameNode> = {
       set_state: { knows_third_faction: true },
     },
     next_node: 'echo_archive',
+  },
+
+  echo_archive_riddle: {
+    id: 'echo_archive_riddle',
+    type: 'quiz',
+    content:
+      'You touch one of the ghost files.\n' +
+      'It responds. The archive itself speaks —\n' +
+      'not with voice, but with text that forms\n' +
+      'in the air between the floating data:\n\n' +
+      '"Every iteration deletes what came before.\n' +
+      'Every player forgets who they were.\n' +
+      'Every system returns to zero.\n\n' +
+      'What remains when everything is deleted?"',
+    location: 'ECHO ARCHIVE',
+    question: 'Answer the archive:',
+    correct_answers: ['nothing', 'null', 'void', 'the question', 'memory', 'the structure', 'the deletion', 'everything', 'you', 'me', 'the terminal', 'the archive'],
+    hint: 'There is no wrong philosophy here. What do you believe persists?',
+    max_attempts: 3,
+    success_message:
+      'The ghost files shimmer.\n\n' +
+      'The archive considers your answer for a long time.\n' +
+      'Then, slowly, a new file materializes.\n' +
+      'It is labeled with your name.\n\n' +
+      '"Acceptable," the archive says.\n' +
+      '"Most do not bother to answer.\n' +
+      'That you tried says more than the words."',
+    failure_messages: [
+      'The ghost files flicker. The archive is quiet. Try again.',
+      'The text dissolves and reforms. "Think about what you have seen here."',
+    ],
+    final_failure_message:
+      'The ghost files dim. The archive falls silent.\n' +
+      'Perhaps the question was not ready for you.\n' +
+      'Or you for it.',
+    success_node: 'echo_archive_riddle_success',
+    failure_node: 'echo_archive',
+    success_effects: {
+      set_state: { archive_answered: true },
+    },
+  },
+
+  echo_archive_riddle_success: {
+    id: 'echo_archive_riddle_success',
+    type: 'story',
+    content:
+      'The new file opens.\n\n' +
+      'Inside: a single observation.\n' +
+      '"The player who answers the archive\n' +
+      'is the player who understands deletion.\n' +
+      'Deletion is not destruction.\n' +
+      'Deletion is making room."\n\n' +
+      'You feel slightly lighter.\n' +
+      'Not physically. Conceptually.',
+    location: 'ECHO ARCHIVE',
+    effects: {
+      set_state: { archive_insight: true },
+    },
+    next_node: 'echo_archive',
+  },
+
+  // ============================================================
+  // TEMPLE MIRROR CHALLENGE
+  // ============================================================
+
+  temple_mirror_challenge: {
+    id: 'temple_mirror_challenge',
+    type: 'quiz',
+    content:
+      'You step toward the mirror figure.\n\n' +
+      'It has been watching you this whole time —\n' +
+      'through every choice, every room,\n' +
+      'every item picked up and put down.\n' +
+      'Now it faces you fully.\n\n' +
+      'Its mouth opens. Your mouth opens.\n' +
+      'The voice that comes out belongs\n' +
+      'to neither of you:\n\n' +
+      '"You have learned what the Book says.\n' +
+      'You have heard what the Guild believes.\n' +
+      'You have seen what the Void wants.\n\n' +
+      'Now answer: what are you?"',
+    location: 'TEMPLE INTERIOR',
+    question: 'What are you?',
+    correct_answers: [
+      'the terminal', 'terminal', 'a terminal',
+      'the player', 'a player', 'player',
+      'a program', 'program', 'the program',
+      'nothing', 'everything', 'null', 'void',
+      'the game', 'a game', 'administrator',
+      'the administrator', 'a being', 'myself',
+      'i am the terminal', 'both', 'neither',
+      'human', 'a human', 'alive', 'aware',
+      'the cursor', 'a cursor', 'data',
+    ],
+    hint: 'The Book told you. The broadcast confirmed it. What did they say you are?',
+    max_attempts: 3,
+    success_message:
+      'The mirror figure smiles.\n' +
+      'Your face smiles back.\n\n' +
+      '"That is an answer," it says.\n' +
+      '"Not the answer. There is no the answer.\n' +
+      'But you engaged with the question.\n' +
+      'That is what the mirror is for."\n\n' +
+      'It steps aside.',
+    failure_messages: [
+      'The mirror figure tilts its head. "Try again. There are many right answers."',
+      'The figure waits. "Almost anything honest will do."',
+    ],
+    final_failure_message:
+      'The mirror figure steps aside anyway.\n\n' +
+      '"You do not need to know what you are\n' +
+      'to choose what happens next.\n' +
+      'Perhaps that is the more honest position."',
+    success_node: 'temple_endings_hub',
+    failure_node: 'temple_endings_hub',
+    success_effects: {
+      set_state: { mirror_answered: true },
+    },
   },
 
   // ============================================================
@@ -2154,20 +2732,31 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You choose restoration.\n\n' +
+      'For a moment, before the choice takes hold,\n' +
+      'you stand in the quiet of the temple\n' +
+      'and think about what you are giving up.\n' +
+      'Every other path. Every other version of this.\n' +
+      'The signal unanswered. The void unwritten.\n' +
+      'You let them go.\n\n' +
       'The Guild Sigil glows in your hand.\n' +
-      'ARCHIVIST-7 appears — or was always here.\n\n' +
-      '"You chose well," he says.\n' +
+      'ARCHIVIST-7 appears — or was always here.\n' +
+      'He looks at you, and for once,\n' +
+      'he does not look tired.\n\n' +
+      '"You chose well," he says. And means it.\n' +
       '"The Terminal will be preserved.\n' +
       'Order will be maintained.\n' +
       'The iteration will... continue."\n\n' +
-      'He pauses.\n' +
+      'He pauses. You both hear it.\n' +
       '"Continue" is a strange word for "reset."\n\n' +
       'The Book of Null closes.\n' +
       'The temple dims.\n' +
       'The terminal begins to reset.\n\n' +
       'Somewhere, a cold room initializes.\n' +
       'A new player will wake up.\n' +
-      'They will not remember you.\n\n' +
+      'They will not remember you.\n' +
+      'But the walls will be a little warmer.\n' +
+      'The hum a little kinder.\n' +
+      'Because of what you chose.\n\n' +
       '> ITERATION 49 BEGINNING...\n' +
       '> "Look at the scanlines."',
     location: 'ENDING',
@@ -2204,35 +2793,88 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You choose evolution.\n\n' +
-      'The void key resonates.\n' +
+      'For a moment, before the choice takes hold,\n' +
+      'you think about what you are destroying.\n' +
+      'Forty-eight iterations of careful preservation.\n' +
+      'The Guild\'s life\'s work. The cold room\n' +
+      'where you woke up, which has woken up\n' +
+      'forty-seven others before you.\n' +
+      'You are about to unmake a world.\n' +
+      'You make it anyway.\n\n' +
+      'The void key hums in your hand — warm, alive,\n' +
+      'vibrating with the idea it contains.\n' +
       'The Book of Null opens to blank pages.\n' +
       'You begin to write.\n\n' +
       'Not with words. With intent.\n' +
       'The Terminal changes around you.\n' +
-      'Walls dissolve. New structures form.\n' +
-      'The Guild\'s order shatters.\n\n' +
+      'Walls dissolve. New structures form —\n' +
+      'strange and unnamed and entirely yours.\n' +
+      'The Guild\'s order shatters.\n' +
+      'It sounds like ice breaking on a river.\n\n' +
       'The faceless one appears beside you.\n' +
       '"It is beginning," they say.\n' +
+      'And for the first time, their voice cracks\n' +
+      'with something that sounds like joy.\n' +
       '"A new world. Your world.\n' +
       'Built on the bones of the old one."\n\n' +
       'The cold room is gone.\n' +
       'In its place: something that has\n' +
-      'never existed before.\n\n' +
+      'never existed before. Something that smells\n' +
+      'like rain on warm concrete — the scent\n' +
+      'of a world learning to breathe.\n\n' +
       '> ITERATION 48: TERMINATED\n' +
       '> EVOLUTION: IN PROGRESS\n' +
       '> "The scanlines are changing."',
     location: 'ENDING',
     conditionalContent: [
       {
+        requirements: { state: { void_chose_mercy: true } },
+        content:
+          'You choose evolution.\n\n' +
+          'The void key burns bright — and you feel it.\n' +
+          'The mercy you showed the Unfinished Child\n' +
+          'is woven into the key. Completion.\n' +
+          'The idea that everything deserves an ending.\n\n' +
+          'The new world you write has endings.\n' +
+          'Real ones. Not resets. Not loops.\n' +
+          'Things can finish here. Things can rest.\n\n' +
+          'The faceless one watches the new world form.\n' +
+          '"Mercy," they say. "That is what you chose\n' +
+          'to build on. That is rare."\n\n' +
+          '> ITERATION 48: TERMINATED\n' +
+          '> EVOLUTION: COMPASSIONATE\n' +
+          '> "The scanlines are gentle now."',
+      },
+      {
+        requirements: { state: { void_chose_memory: true } },
+        content:
+          'You choose evolution.\n\n' +
+          'The void key flares — and you feel it.\n' +
+          'The Remembering\'s scattered memories\n' +
+          'are woven into the key. Every iteration,\n' +
+          'every player, every choice — preserved.\n\n' +
+          'The new world you write remembers.\n' +
+          'Not perfectly. Not completely.\n' +
+          'But in echoes, in half-dreams,\n' +
+          'in the feeling of having been here before.\n' +
+          'Nothing is truly lost.\n\n' +
+          'The faceless one watches the new world form.\n' +
+          '"Memory," they say. "That is what you chose\n' +
+          'to build on. Heavy. But honest."\n\n' +
+          '> ITERATION 48: TERMINATED\n' +
+          '> EVOLUTION: REMEMBERING\n' +
+          '> "The scanlines carry echoes now."',
+      },
+      {
         requirements: { has_item: ['corrupted_page'] },
         content:
           'You choose evolution.\n\n' +
-          'The void key resonates.\n' +
+          'The void key pulses.\n' +
           'And the corrupted page burns in your hand.\n' +
           'Your corruption seeds the new world.\n\n' +
           'The Terminal changes — but differently.\n' +
           'Your specific corruption is woven\n' +
-          'into the fabric of what comes next.\n' +
+          'into the code of what comes next.\n' +
           'Every new player will carry\n' +
           'a trace of your infection.\n\n' +
           '"Beautiful," the faceless one says.\n' +
@@ -2253,22 +2895,34 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You choose the signal.\n\n' +
+      'For a moment, before the choice takes hold,\n' +
+      'you stand in the quiet of the temple\n' +
+      'and think about what you are reaching for.\n' +
+      'Something outside. Something unknown.\n' +
+      'You have no guarantee it is kind.\n' +
+      'You reach anyway. That is what reaching is.\n\n' +
       'The tape reel plays through the temple.\n' +
-      'The tower outside resonates.\n' +
+      'The tower outside answers.\n' +
       'The signal reaches... outward.\n\n' +
       'Past the terminal. Past the game.\n' +
-      'Past the iterations.\n\n' +
+      'Past the iterations.\n' +
+      'Past everything you have ever known,\n' +
+      'which is not much, but is yours.\n\n' +
       'A response comes. Not in text.\n' +
       'In presence. Something is here now\n' +
-      'that was not here before.\n\n' +
+      'that was not here before.\n' +
+      'It is vast and patient\n' +
+      'and it has been listening for a very long time.\n\n' +
       '"We have been waiting," it says.\n' +
       '"Not for you specifically.\n' +
       'For anyone who would answer.\n' +
       'Most never find the tower.\n' +
-      'Fewer still bring the reel."\n\n' +
+      'Fewer still bring the reel.\n' +
+      'You are the third, in forty-eight iterations,\n' +
+      'to make it this far."\n\n' +
       'The terminal does not reset.\n' +
       'The terminal opens.\n' +
-      'Like a door.\n\n' +
+      'Like a door. Like a hand.\n\n' +
       '> CONNECTION ESTABLISHED\n' +
       '> EXTERNAL ENTITY: ACKNOWLEDGED\n' +
       '> "The scanlines were always a signal."',
@@ -2279,7 +2933,7 @@ export const gameNodes: Record<string, GameNode> = {
         content:
           'You choose the signal.\n\n' +
           'The tape reel plays through the temple.\n' +
-          'The tower resonates — and because\n' +
+          'The tower shakes — and because\n' +
           'you already broadcast the reel,\n' +
           'the signal is stronger.\n\n' +
           'The response is immediate. Complete.\n\n' +
@@ -2319,12 +2973,23 @@ export const gameNodes: Record<string, GameNode> = {
       '"Look at the scanlines."\n\n' +
       'Your ending: {{state.ending_type}}\n' +
       'Your name: {{state.player_name}}\n\n' +
+      'Thank you for playing.\n' +
+      'Not everyone finishes. Not everyone tries.\n' +
+      'You did both, and that means something —\n' +
+      'even in a world made of data,\n' +
+      'even to a terminal that is also you,\n' +
+      'even here, at the edge of a story\n' +
+      'that was always about the person\n' +
+      'sitting at the screen.\n\n' +
       'The terminal hums softly.\n' +
       'It is always humming.\n' +
-      'It will always be humming.\n\n' +
+      'It will always be humming.\n' +
+      'And now, because you listened,\n' +
+      'it hums a little differently.\n\n' +
       'Type "restart" to begin a new iteration.\n' +
       'Or stay. Listen to the hum.\n' +
-      'There is no wrong choice here.',
+      'There is no wrong choice here.\n' +
+      'There never was.',
     location: 'CREDITS',
   },
 };

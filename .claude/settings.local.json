@@ -15,7 +15,10 @@
       "Bash(git push:*)",
       "Bash(ss:*)",
       "Bash(netstat:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git show:*)",
+      "Bash(comm:*)",
+      "WebSearch"
     ]
   }
 }
