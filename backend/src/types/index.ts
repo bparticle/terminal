@@ -100,7 +100,7 @@ export interface MintLogEntry {
   signature: string | null;
   nft_name: string;
   nft_metadata: Record<string, any>;
-  status: 'pending' | 'confirmed' | 'failed';
+  status: 'pending' | 'prepared' | 'confirmed' | 'failed' | 'expired';
   error_message: string | null;
   created_at: string;
   confirmed_at: string | null;

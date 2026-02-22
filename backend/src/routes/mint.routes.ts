@@ -12,10 +12,14 @@ import {
   getAllWhitelist,
   bulkAddToWhitelist,
   executeMint,
+  prepareMintTransaction,
+  confirmUserMint,
+  submitSignedTransaction,
   confirmMintTransaction,
   getMintHistory,
   getMintLog,
 } from '../services/mint.service';
+import { query } from '../config/database';
 
 const router = Router();
 
@@ -59,6 +63,97 @@ router.post('/execute', requireAuth, async (req: AuthenticatedRequest, res: Resp
     } else {
       console.error('Mint error:', error);
       res.status(400).json({ error: error.message || 'Minting failed' });
+    }
+  }
+});
+
+/**
+ * POST /api/v1/mint/prepare
+ * Build a partially-signed mint transaction for the user to co-sign and submit.
+ * User pays the transaction fee + a treasury fee. Authority co-signs.
+ */
+router.post('/prepare', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const name = validateString(req.body.name, 'name', { required: true, maxLength: 200 })!;
+    const uri = validateString(req.body.uri, 'uri', { required: true, maxLength: 2048 })!;
+    const symbol = validateString(req.body.symbol, 'symbol', { maxLength: 10 });
+    const collection = req.body.collection === 'pfp' ? 'pfp' as const : 'items' as const;
+
+    // Check whitelist
+    const entry = await checkWhitelist(req.user!.walletAddress);
+    if (!entry || !entry.is_active) {
+      throw new AppError('Wallet not whitelisted for minting', 403);
+    }
+    if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+      throw new AppError('Mint limit reached', 403);
+    }
+
+    // Create prepared mint_log entry
+    const logResult = await query(
+      `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
+       VALUES ($1, $2, 'standard', $3, $4, 'prepared')
+       RETURNING id`,
+      [req.user!.userId, req.user!.walletAddress, name, JSON.stringify({ symbol, uri, collection })]
+    );
+    const mintLogId = logResult.rows[0].id;
+
+    // Build partially-signed transaction
+    const { transactionBase64 } = await prepareMintTransaction({
+      name,
+      uri,
+      symbol: symbol || undefined,
+      ownerWallet: req.user!.walletAddress,
+      collection,
+    });
+
+    res.json({ transactionBase64, mintLogId });
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      console.error('Mint prepare error:', error);
+      res.status(400).json({ error: error.message || 'Failed to prepare mint transaction' });
+    }
+  }
+});
+
+/**
+ * POST /api/v1/mint/confirm
+ * Accept a user-signed transaction, submit it to the chain via Helius,
+ * then confirm the mint and update records.
+ */
+router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const mintLogId = validateString(req.body.mintLogId, 'mintLogId', { required: true, maxLength: 100 })!;
+    const signedTransactionBase64 = validateString(req.body.signedTransactionBase64, 'signedTransactionBase64', { required: true, maxLength: 10000 })!;
+
+    // Verify the mint_log entry belongs to this user and has 'prepared' status
+    const logCheck = await query(
+      `SELECT id, user_id, status FROM mint_log WHERE id = $1`,
+      [mintLogId]
+    );
+    if (!logCheck.rows[0]) {
+      throw new AppError('Mint log entry not found', 404);
+    }
+    if (logCheck.rows[0].user_id !== req.user!.userId) {
+      throw new AppError('Unauthorized', 403);
+    }
+    if (logCheck.rows[0].status !== 'prepared') {
+      throw new AppError(`Mint log entry has status '${logCheck.rows[0].status}', expected 'prepared'`, 400);
+    }
+
+    // Submit the signed transaction to Helius from the backend
+    const signature = await submitSignedTransaction(signedTransactionBase64);
+
+    const result = await confirmUserMint(mintLogId, signature, req.user!.userId, req.user!.walletAddress);
+
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      console.error('Mint confirm error:', error);
+      res.status(400).json({ error: error.message || 'Failed to confirm mint transaction' });
     }
   }
 });

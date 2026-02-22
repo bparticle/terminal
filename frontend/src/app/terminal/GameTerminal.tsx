@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { VersionedTransaction } from '@solana/web3.js';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useAuth } from '@/context/AuthProvider';
 import { setAuthContext, getUserProfile, updateProfileName, fetchWithAuth } from '@/lib/api';
-import { GameEngine } from '@/lib/game-engine';
+import { GameEngine, SignAndSubmitFn } from '@/lib/game-engine';
 import { processCommand, TerminalContext } from '@/lib/terminal-commands';
 import Monitor from './components/Monitor';
 import StatsBox from './components/StatsBox';
@@ -23,12 +24,13 @@ interface OutputLine {
   isUser?: boolean;
   className?: string;
   timestamp: number;
+  id?: string;
 }
 
 type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'done';
 
 export default function GameTerminal() {
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey, connected, disconnect, signTransaction } = useWallet();
   const { setVisible } = useWalletModal();
   const { isAuthenticated, isAuthenticating, getAuthHeaders, authenticate, isInitialized } = useAuth();
 
@@ -155,11 +157,18 @@ export default function GameTerminal() {
   }, []);
 
   // Output helpers
-  const addOutput = useCallback((text: string, className?: string) => {
-    setOutput((prev) => [
-      ...prev,
-      { text, className, timestamp: Date.now() },
-    ]);
+  const addOutput = useCallback((text: string, className?: string, id?: string) => {
+    setOutput((prev) => {
+      if (id) {
+        const idx = prev.findIndex((line) => line.id === id);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], text, className, timestamp: Date.now() };
+          return updated;
+        }
+      }
+      return [...prev, { text, className, timestamp: Date.now(), id }];
+    });
   }, []);
 
   const addUserOutput = useCallback((text: string) => {
@@ -168,6 +177,16 @@ export default function GameTerminal() {
       { text: `> ${text}`, isUser: true, className: 'text-gray-400', timestamp: Date.now() },
     ]);
   }, []);
+
+  // Sign a partially-signed transaction and return the fully-signed tx as base64.
+  // The backend submits to Helius directly (bypasses frontend RPC proxy).
+  const signAndSubmit: SignAndSubmitFn = useCallback(async (txBase64: string): Promise<string> => {
+    if (!signTransaction) throw new Error('Wallet does not support signing');
+    const txBytes = Buffer.from(txBase64, 'base64');
+    const transaction = VersionedTransaction.deserialize(txBytes);
+    const signed = await signTransaction(transaction);
+    return Buffer.from(signed.serialize()).toString('base64');
+  }, [signTransaction]);
 
   const clearOutput = useCallback(() => {
     setOutput([]);
@@ -232,7 +251,8 @@ export default function GameTerminal() {
       setInventory,
       (gameId: string) => {
         setActiveGame(gameId);
-      }
+      },
+      signAndSubmit
     );
 
     engineRef.current = engine;
@@ -245,7 +265,7 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [onboardingState, publicKey, playerName, handleLocationChange]);
+  }, [onboardingState, publicKey, playerName, handleLocationChange, signAndSubmit]);
 
   // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {

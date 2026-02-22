@@ -9,8 +9,9 @@
 import { randomInt } from 'crypto';
 import { renderPfp, buildTraitAttributes, type FaceTraits } from 'scanlines-pfp-generator';
 import { uploadPfpAndMetadata } from './arweave.service';
-import { executeMint, checkWhitelist } from './mint.service';
+import { executeMint, checkWhitelist, prepareMintTransaction, confirmUserMint } from './mint.service';
 import { query } from '../config/database';
+import type { FaceTraits as FaceTraitsType } from 'scanlines-pfp-generator';
 
 const PFP_SIZE = 512;
 
@@ -94,7 +95,7 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
 
   const { pngBuffer, traits, attributes: rawAttributes } = renderPfp(PFP_SIZE, seed);
 
-  const attributes = rawAttributes.map(a => ({
+  const attributes = rawAttributes.map((a: { trait_type: string; value: unknown }) => ({
     trait_type: a.trait_type,
     value: String(a.value),
   }));
@@ -155,6 +156,148 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
     metadataUri,
     traits,
     seed,
+  };
+}
+
+export interface PfpPrepareResult {
+  transactionBase64: string;
+  mintLogId: string;
+  pfpData: {
+    seed: number;
+    imageUri: string;
+    metadataUri: string;
+    name: string;
+    traits: FaceTraits;
+  };
+}
+
+/**
+ * Prepare a PFP mint: generate → upload to Arweave → build partially-signed tx.
+ * Returns the serialized transaction for the user to co-sign, plus PFP metadata for the reveal.
+ */
+export async function preparePfpMint(userId: string, wallet: string): Promise<PfpPrepareResult> {
+  // Check eligibility
+  const entry = await checkWhitelist(wallet);
+  if (!entry || !entry.is_active) {
+    throw new Error('Wallet not whitelisted for minting');
+  }
+  if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+    throw new Error('Mint limit reached');
+  }
+
+  const seed = randomInt(0, 2147483647);
+
+  const { pngBuffer, traits, attributes: rawAttributes } = renderPfp(PFP_SIZE, seed);
+
+  const attributes = rawAttributes.map((a: { trait_type: string; value: unknown }) => ({
+    trait_type: a.trait_type,
+    value: String(a.value),
+  }));
+
+  const pfpName = `Scanlines #${seed.toString(36).toUpperCase()}`;
+
+  // Upload to Arweave (server-paid)
+  const { imageUri, metadataUri } = await uploadPfpAndMetadata({
+    imageBuffer: pngBuffer,
+    name: pfpName,
+    description: 'A unique procedurally generated Scanlines pixel-art PFP from Terminal.',
+    symbol: 'SCAN',
+    attributes,
+  });
+
+  // Create prepared mint_log entry
+  const logResult = await query(
+    `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
+     VALUES ($1, $2, 'pfp', $3, $4, 'prepared')
+     RETURNING id`,
+    [userId, wallet, pfpName, JSON.stringify({
+      seed,
+      imageUri,
+      metadataUri,
+      name: pfpName,
+      traits: {
+        race: traits.race,
+        paletteName: traits.paletteName,
+        faceShape: traits.faceShape,
+        earStyle: traits.earStyle,
+        eyeType: traits.eyeType,
+        mouthStyle: traits.mouthStyle,
+        hairStyle: traits.hairStyle,
+        accessory: traits.accessory,
+        clothing: traits.clothing,
+        bgPattern: traits.bgPattern,
+        pixelStyle: traits.pixelStyle,
+      },
+    })]
+  );
+  const mintLogId = logResult.rows[0].id;
+
+  // Build partially-signed transaction
+  const { transactionBase64 } = await prepareMintTransaction({
+    name: pfpName,
+    uri: metadataUri,
+    symbol: 'SCAN',
+    ownerWallet: wallet,
+    collection: 'pfp',
+  });
+
+  return {
+    transactionBase64,
+    mintLogId,
+    pfpData: {
+      seed,
+      imageUri,
+      metadataUri,
+      name: pfpName,
+      traits,
+    },
+  };
+}
+
+/**
+ * Confirm a user-submitted PFP mint transaction.
+ * Updates mint_log, whitelist, and user profile.
+ */
+export async function confirmPfpMint(
+  mintLogId: string,
+  signatureBase58: string,
+  userId: string,
+  wallet: string,
+): Promise<PfpMintResult> {
+  // Get the stored PFP data from the mint_log
+  const logResult = await query(
+    `SELECT nft_metadata FROM mint_log WHERE id = $1 AND user_id = $2 AND status = 'prepared'`,
+    [mintLogId, userId]
+  );
+  if (!logResult.rows[0]) {
+    throw new Error('Mint log entry not found or not in prepared state');
+  }
+
+  const metadata = logResult.rows[0].nft_metadata;
+
+  // Confirm the on-chain transaction
+  const result = await confirmUserMint(mintLogId, signatureBase58, userId, wallet);
+
+  // Update mint_log with PFP type (confirmUserMint already updated status)
+  await query(
+    `UPDATE mint_log SET mint_type = 'pfp' WHERE id = $1`,
+    [mintLogId]
+  );
+
+  // Update user profile with latest PFP
+  await query(
+    'UPDATE users SET pfp_image_url = $1, pfp_nft_id = $2 WHERE id = $3',
+    [metadata.imageUri, result.assetId, userId]
+  );
+
+  return {
+    assetId: result.assetId,
+    signature: result.signature,
+    mintLogId: result.mintLogId,
+    imageUri: metadata.imageUri,
+    metadataUri: metadata.metadataUri,
+    traits: metadata.traits,
+    seed: metadata.seed,
   };
 }
 

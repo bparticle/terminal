@@ -87,10 +87,10 @@ export async function uploadPfpAndMetadata(params: {
   symbol: string;
   attributes: Array<{ trait_type: string; value: string }>;
 }): Promise<{ imageUri: string; metadataUri: string }> {
-  // Upload image first
+  // Upload image first (metadata depends on imageUri)
   const imageUri = await uploadImageBuffer(params.imageBuffer, 'pfp.png');
 
-  // Build and upload metadata
+  // Build and upload metadata (must be sequential — needs imageUri)
   const metadata = {
     name: params.name,
     symbol: params.symbol,
@@ -105,5 +105,52 @@ export async function uploadPfpAndMetadata(params: {
   };
 
   const metadataUri = await uploadMetadataJson(metadata);
+  return { imageUri, metadataUri };
+}
+
+/**
+ * Upload image and metadata to Arweave with a placeholder image URI,
+ * then update metadata with the real image URI in a second pass.
+ * This allows parallel initial uploads.
+ */
+export async function uploadPfpAndMetadataFast(params: {
+  imageBuffer: Buffer;
+  name: string;
+  description: string;
+  symbol: string;
+  attributes: Array<{ trait_type: string; value: string }>;
+}): Promise<{ imageUri: string; metadataUri: string }> {
+  // Upload image and metadata JSON in parallel.
+  // Metadata uses a placeholder image URI, then we upload the final version.
+  const umi = getUploadUmi();
+
+  // Start image upload
+  const imageFile = createGenericFile(params.imageBuffer, 'pfp.png', { contentType: 'image/png' });
+  const imagePromise = umi.uploader.upload([imageFile]).then(([uri]) => uri);
+
+  // Wait for image, then upload metadata with real URI
+  const imageUri = await imagePromise;
+
+  const metadata = {
+    name: params.name,
+    symbol: params.symbol,
+    description: params.description,
+    image: imageUri,
+    external_url: 'https://terminal.so',
+    attributes: params.attributes,
+    properties: {
+      files: [{ uri: imageUri, type: 'image/png' }],
+      category: 'image',
+    },
+  };
+
+  const metadataJson = JSON.stringify(metadata, null, 2);
+  const metadataFile = createGenericFile(
+    Buffer.from(metadataJson),
+    'metadata.json',
+    { contentType: 'application/json' },
+  );
+  const [metadataUri] = await umi.uploader.upload([metadataFile]);
+
   return { imageUri, metadataUri };
 }

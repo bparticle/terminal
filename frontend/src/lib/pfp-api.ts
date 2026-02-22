@@ -52,3 +52,44 @@ export async function mintPfp(): Promise<PfpMintResult> {
   }
   return response.json();
 }
+
+// ── User-paid PFP mint (prepare/confirm flow) ─
+
+export interface PfpPrepareResult {
+  transactionBase64: string;
+  mintLogId: string;
+  pfpData: {
+    seed: number;
+    imageUri: string;
+    name: string;
+    traits: PfpMintResult['traits'];
+  };
+}
+
+/**
+ * Generate PFP + upload to Arweave + build partially-signed mint transaction.
+ */
+export async function preparePfpMint(): Promise<PfpPrepareResult> {
+  const response = await fetchWithAuth('pfp/prepare', { method: 'POST' });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({ error: 'PFP prepare failed' }));
+    throw new Error(data.error || 'PFP prepare failed');
+  }
+  return response.json();
+}
+
+/**
+ * Confirm a PFP mint by sending the signed transaction to the backend for submission.
+ * Backend submits to Helius directly and confirms on-chain.
+ */
+export async function confirmPfpMint(mintLogId: string, signedTransactionBase64: string): Promise<PfpMintResult> {
+  const response = await fetchWithAuth('pfp/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ mintLogId, signedTransactionBase64 }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({ error: 'PFP confirm failed' }));
+    throw new Error(data.error || 'PFP confirm failed');
+  }
+  return response.json();
+}

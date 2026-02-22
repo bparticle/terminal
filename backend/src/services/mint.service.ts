@@ -1,6 +1,8 @@
 import fetch from 'node-fetch';
 import { publicKey } from '@metaplex-foundation/umi';
 import { mintV2, parseLeafFromMintV2Transaction } from '@metaplex-foundation/mpl-bubblegum';
+import { transferSol } from '@metaplex-foundation/mpl-toolbox';
+import { sol } from '@metaplex-foundation/umi';
 import { config, getHeliusRpcUrl } from '../config/constants';
 import { query, transaction } from '../config/database';
 import { WhitelistEntry, MintLogEntry, MintParams, MintResult, MintLeafData } from '../types';
@@ -245,6 +247,199 @@ export async function executeMint(
     );
     throw error;
   }
+}
+
+// ── User-Paid Minting (Partial-Sign Flow) ─────
+
+/**
+ * Build a mintV2 transaction + treasury fee transfer, partially signed by the authority.
+ * The user's wallet is set as fee payer. Returns the serialized transaction for
+ * the user to co-sign and submit client-side.
+ */
+export async function prepareMintTransaction(params: {
+  name: string;
+  uri: string;
+  symbol?: string;
+  ownerWallet: string;
+  sellerFeeBasisPoints?: number;
+  collection?: 'pfp' | 'items';
+}): Promise<{ transactionBase64: string }> {
+  const umi = getUmi();
+
+  if (!config.treasuryWallet) {
+    throw new Error('TREASURY_WALLET not configured');
+  }
+
+  const merkleTreeAddr = config.merkleTree;
+  const collectionAddr = params.collection === 'pfp'
+    ? config.pfpCollectionMint
+    : config.itemsCollectionMint;
+
+  if (!merkleTreeAddr) {
+    throw new Error('MERKLE_TREE not configured');
+  }
+
+  const merkleTree = publicKey(merkleTreeAddr);
+  const leafOwner = publicKey(params.ownerWallet);
+  const creatorAddress = config.mintCreatorAddress || umi.identity.publicKey;
+  const userPubkey = publicKey(params.ownerWallet);
+  const treasuryPubkey = publicKey(config.treasuryWallet);
+
+  // Build mintV2 instruction
+  const mintBuilder = mintV2(umi, {
+    merkleTree,
+    leafOwner,
+    ...(collectionAddr ? { coreCollection: publicKey(collectionAddr) } : {}),
+    metadata: {
+      name: params.name,
+      symbol: params.symbol || '',
+      uri: params.uri,
+      sellerFeeBasisPoints: params.sellerFeeBasisPoints || 0,
+      creators: [{ address: publicKey(creatorAddress), verified: true, share: 100 }],
+      collection: collectionAddr ? publicKey(collectionAddr) : null,
+    },
+  });
+
+  // Build treasury fee transfer instruction
+  const feeBuilder = transferSol(umi, {
+    source: { publicKey: userPubkey, signMessage: async () => new Uint8Array(), signTransaction: async (tx: any) => tx, signAllTransactions: async (txs: any[]) => txs },
+    destination: treasuryPubkey,
+    amount: sol(config.mintFeeLamports / 1_000_000_000),
+  });
+
+  // Combine into a single transaction builder
+  const combinedBuilder = mintBuilder.add(feeBuilder);
+
+  // Build the transaction with the user as fee payer
+  const tx = await combinedBuilder.setFeePayer({
+    publicKey: userPubkey,
+    signMessage: async () => new Uint8Array(),
+    signTransaction: async (t: any) => t,
+    signAllTransactions: async (txs: any[]) => txs,
+  }).buildWithLatestBlockhash(umi);
+
+  // Partially sign with the authority keypair (satisfies treeCreatorOrDelegate)
+  const signedTx = await umi.identity.signTransaction(tx);
+
+  // Serialize to base64
+  const serialized = umi.transactions.serialize(signedTx);
+  const transactionBase64 = Buffer.from(serialized).toString('base64');
+
+  return { transactionBase64 };
+}
+
+/**
+ * Submit a user-signed transaction to the chain via backend's Helius connection.
+ * Returns the base58 signature.
+ */
+export async function submitSignedTransaction(transactionBase64: string): Promise<string> {
+  const endpoint = getHeliusRpcUrl();
+
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'sendTransaction',
+      params: [
+        transactionBase64,
+        { encoding: 'base64', skipPreflight: false, maxRetries: 5 },
+      ],
+    }),
+  });
+
+  const result: any = await resp.json();
+
+  if (result.error) {
+    throw new Error(result.error.message || 'Transaction submission failed');
+  }
+
+  const signature = result.result;
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const statusResp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getSignatureStatuses',
+        params: [[signature], { searchTransactionHistory: true }],
+      }),
+    });
+    const statusResult: any = await statusResp.json();
+    const status = statusResult.result?.value?.[0];
+    if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') {
+      if (status.err) {
+        throw new Error('Transaction confirmed but failed on-chain');
+      }
+      return signature;
+    }
+  }
+
+  throw new Error('Transaction not confirmed after 60 seconds');
+}
+
+/**
+ * Confirm a user-submitted mint transaction.
+ * Parses the asset ID from on-chain logs and updates the mint_log + whitelist.
+ */
+export async function confirmUserMint(
+  mintLogId: string,
+  signatureBase58: string,
+  userId: string,
+  wallet: string,
+): Promise<MintResult> {
+  const umi = getUmi();
+  const bs58 = require('bs58');
+  const sigBytes: Uint8Array = bs58.decode(signatureBase58);
+
+  // Parse the asset ID from the on-chain transaction logs (retry for RPC indexing delay)
+  // Mainnet needs more retries since tx is already confirmed but logs may not be indexed yet
+  const maxAttempts = config.solanaNetwork === 'devnet' ? 15 : 12;
+  const retryDelay = config.solanaNetwork === 'devnet' ? 4000 : 3000;
+  let leaf;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      leaf = await parseLeafFromMintV2Transaction(umi, sigBytes);
+      break;
+    } catch {
+      if (attempt === maxAttempts) throw new Error(`Could not parse asset ID from mint transaction after ${maxAttempts} attempts`);
+      await new Promise((r) => setTimeout(r, retryDelay));
+    }
+  }
+  const parsedLeaf = leaf!;
+  const assetId = parsedLeaf.id.toString();
+
+  // Build leaf data
+  const leafData: MintLeafData = {
+    owner: parsedLeaf.owner.toString(),
+    delegate: parsedLeaf.delegate.toString(),
+    nonce: Number(parsedLeaf.nonce),
+    dataHash: parsedLeaf.dataHash,
+    creatorHash: parsedLeaf.creatorHash,
+    ...(parsedLeaf.__kind === 'V2' ? {
+      collectionHash: parsedLeaf.collectionHash,
+      assetDataHash: parsedLeaf.assetDataHash,
+      flags: parsedLeaf.flags,
+    } : {}),
+  };
+
+  // Update mint_log and whitelist atomically
+  await transaction(async (client) => {
+    await client.query(
+      `UPDATE mint_log SET asset_id = $1, signature = $2, status = 'confirmed', confirmed_at = NOW()
+       WHERE id = $3 AND user_id = $4 AND status = 'prepared'`,
+      [assetId, signatureBase58, mintLogId, userId]
+    );
+    await client.query(
+      'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
+      [wallet]
+    );
+  });
+
+  return { assetId, signature: signatureBase58, mintLogId, leafData };
 }
 
 export async function confirmMintTransaction(signature: string): Promise<{

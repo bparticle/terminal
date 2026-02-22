@@ -6,8 +6,13 @@ const HELIUS_RPC_URL = process.env.HELIUS_RPC_URL || process.env.NEXT_PUBLIC_HEL
 const ALLOWED_METHODS = [
   'getAccountInfo',
   'getBalance',
+  'getBlockHeight',
   'getLatestBlockhash',
+  'getRecentBlockhash',
   'getSignatureStatuses',
+  'getFeeForMessage',
+  'sendTransaction',
+  'simulateTransaction',
   'searchAssets',
   'getAsset',
   'getAssetProof',
@@ -15,7 +20,7 @@ const ALLOWED_METHODS = [
 
 // Simple in-memory rate limiting for RPC proxy
 const rpcRateMap = new Map<string, { count: number; resetAt: number }>();
-const RPC_RATE_LIMIT = 30; // requests per minute
+const RPC_RATE_LIMIT = 120; // requests per minute
 const RPC_RATE_WINDOW = 60 * 1000;
 
 function isRpcRateLimited(ip: string): boolean {
@@ -43,6 +48,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (!body.method || typeof body.method !== 'string' || !ALLOWED_METHODS.includes(body.method)) {
+      console.warn(`[RPC] blocked method: ${body.method}`);
       return NextResponse.json(
         { error: 'Method not allowed' },
         { status: 403 }

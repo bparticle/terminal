@@ -52,6 +52,8 @@ export const config = {
   merkleTree: process.env.MERKLE_TREE || '',
   pfpCollectionMint: process.env.PFP_COLLECTION_MINT || '',
   itemsCollectionMint: process.env.ITEMS_COLLECTION_MINT || '',
+  treasuryWallet: process.env.TREASURY_WALLET || '',
+  mintFeeLamports: parseInt(process.env.MINT_FEE_LAMPORTS || '50000000', 10),
 };
 
 /**

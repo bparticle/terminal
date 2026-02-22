@@ -5,8 +5,8 @@ Retro CRT terminal-themed text adventure game gated by Solana cNFT ownership. Fe
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Socket.IO client
-- **Backend**: Express.js 4, TypeScript, PostgreSQL (pg), Socket.IO 4, JWT
-- **Blockchain**: Solana (`@solana/web3.js`), Helius DAS API (compressed NFTs), Bubblegum V2 (`@metaplex-foundation/mpl-bubblegum` + `mpl-core` + Umi), Arweave (via `umi-uploader-irys`), Solflare wallet adapter
+- **Backend**: Express.js 4, TypeScript, PostgreSQL (pg), Socket.IO 4, JWT, node-canvas (PFP rendering)
+- **Blockchain**: Solana (`@solana/web3.js`), Helius DAS API (compressed NFTs), Bubblegum V2 (`@metaplex-foundation/mpl-bubblegum` + `mpl-core` + Umi), Arweave (via `umi-uploader-irys`), Solflare/Phantom wallet adapter
 - **Database**: PostgreSQL 14+ with pgcrypto, JSONB for game state
 
 ## Project Structure
@@ -19,7 +19,8 @@ terminal/
 │   │   ├── 001_initial_schema.sql   # All tables, indexes, triggers
 │   │   ├── 002_add_last_active.sql  # Online presence column
 │   │   ├── 003_mint_whitelist_and_log.sql  # Mint whitelist + mint log tables
-│   │   └── 004_soulbound_items.sql         # Soulbound items table
+│   │   ├── 004_soulbound_items.sql         # Soulbound items table
+│   │   └── 005_pfp_mint_tracking.sql       # PFP mint index on mint_log
 │   ├── schema.sql               # Full schema reference
 │   ├── seed.sql                 # Sample campaign data
 │   └── run-migration.js         # Migration runner script
@@ -40,6 +41,8 @@ terminal/
 │       │   ├── errorHandler.ts  # AppError class, global error handler
 │       │   ├── rateLimiter.ts   # auth/api/write rate limiters
 │       │   └── validate.ts      # Input validation helpers
+│       ├── scanlines/           # Legacy embedded PFP generator (superseded by scanlines-pfp-generator npm package)
+│       │   └── (kept for reference — pfp.service.ts imports from scanlines-pfp-generator instead)
 │       ├── routes/
 │       │   ├── auth.routes.ts       # POST request-message, verify-wallet
 │       │   ├── users.routes.ts      # Profile CRUD, online players, heartbeat
@@ -47,7 +50,8 @@ terminal/
 │       │   ├── campaigns.routes.ts  # Campaign CRUD, leaderboards, evaluation
 │       │   ├── wallet.routes.ts     # NFT collections via Helius
 │       │   ├── mint.routes.ts       # cNFT minting (whitelist-gated) + admin whitelist CRUD
-│       │   └── soulbound.routes.ts  # Soulbound mint+freeze, verify, list items
+│       │   ├── soulbound.routes.ts  # Soulbound mint+freeze, verify, list items
+│       │   └── pfp.routes.ts        # PFP mint, status check, admin preview
 │       ├── services/
 │       │   ├── auth.service.ts      # Solana sig verify, nonce mgmt, JWT
 │       │   ├── game.service.ts      # Game save CRUD (JSONB operations)
@@ -55,7 +59,9 @@ terminal/
 │       │   ├── helius.service.ts    # Helius RPC: searchAssets, getAsset
 │       │   ├── umi.ts               # Singleton Umi context + parseKeypairBytes utility
 │       │   ├── mint.service.ts      # cNFT minting via Bubblegum V2 mintV2, whitelist CRUD
-│       │   └── soulbound.service.ts # Soulbound mint+freeze (mintV2 w/ leafDelegate → freezeV2)
+│       │   ├── soulbound.service.ts # Soulbound mint+freeze (mintV2 w/ leafDelegate → freezeV2)
+│       │   ├── arweave.service.ts   # Image + metadata upload to Arweave via Irys
+│       │   └── pfp.service.ts       # PFP orchestrator: generate → upload → mint
 │       ├── sockets/
 │       │   └── chat.socket.ts   # Room-based chat with per-socket rate limits
 │       └── types/
@@ -96,6 +102,7 @@ terminal/
 │       │   ├── admin-api.ts     # Admin status check, user/metadata queries
 │       │   ├── nft-helius.ts    # fetchOwnedNFTs, getNFTDetails
 │       │   ├── mint-api.ts      # Mint execute, soulbound mint/background, whitelist admin
+│       │   ├── pfp-api.ts       # PFP mint status check + mint trigger
 │       │   ├── game-engine.ts   # Core game logic: nodes, state, effects, quizzes
 │       │   ├── terminal-commands.ts # help, save, load, theme, inventory, etc.
 │       │   ├── useSocket.ts     # Socket.IO hook: room chat, reconnection
@@ -163,7 +170,9 @@ All routes prefixed with `/api/v1/`. Frontend proxies through Next.js `/api/prox
 - `POST /simulate-achievement` - [Admin] Testing
 
 ### Mint (`/mint`) - write limiter
-- `POST /execute` - Mint a cNFT (whitelist-enforced, requires `name` + `uri`)
+- `POST /execute` - Mint a cNFT (whitelist-enforced, server-paid, requires `name` + `uri`)
+- `POST /prepare` - Build partially-signed mint tx (user-paid: user is fee payer + treasury fee)
+- `POST /confirm` - Accept user-signed tx, submit to Helius, confirm, parse asset ID
 - `GET /status/:signature` - Check transaction confirmation
 - `GET /history` - User's mint history
 - `GET /whitelist/check` - Check if user is whitelisted
@@ -171,6 +180,13 @@ All routes prefixed with `/api/v1/`. Frontend proxies through Next.js `/api/prox
 - `POST /admin/whitelist/bulk` - [Admin] Bulk add wallets
 - `PUT /admin/whitelist/:wallet` | `DELETE /admin/whitelist/:wallet` - [Admin] Update/remove
 - `GET /admin/log` - [Admin] Mint audit log (filterable)
+
+### PFP (`/pfp`) - write limiter
+- `POST /prepare` - Generate random PFP + upload to Arweave + build partially-signed mint tx (user-paid)
+- `POST /confirm` - Accept user-signed tx, submit to Helius, confirm, update profile
+- `POST /mint` - Generate random PFP + upload to Arweave + mint as cNFT (server-paid fallback)
+- `GET /status` - Check eligibility: `{ whitelisted, canMint, pfpCount, maxMints, mintsRemaining, pfps }`
+- `GET /preview-test/:seed` - [Admin] Render a test PNG without minting (returns image/png)
 
 ### Soulbound (`/soulbound`)
 - `POST /mint` - Mint + freeze a soulbound cNFT (requires `name` + `uri`)
@@ -193,6 +209,7 @@ The game engine (`frontend/src/lib/game-engine.ts`) processes a graph of **GameN
 - **nft_check** - Gates content behind cNFT ownership (owned/missing branches)
 - **godot_game** - Triggers embedded mini-game (Snake), score tracked in state
 - **mint_action** - Triggers cNFT mint via `mint_config` (name, uri, etc.), branches to success/failure/not-whitelisted nodes
+- **pfp_mint** - Triggers PFP generation + Arweave upload + cNFT mint. Branches to success/failure/not-eligible/limit nodes
 
 ### Game State Flow
 ```
@@ -234,11 +251,13 @@ ADMIN_WALLETS=wallet1,wallet2
 FRONTEND_URL=<required in production for CORS>
 
 # Minting (required only when mint endpoints are used)
-COLLECTION_AUTHORITY_KEYPAIR=<base58-encoded Ed25519 secret key>
+COLLECTION_AUTHORITY_KEYPAIR=<JSON byte array or base58-encoded Ed25519 secret key>
 MINT_CREATOR_ADDRESS=<pubkey listed as creator on minted cNFTs>
 MERKLE_TREE=<pubkey of the Bubblegum Merkle tree (shared by all collections)>
 PFP_COLLECTION_MINT=<pubkey of the PFP MPL-Core collection>
 ITEMS_COLLECTION_MINT=<pubkey of the inventory items MPL-Core collection>
+TREASURY_WALLET=<pubkey receiving mint fees from user-paid mints>
+MINT_FEE_LAMPORTS=50000000
 ```
 
 ### Frontend `.env.local`
@@ -259,6 +278,7 @@ psql terminal_game_db < database/migrations/001_initial_schema.sql
 psql terminal_game_db < database/migrations/002_add_last_active.sql
 psql terminal_game_db < database/migrations/003_mint_whitelist_and_log.sql
 psql terminal_game_db < database/migrations/004_soulbound_items.sql
+psql terminal_game_db < database/migrations/005_pfp_mint_tracking.sql
 psql terminal_game_db < database/seed.sql
 
 # Backend (port 3001)
@@ -282,12 +302,19 @@ Also exports `parseKeypairBytes(raw)` — handles three secret key formats:
 - Base58 string of 64-byte full keypair
 - Base58 string of 32-byte seed (derives full keypair via `Keypair.fromSeed`)
 
-### Mint Flow
+### Mint Flow (Server-Paid)
 1. `POST /mint/execute` validates whitelist, creates pending `mint_log` entry
 2. `mintCompressedNFT()` calls Bubblegum V2 `mintV2()` — requires a pre-uploaded metadata `uri`
-3. `parseLeafFromMintV2Transaction()` extracts the asset ID + full leaf data from on-chain logs (retries up to 5 times with 2s delay for RPC indexing)
+3. `parseLeafFromMintV2Transaction()` extracts the asset ID + full leaf data from on-chain logs (retries up to 12 times with 3s delay for RPC indexing on mainnet)
 4. On success: updates `mint_log` + increments `mint_whitelist.mints_used` atomically
 5. Returns `MintResult` with `assetId`, `signature`, `mintLogId`, and `leafData` (V2 leaf hashes)
+
+### User-Paid Mint Flow (Prepare/Confirm)
+Used for PFP mints and general mints where the user pays the Solana transaction fee + a treasury fee (0.05 SOL). The backend submits the transaction directly to Helius — the frontend RPC proxy is NOT used for submission (see gotchas).
+
+1. **Prepare** (`POST /pfp/prepare` or `/mint/prepare`): Backend generates content, uploads to Arweave, builds a `mintV2` + `transferSol` (treasury fee) transaction with user as fee payer, partially signs with authority keypair, returns serialized tx as base64
+2. **Sign** (frontend): `GameTerminal.signAndSubmit()` deserializes the tx, prompts the user's wallet (Phantom/Solflare) to sign, returns the fully-signed tx as base64 — does NOT submit
+3. **Confirm** (`POST /pfp/confirm` or `/mint/confirm`): Backend receives the signed tx, calls `submitSignedTransaction()` which sends directly to Helius RPC, polls `getSignatureStatuses` until confirmed (up to 60s), then calls `parseLeafFromMintV2Transaction()` to extract the asset ID, updates `mint_log` + `mint_whitelist` atomically
 
 ### Soulbound Flow (mint with delegate → freeze)
 1. Mint with `leafDelegate` set to authority keypair — this embeds the delegate into the on-chain leaf, allowing the authority to freeze without the player's signature
@@ -329,16 +356,43 @@ Collections must be created with the `BubblegumV2` plugin (create-only, cannot b
 - **V2 leaf hash includes extra fields**: `collectionHash`, `assetDataHash`, `flags` — if you omit these from `freezeV2`, the on-chain leaf hash won't match and you get "leaf value does not match the supplied proof's leaf value"
 - **Use leaf data from `parseLeafFromMintV2Transaction`, not DAS**: DAS is slow to index and may not return V2-specific fields. The parsed leaf from the mint tx has accurate `dataHash`, `creatorHash`, `collectionHash`, `assetDataHash`, `flags`
 - **Pass `coreCollection` account to `freezeV2`**: Required when the cNFT was minted with a collection
-- **`parseLeafFromMintV2Transaction` needs retries**: RPC may not have indexed the tx yet. Use 3-5 retries with 2-3s delays
+- **`parseLeafFromMintV2Transaction` needs retries**: RPC may not have indexed the tx yet. Mainnet uses 12 retries x 3s (36s total); devnet uses 15 retries x 4s
 - **BubblegumV2 is a create-only plugin on MPL-Core collections**: Cannot be added to existing collections — must include `plugins: [{ type: 'BubblegumV2' }]` at creation time
 - **Valid Merkle tree depth/buffer pairs**: Not all combinations work. Examples: depth 7 = buffer 16, depth 14 = buffer 64, depth 20 = buffer 256
 - **`COLLECTION_AUTHORITY_KEYPAIR` format**: `parseKeypairBytes()` handles JSON arrays from `solana-keygen`, base58 64-byte, and base58 32-byte seed formats
 - **DAS stale proof race condition**: After minting, the tree root changes. DAS may return proofs based on the old root for 10-30s. Always retry freeze operations on "leaf value does not match" errors
+- **Frontend RPC proxy unreliable for tx submission**: Transactions submitted through the Next.js `/api/rpc` proxy simulate successfully but never land on-chain. Always submit transactions from the backend directly to Helius via `submitSignedTransaction()`. The frontend should only sign, not submit.
+- **Arweave uploads take ~30-35s**: Image and metadata uploads are sequential (metadata needs the imageUri). Account for this in UX — show processing steps to the user.
+- **`COLLECTION_AUTHORITY_KEYPAIR` must be in `backend/.env`**: Not in the project root `.env`. The backend reads it from its own `.env` file.
+
+### PFP Mint Pipeline
+
+Server-side PFP generation pipeline: random seed → pixel-art face → CRT effects → Arweave upload → cNFT mint. Player has zero control over traits and never sees the PFP until after it mints on-chain. Uses the user-paid prepare/confirm flow.
+
+**PFP generator**: Uses the `scanlines-pfp-generator` npm package. `renderPfp(size, seed)` returns `{ pngBuffer, traits, attributes }`. The embedded `backend/src/scanlines/` directory is a legacy placeholder — the npm package supersedes it.
+
+**Whitelist tiers** (uses existing `mint_whitelist.max_mints` column):
+- Tier 1: 1 PFP mint | Tier 2: 3 PFP mints | Tier 3: 10 PFP mints
+
+**User-paid PFP mint flow** (`pfp.service.ts → preparePfpMint()` + `confirmPfpMint()`):
+1. Check whitelist eligibility + remaining mints
+2. Generate cryptographic seed via `crypto.randomInt()`
+3. Render 512×512 PFP via `renderPfp()` from `scanlines-pfp-generator`
+4. Upload image + metadata JSON to Arweave via `arweave.service.ts` (~30-35s)
+5. Build partially-signed mint tx (user pays 0.05 SOL fee to treasury + Solana tx fee)
+6. Frontend wallet signs → backend submits to Helius → confirms → parses asset ID
+7. Update `mint_log`, `mint_whitelist`, and user profile (`pfp_image_url`, `pfp_nft_id`)
+8. Store seed + traits in `mint_log.nft_metadata` JSONB for reproducibility
+
+**Arweave service** (`arweave.service.ts`): Separate Umi singleton with `irysUploader` plugin (the mint Umi in `umi.ts` doesn't have Irys). Exports `uploadImageBuffer()`, `uploadMetadataJson()`, `uploadPfpAndMetadata()`.
+
+**Frontend integration**: `pfp_mint` node type in `game-engine.ts` with `handlePfpMintNode()`. Game nodes added at `pfp_booth_approach` → `pfp_booth_mint` in the corridor_north area. Terminal shows an "IDENTITY GENERATION SEQUENCE" with in-place step updates (cyan while active → gray when complete). On mint, player sees a trait reveal and game state gets `has_pfp` + `pfp_count` updated.
+
+**Terminal output with in-place updates**: `addOutput(text, className, id)` in `GameTerminal.tsx` supports updating existing lines by `id`. The game engine uses `stepActive(text)` / `stepDone()` helpers to show processing steps that update from cyan (active) to gray (completed) on the same line.
 
 ### Remaining Setup (TODO)
 - **Admin UI for mint whitelist** — `MintWhitelist.tsx` component exists but needs wiring into the admin page
 - **Per-item metadata** — Currently all inventory items share one generic metadata URI. For distinct items (unique name/image), upload per-item metadata via `upload-to-arweave.ts` and set the `uri` in the game node's `mint_config`
-- **Mainnet deployment** — Create mainnet tree (depth 14+ recommended), collection, fund authority with SOL, set mainnet env vars
 
 ## Key Conventions
 

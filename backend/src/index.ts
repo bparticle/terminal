@@ -149,11 +149,33 @@ async function seedAdminWallets(): Promise<void> {
   }
 }
 
+/**
+ * Expire stale 'prepared' mint_log entries.
+ * Blockhashes expire after ~60-90s, so 3 minutes is generous.
+ * Runs every 2 minutes.
+ */
+function startMintExpiryCleanup(): void {
+  setInterval(async () => {
+    try {
+      const result = await query(
+        `UPDATE mint_log SET status = 'expired'
+         WHERE status = 'prepared' AND created_at < NOW() - INTERVAL '3 minutes'`
+      );
+      if (result.rowCount && result.rowCount > 0) {
+        console.log(`Expired ${result.rowCount} stale prepared mint_log entries`);
+      }
+    } catch (error) {
+      console.error('Mint expiry cleanup failed:', error);
+    }
+  }, 2 * 60 * 1000);
+}
+
 // Start server
 httpServer.listen(config.port, async () => {
   console.log(`Terminal Game API running on port ${config.port} (${config.nodeEnv})`);
   console.log(`Socket.IO ready for connections`);
   await seedAdminWallets();
+  startMintExpiryCleanup();
 });
 
 export default app;

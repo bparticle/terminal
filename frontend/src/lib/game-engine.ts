@@ -2,16 +2,17 @@ import { GameNode, GameSave, Requirements, GameEffects } from './types/game';
 import { gameNodes } from '@/data/game-nodes';
 import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
-import { checkWhitelistStatus, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems } from './mint-api';
-import { checkPfpStatus, mintPfp } from './pfp-api';
+import { checkWhitelistStatus, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems, prepareMint, confirmMint } from './mint-api';
+import { checkPfpStatus, mintPfp, preparePfpMint, confirmPfpMint } from './pfp-api';
 
 // Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
 const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1';
 
-type OutputFn = (text: string, className?: string) => void;
+type OutputFn = (text: string, className?: string, id?: string) => void;
 type LocationChangeFn = (location: string, nodeId?: string) => void;
 type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean }>) => void;
 type MiniGameStartFn = (gameId: string) => void;
+export type SignAndSubmitFn = (transactionBase64: string) => Promise<string>;
 
 interface MinigameGate {
   status: 'ready' | 'running' | 'complete';
@@ -39,7 +40,8 @@ export class GameEngine {
     private outputFn: OutputFn,
     private locationChangeFn?: LocationChangeFn,
     private inventoryChangeFn?: InventoryChangeFn,
-    private miniGameStartFn?: MiniGameStartFn
+    private miniGameStartFn?: MiniGameStartFn,
+    private signAndSubmitFn?: SignAndSubmitFn
   ) {}
 
   // ==========================================
@@ -319,15 +321,32 @@ export class GameEngine {
         return;
       }
 
-      // Execute mint
-      this.outputFn('Minting...', 'text-yellow-400');
       const mintConfig = node.mint_config;
-
       let result: any;
+
       if (mintConfig.soulbound) {
+        // Soulbound mints stay server-paid (multi-step pipeline needs full server control)
+        this.outputFn('Minting...', 'text-yellow-400');
         result = await mintSoulbound(mintConfig);
         this.soulboundItemNames.add(mintConfig.itemName || mintConfig.name);
+      } else if (this.signAndSubmitFn) {
+        // User-paid flow: prepare → wallet sign → confirm
+        this.outputFn('Preparing mint transaction...', 'text-gray-400');
+        const prepared = await prepareMint({
+          name: mintConfig.name,
+          uri: mintConfig.uri,
+          symbol: mintConfig.symbol,
+          collection: mintConfig.collection,
+        });
+
+        this.outputFn('Please approve the transaction in your wallet... (includes 0.05 SOL fee)', 'text-yellow-400');
+        const signedTxBase64 = await this.signAndSubmitFn(prepared.transactionBase64);
+
+        this.outputFn('Confirming on-chain...', 'text-gray-400');
+        result = await confirmMint(prepared.mintLogId, signedTxBase64);
       } else {
+        // Fallback: server-paid (no wallet signing available)
+        this.outputFn('Minting...', 'text-yellow-400');
         result = await executeMint(mintConfig);
       }
 
@@ -352,7 +371,16 @@ export class GameEngine {
 
       await this.autoSave();
     } catch (error: any) {
-      this.outputFn(`Minting failed: ${error.message || 'Unknown error'}`, 'text-red-400');
+      // Handle wallet rejection specifically
+      const msg = error.message || 'Unknown error';
+      if (msg.includes('User rejected') || msg.includes('rejected the request')) {
+        this.outputFn('Transaction cancelled.', 'text-yellow-400');
+        this.outputFn('');
+        this.displayCurrentNode();
+        return;
+      }
+
+      this.outputFn(`Minting failed: ${msg}`, 'text-red-400');
       if (node.mint_failure_node) {
         this.outputFn('');
         this.outputFn('Press ENTER to continue...', 'text-gray-400');
@@ -397,18 +425,84 @@ export class GameEngine {
         return;
       }
 
-      const remaining = status.mintsRemaining === -1 ? '∞' : status.mintsRemaining;
+      const remaining = status.mintsRemaining === -1 ? '\u221E' : status.mintsRemaining;
       this.outputFn(`Mints remaining: ${remaining}/${status.maxMints}`, 'text-cyan-400');
       this.outputFn('');
-      this.outputFn('Generating your unique Scanlines PFP...', 'text-yellow-400');
 
-      // Execute mint — the big reveal
-      const result = await mintPfp();
+      const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+      // Step helpers: update the SAME line from active (cyan) → done (gray)
+      let stepIdx = 0;
+      let currentStepText = '';
+      const stepActive = (text: string) => {
+        currentStepText = text;
+        this.outputFn(`  \u2236 ${text}...`, 'text-cyan-400', `pfp-step-${stepIdx}`);
+      };
+      const stepDone = () => {
+        this.outputFn(`  \u2713 ${currentStepText}`, 'text-gray-500', `pfp-step-${stepIdx}`);
+        stepIdx++;
+      };
+
+      let result: any;
+
+      if (this.signAndSubmitFn) {
+        // ── IDENTITY GENERATION SEQUENCE ──
+        this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
+        this.outputFn('');
+
+        // Start server prepare (generate + Arweave upload + build tx) in background
+        const preparePromise = preparePfpMint();
+
+        // Show render steps with staggered timing while server works
+        stepActive('Seeding identity generator');
+        await delay(500 + Math.random() * 400);
+        stepDone();
+
+        stepActive('Computing face vectors');
+        await delay(400 + Math.random() * 300);
+        stepDone();
+
+        stepActive('Rendering feature matrix');
+        await delay(400 + Math.random() * 300);
+        stepDone();
+
+        stepActive('Applying CRT phosphor mapping');
+        await delay(300 + Math.random() * 200);
+        stepDone();
+
+        // Arweave upload is the slow part — wait for prepare to finish
+        stepActive('Encoding to chain format');
+        const prepared = await preparePromise;
+        stepDone();
+
+        // Wallet signing (returns signed tx as base64, does NOT submit)
+        stepActive('Submitting to Solana');
+        this.outputFn('');
+        this.outputFn('  Approve transaction in wallet (0.05 SOL fee)', 'text-yellow-400');
+        const signedTxBase64 = await this.signAndSubmitFn(prepared.transactionBase64);
+        stepDone();
+
+        // Backend submits to Helius and confirms on-chain
+        stepActive('Confirming transaction');
+        result = await confirmPfpMint(prepared.mintLogId, signedTxBase64);
+        stepDone();
+
+        // Use traits from prepare response
+        result.traits = prepared.pfpData.traits;
+        result.imageUri = result.imageUri || prepared.pfpData.imageUri;
+      } else {
+        // Fallback: server-paid
+        this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
+        this.outputFn('');
+        stepActive('Generating');
+        result = await mintPfp();
+        stepDone();
+      }
 
       this.outputFn('');
-      this.outputFn('╔══════════════════════════════════════╗', 'text-green-400');
-      this.outputFn('║     YOUR SCANLINES PFP IS READY!     ║', 'text-green-400');
-      this.outputFn('╚══════════════════════════════════════╝', 'text-green-400');
+      this.outputFn('\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557', 'text-green-400');
+      this.outputFn('\u2551     YOUR SCANLINES PFP IS READY!     \u2551', 'text-green-400');
+      this.outputFn('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D', 'text-green-400');
       this.outputFn('');
       this.outputFn(`  Palette:    ${result.traits.paletteName}`, 'text-white');
       this.outputFn(`  Face:       ${result.traits.faceShape}`, 'text-white');
@@ -439,7 +533,16 @@ export class GameEngine {
 
       await this.autoSave();
     } catch (error: any) {
-      this.outputFn(`PFP mint failed: ${error.message || 'Unknown error'}`, 'text-red-400');
+      // Handle wallet rejection specifically
+      const msg = error.message || 'Unknown error';
+      if (msg.includes('User rejected') || msg.includes('rejected the request')) {
+        this.outputFn('Transaction cancelled.', 'text-yellow-400');
+        this.outputFn('');
+        this.displayCurrentNode();
+        return;
+      }
+
+      this.outputFn(`PFP mint failed: ${msg}`, 'text-red-400');
       if (node.pfp_mint_failure_node) {
         this.outputFn('');
         this.outputFn('Press ENTER to continue...', 'text-gray-400');

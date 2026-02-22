@@ -41,6 +41,45 @@ export async function executeMint(config: {
   return response.json();
 }
 
+// ── User-paid mint (prepare/confirm flow) ─────
+
+export async function prepareMint(config: {
+  name: string;
+  uri: string;
+  symbol?: string;
+  collection?: 'pfp' | 'items';
+}): Promise<{
+  transactionBase64: string;
+  mintLogId: string;
+}> {
+  const response = await fetchWithAuth('mint/prepare', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to prepare mint transaction');
+  }
+  return response.json();
+}
+
+export async function confirmMint(mintLogId: string, signedTransactionBase64: string): Promise<{
+  success: boolean;
+  assetId: string;
+  signature: string;
+  mintLogId: string;
+}> {
+  const response = await fetchWithAuth('mint/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ mintLogId, signedTransactionBase64 }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to confirm mint transaction');
+  }
+  return response.json();
+}
+
 export async function checkMintStatus(signature: string): Promise<{
   confirmed: boolean;
   status: string;
