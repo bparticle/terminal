@@ -1,16 +1,13 @@
 /**
  * PFP Service — Orchestrates generation → upload → mint
  *
- * Each call produces a unique, randomly-generated Scanlines pixel-art face
- * minted as a cNFT on Solana. The player has no control over traits — the
- * seed is generated server-side via crypto.randomInt().
+ * Uses the standalone scanlines-pfp-generator package which includes
+ * the full race-aware pipeline, CRT effects, and AI filters with
+ * baked preset settings from the scanlines playground.
  */
 
 import { randomInt } from 'crypto';
-import { generateFace } from '../scanlines/generator';
-import { applyEffectsPipeline } from '../scanlines/effects';
-import { getDefaultParams, scaleParamsForResolution, PREVIEW_SIZE } from '../scanlines/effect-types';
-import type { FaceTraits } from '../scanlines/traits';
+import { renderPfp, buildTraitAttributes, type FaceTraits } from 'scanlines-pfp-generator';
 import { uploadPfpAndMetadata } from './arweave.service';
 import { executeMint, checkWhitelist } from './mint.service';
 import { query } from '../config/database';
@@ -53,7 +50,6 @@ export async function getPfpStatus(userId: string, wallet: string): Promise<PfpS
     };
   }
 
-  // Get existing PFP mints from mint_log
   const pfpResult = await query(
     `SELECT asset_id, nft_metadata FROM mint_log
      WHERE user_id = $1 AND mint_type = 'pfp' AND status = 'confirmed'
@@ -87,45 +83,24 @@ export async function getPfpStatus(userId: string, wallet: string): Promise<PfpS
  *
  * Flow:
  * 1. Generate cryptographic random seed
- * 2. Render PFP at 512px with CRT effects
+ * 2. Render PFP at 512px with full pipeline (face + AI filter + CRT effects)
  * 3. Upload image + metadata to Arweave
  * 4. Mint cNFT via Bubblegum V2 (whitelist enforced by executeMint)
  * 5. Update user profile with latest PFP
  * 6. Store seed in mint_log metadata for reproducibility
  */
 export async function mintPfp(userId: string, wallet: string): Promise<PfpMintResult> {
-  // 1. Generate seed — cryptographic randomness, player has zero control
   const seed = randomInt(0, 2147483647);
 
-  // 2. Render the PFP
-  const { canvas, traits } = generateFace(PFP_SIZE, seed);
+  const { pngBuffer, traits, attributes: rawAttributes } = renderPfp(PFP_SIZE, seed);
 
-  // Apply CRT effects pipeline
-  const ctx = canvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, PFP_SIZE, PFP_SIZE);
-  const effectParams = scaleParamsForResolution(getDefaultParams(), PFP_SIZE);
-  applyEffectsPipeline(imageData, effectParams);
-  ctx.putImageData(imageData, 0, 0);
-
-  // Export to PNG buffer
-  const pngBuffer = canvas.toBuffer('image/png');
-
-  // Build trait attributes for NFT metadata
-  const attributes = [
-    { trait_type: 'Palette', value: traits.paletteName },
-    { trait_type: 'Face', value: traits.faceShape },
-    { trait_type: 'Eyes', value: traits.eyeType },
-    { trait_type: 'Mouth', value: traits.mouthStyle },
-    { trait_type: 'Hair', value: traits.hairStyle },
-    { trait_type: 'Accessory', value: traits.accessory },
-    { trait_type: 'Clothing', value: traits.clothing },
-    { trait_type: 'Background', value: traits.bgPattern },
-    { trait_type: 'Pixel Style', value: traits.pixelStyle },
-  ];
+  const attributes = rawAttributes.map(a => ({
+    trait_type: a.trait_type,
+    value: String(a.value),
+  }));
 
   const pfpName = `Scanlines #${seed.toString(36).toUpperCase()}`;
 
-  // 3. Upload to Arweave
   const { imageUri, metadataUri } = await uploadPfpAndMetadata({
     imageBuffer: pngBuffer,
     name: pfpName,
@@ -134,7 +109,6 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
     attributes,
   });
 
-  // 4. Mint cNFT — executeMint handles whitelist check & limit enforcement
   const mintResult = await executeMint(userId, wallet, {
     name: pfpName,
     uri: metadataUri,
@@ -145,7 +119,6 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
     collection: 'pfp',
   });
 
-  // 5. Store seed + image URI in the mint_log metadata for reproducibility
   await query(
     `UPDATE mint_log SET mint_type = 'pfp', nft_metadata = $1 WHERE id = $2`,
     [JSON.stringify({
@@ -154,8 +127,10 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
       metadataUri,
       name: pfpName,
       traits: {
+        race: traits.race,
         paletteName: traits.paletteName,
         faceShape: traits.faceShape,
+        earStyle: traits.earStyle,
         eyeType: traits.eyeType,
         mouthStyle: traits.mouthStyle,
         hairStyle: traits.hairStyle,
@@ -167,7 +142,6 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
     }), mintResult.mintLogId],
   );
 
-  // 6. Update user profile with latest PFP
   await query(
     'UPDATE users SET pfp_image_url = $1, pfp_nft_id = $2 WHERE id = $3',
     [imageUri, mintResult.assetId, userId],
@@ -189,14 +163,6 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
  * Admin testing only.
  */
 export function renderTestPfp(seed: number): Buffer {
-  const { canvas } = generateFace(PFP_SIZE, seed);
-
-  // Apply CRT effects
-  const ctx = canvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, PFP_SIZE, PFP_SIZE);
-  const effectParams = scaleParamsForResolution(getDefaultParams(), PFP_SIZE);
-  applyEffectsPipeline(imageData, effectParams);
-  ctx.putImageData(imageData, 0, 0);
-
-  return canvas.toBuffer('image/png');
+  const { pngBuffer } = renderPfp(PFP_SIZE, seed);
+  return pngBuffer;
 }

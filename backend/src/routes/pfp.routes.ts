@@ -26,9 +26,12 @@ router.post('/mint', requireAuth, async (req: AuthenticatedRequest, res: Respons
       assetId: result.assetId,
       signature: result.signature,
       imageUri: result.imageUri,
+      seed: result.seed,
       traits: {
+        race: result.traits.race,
         paletteName: result.traits.paletteName,
         faceShape: result.traits.faceShape,
+        earStyle: result.traits.earStyle,
         eyeType: result.traits.eyeType,
         mouthStyle: result.traits.mouthStyle,
         hairStyle: result.traits.hairStyle,
