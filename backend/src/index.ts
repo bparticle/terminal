@@ -88,7 +88,21 @@ io.on('connection', (socket) => {
 if (config.nodeEnv === 'production') {
   app.set('trust proxy', 1);
 }
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+      imgSrc: ["'self'"],       // admin PFP preview returns image/png
+      frameAncestors: ["'none'"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,           // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  frameguard: { action: 'deny' },
+}));
 app.use(cors({
   origin: corsOrigin,
   credentials: true,
@@ -157,12 +171,21 @@ async function seedAdminWallets(): Promise<void> {
 function startMintExpiryCleanup(): void {
   setInterval(async () => {
     try {
-      const result = await query(
+      // Find and expire stale prepared entries, releasing reserved whitelist slots
+      const expired = await query(
         `UPDATE mint_log SET status = 'expired'
-         WHERE status = 'prepared' AND created_at < NOW() - INTERVAL '3 minutes'`
+         WHERE status = 'prepared' AND created_at < NOW() - INTERVAL '3 minutes'
+         RETURNING wallet_address`
       );
-      if (result.rowCount && result.rowCount > 0) {
-        console.log(`Expired ${result.rowCount} stale prepared mint_log entries`);
+      if (expired.rowCount && expired.rowCount > 0) {
+        // Release reserved mint slots for each expired entry
+        for (const row of expired.rows) {
+          await query(
+            'UPDATE mint_whitelist SET mints_used = GREATEST(mints_used - 1, 0) WHERE wallet_address = $1',
+            [row.wallet_address]
+          );
+        }
+        console.log(`Expired ${expired.rowCount} stale prepared mint_log entries and released whitelist slots`);
       }
     } catch (error) {
       console.error('Mint expiry cleanup failed:', error);

@@ -10,7 +10,7 @@ import { randomInt } from 'crypto';
 import { renderPfp, buildTraitAttributes, type FaceTraits } from 'scanlines-pfp-generator';
 import { uploadPfpAndMetadata } from './arweave.service';
 import { executeMint, checkWhitelist, prepareMintTransaction, confirmUserMint } from './mint.service';
-import { query } from '../config/database';
+import { query, transaction } from '../config/database';
 import type { FaceTraits as FaceTraitsType } from 'scanlines-pfp-generator';
 
 const PFP_SIZE = 512;
@@ -176,82 +176,102 @@ export interface PfpPrepareResult {
  * Returns the serialized transaction for the user to co-sign, plus PFP metadata for the reveal.
  */
 export async function preparePfpMint(userId: string, wallet: string): Promise<PfpPrepareResult> {
-  // Check eligibility
-  const entry = await checkWhitelist(wallet);
-  if (!entry || !entry.is_active) {
-    throw new Error('Wallet not whitelisted for minting');
-  }
-  if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
-    throw new Error('Mint limit reached');
-  }
-
-  const seed = randomInt(0, 2147483647);
-
-  const { pngBuffer, traits, attributes: rawAttributes } = renderPfp(PFP_SIZE, seed);
-
-  const attributes = rawAttributes.map((a: { trait_type: string; value: unknown }) => ({
-    trait_type: a.trait_type,
-    value: String(a.value),
-  }));
-
-  const pfpName = `Scanlines #${seed.toString(36).toUpperCase()}`;
-
-  // Upload to Arweave (server-paid)
-  const { imageUri, metadataUri } = await uploadPfpAndMetadata({
-    imageBuffer: pngBuffer,
-    name: pfpName,
-    description: 'A unique procedurally generated Scanlines pixel-art PFP from Terminal.',
-    symbol: 'SCAN',
-    attributes,
+  // Atomically check eligibility and reserve a mint slot
+  await transaction(async (client) => {
+    const wlResult = await client.query(
+      'SELECT * FROM mint_whitelist WHERE wallet_address = $1 FOR UPDATE',
+      [wallet]
+    );
+    const entry = wlResult.rows[0];
+    if (!entry || !entry.is_active) {
+      throw new Error('Wallet not whitelisted for minting');
+    }
+    if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+      throw new Error('Mint limit reached');
+    }
+    // Reserve the slot so concurrent requests see the updated count
+    await client.query(
+      'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
+      [wallet]
+    );
   });
 
-  // Create prepared mint_log entry
-  const logResult = await query(
-    `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
-     VALUES ($1, $2, 'pfp', $3, $4, 'prepared')
-     RETURNING id`,
-    [userId, wallet, pfpName, JSON.stringify({
-      seed,
-      imageUri,
-      metadataUri,
+  try {
+    const seed = randomInt(0, 2147483647);
+
+    const { pngBuffer, traits, attributes: rawAttributes } = renderPfp(PFP_SIZE, seed);
+
+    const attributes = rawAttributes.map((a: { trait_type: string; value: unknown }) => ({
+      trait_type: a.trait_type,
+      value: String(a.value),
+    }));
+
+    const pfpName = `Scanlines #${seed.toString(36).toUpperCase()}`;
+
+    // Upload to Arweave (server-paid)
+    const { imageUri, metadataUri } = await uploadPfpAndMetadata({
+      imageBuffer: pngBuffer,
       name: pfpName,
-      traits: {
-        race: traits.race,
-        paletteName: traits.paletteName,
-        faceShape: traits.faceShape,
-        earStyle: traits.earStyle,
-        eyeType: traits.eyeType,
-        mouthStyle: traits.mouthStyle,
-        hairStyle: traits.hairStyle,
-        accessory: traits.accessory,
-        clothing: traits.clothing,
-        bgPattern: traits.bgPattern,
-        pixelStyle: traits.pixelStyle,
+      description: 'A unique procedurally generated Scanlines pixel-art PFP from Terminal.',
+      symbol: 'SCAN',
+      attributes,
+    });
+
+    // Create prepared mint_log entry
+    const logResult = await query(
+      `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
+       VALUES ($1, $2, 'pfp', $3, $4, 'prepared')
+       RETURNING id`,
+      [userId, wallet, pfpName, JSON.stringify({
+        seed,
+        imageUri,
+        metadataUri,
+        name: pfpName,
+        traits: {
+          race: traits.race,
+          paletteName: traits.paletteName,
+          faceShape: traits.faceShape,
+          earStyle: traits.earStyle,
+          eyeType: traits.eyeType,
+          mouthStyle: traits.mouthStyle,
+          hairStyle: traits.hairStyle,
+          accessory: traits.accessory,
+          clothing: traits.clothing,
+          bgPattern: traits.bgPattern,
+          pixelStyle: traits.pixelStyle,
+        },
+      })]
+    );
+    const mintLogId = logResult.rows[0].id;
+
+    // Build partially-signed transaction
+    const { transactionBase64 } = await prepareMintTransaction({
+      name: pfpName,
+      uri: metadataUri,
+      symbol: 'SCAN',
+      ownerWallet: wallet,
+      collection: 'pfp',
+    });
+
+    return {
+      transactionBase64,
+      mintLogId,
+      pfpData: {
+        seed,
+        imageUri,
+        metadataUri,
+        name: pfpName,
+        traits,
       },
-    })]
-  );
-  const mintLogId = logResult.rows[0].id;
-
-  // Build partially-signed transaction
-  const { transactionBase64 } = await prepareMintTransaction({
-    name: pfpName,
-    uri: metadataUri,
-    symbol: 'SCAN',
-    ownerWallet: wallet,
-    collection: 'pfp',
-  });
-
-  return {
-    transactionBase64,
-    mintLogId,
-    pfpData: {
-      seed,
-      imageUri,
-      metadataUri,
-      name: pfpName,
-      traits,
-    },
-  };
+    };
+  } catch (error) {
+    // Release the reserved mint slot on failure
+    await query(
+      'UPDATE mint_whitelist SET mints_used = GREATEST(mints_used - 1, 0) WHERE wallet_address = $1',
+      [wallet]
+    );
+    throw error;
+  }
 }
 
 /**
@@ -266,7 +286,7 @@ export async function confirmPfpMint(
 ): Promise<PfpMintResult> {
   // Get the stored PFP data from the mint_log
   const logResult = await query(
-    `SELECT nft_metadata FROM mint_log WHERE id = $1 AND user_id = $2 AND status = 'prepared'`,
+    `SELECT nft_metadata FROM mint_log WHERE id = $1 AND user_id = $2 AND status IN ('prepared', 'pending')`,
     [mintLogId, userId]
   );
   if (!logResult.rows[0]) {
@@ -275,8 +295,8 @@ export async function confirmPfpMint(
 
   const metadata = logResult.rows[0].nft_metadata;
 
-  // Confirm the on-chain transaction
-  const result = await confirmUserMint(mintLogId, signatureBase58, userId, wallet);
+  // Confirm the on-chain transaction (slot already reserved at prepare time)
+  const result = await confirmUserMint(mintLogId, signatureBase58, userId, wallet, { skipWhitelistIncrement: true });
 
   // Update mint_log with PFP type (confirmUserMint already updated status)
   await query(

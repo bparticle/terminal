@@ -7,7 +7,7 @@ import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import { mintPfp, getPfpStatus, renderTestPfp, preparePfpMint, confirmPfpMint } from '../services/pfp.service';
 import { submitSignedTransaction } from '../services/mint.service';
-import { query } from '../config/database';
+import { query, transaction } from '../config/database';
 import { validateString } from '../middleware/validate';
 import { AppError } from '../middleware/errorHandler';
 
@@ -124,25 +124,32 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const mintLogId = validateString(req.body.mintLogId, 'mintLogId', { required: true, maxLength: 100 })!;
     const signedTransactionBase64 = validateString(req.body.signedTransactionBase64, 'signedTransactionBase64', { required: true, maxLength: 10000 })!;
 
-    // Verify mint_log entry belongs to this user and has 'prepared' status
-    const logCheck = await query(
-      `SELECT id, user_id, status FROM mint_log WHERE id = $1`,
-      [mintLogId]
-    );
-    if (!logCheck.rows[0]) {
-      throw new AppError('Mint log entry not found', 404);
-    }
-    if (logCheck.rows[0].user_id !== req.user.userId) {
-      throw new AppError('Unauthorized', 403);
-    }
-    if (logCheck.rows[0].status !== 'prepared') {
-      throw new AppError(`Mint log entry has status '${logCheck.rows[0].status}', expected 'prepared'`, 400);
-    }
+    // Atomically lock and claim the prepared mint_log entry
+    await transaction(async (client) => {
+      const logCheck = await client.query(
+        `SELECT id, user_id, status FROM mint_log WHERE id = $1 FOR UPDATE`,
+        [mintLogId]
+      );
+      if (!logCheck.rows[0]) {
+        throw new AppError('Mint log entry not found', 404);
+      }
+      if (logCheck.rows[0].user_id !== req.user!.userId) {
+        throw new AppError('Unauthorized', 403);
+      }
+      if (logCheck.rows[0].status !== 'prepared') {
+        throw new AppError(`Mint log entry has status '${logCheck.rows[0].status}', expected 'prepared'`, 400);
+      }
+      // Mark as in-flight so concurrent requests are rejected
+      await client.query(
+        `UPDATE mint_log SET status = 'pending' WHERE id = $1`,
+        [mintLogId]
+      );
+    });
 
     // Submit the signed transaction to Helius from the backend
     const signature = await submitSignedTransaction(signedTransactionBase64);
 
-    const result = await confirmPfpMint(mintLogId, signature, req.user.userId, req.user.walletAddress);
+    const result = await confirmPfpMint(mintLogId, signature, req.user!.userId, req.user!.walletAddress);
 
     res.json({
       assetId: result.assetId,

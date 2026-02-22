@@ -6,7 +6,6 @@ const API_KEY = process.env.API_KEY || '';
 const ALLOWED_PATHS = [
   'auth/request-message',
   'auth/verify-wallet',
-  'users/check-wallet',
   'users/check-admin',
   'users/profile',
   'users/online',
@@ -32,8 +31,12 @@ const ALLOWED_PATHS = [
 ];
 
 function isPathAllowed(path: string): boolean {
-  // Reject path traversal attempts
-  if (path.includes('..') || path.includes('%2e') || path.includes('%2E')) {
+  // Reject any percent-encoded segments (prevents double-encoding bypasses)
+  if (path.includes('%')) {
+    return false;
+  }
+  // Reject path traversal
+  if (path.includes('..')) {
     return false;
   }
   return ALLOWED_PATHS.some((allowed) => path === allowed || path.startsWith(allowed + '/'));

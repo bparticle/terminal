@@ -2,38 +2,10 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { query } from '../config/database';
 import { AuthenticatedRequest } from '../types';
-import { isValidSolanaAddress } from '../services/auth.service';
 import { AppError } from '../middleware/errorHandler';
 import { validateString, validateUrl } from '../middleware/validate';
 
 const router = Router();
-
-/**
- * GET /api/v1/users/check-wallet?wallet=<address>
- * Check if a wallet has an existing user account
- */
-router.get('/check-wallet', async (req: Request, res: Response) => {
-  try {
-    const { wallet } = req.query;
-
-    if (!wallet || typeof wallet !== 'string' || !isValidSolanaAddress(wallet)) {
-      throw new AppError('Invalid wallet address', 400);
-    }
-
-    const result = await query(
-      'SELECT id FROM users WHERE wallet_address = $1',
-      [wallet]
-    );
-
-    res.json({ exists: result.rows.length > 0 });
-  } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: 'Failed to check wallet' });
-    }
-  }
-});
 
 /**
  * GET /api/v1/users/profile

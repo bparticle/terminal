@@ -86,15 +86,6 @@ export async function verifyWallet(
 }
 
 /**
- * Check if a wallet exists
- */
-export async function checkWallet(walletAddress: string): Promise<boolean> {
-  const response = await fetch(`${API_BASE_URL}/users/check-wallet?wallet=${walletAddress}`);
-  const data = await response.json();
-  return data.exists;
-}
-
-/**
  * Get user profile
  */
 export async function getUserProfile(): Promise<any> {

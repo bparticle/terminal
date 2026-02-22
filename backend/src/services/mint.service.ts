@@ -190,31 +190,45 @@ export async function executeMint(
   wallet: string,
   mintConfig: MintParams
 ): Promise<MintResult> {
-  // Check whitelist
-  const entry = await checkWhitelist(wallet);
-  if (!entry || !entry.is_active) {
-    throw new Error('Wallet not whitelisted for minting');
-  }
-  if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
-    throw new Error('Mint limit reached');
-  }
+  // Atomically check whitelist + reserve a mint slot + create log entry
+  const { mintLogId } = await transaction(async (client) => {
+    // Lock the whitelist row to prevent concurrent reads
+    const wlResult = await client.query(
+      'SELECT * FROM mint_whitelist WHERE wallet_address = $1 FOR UPDATE',
+      [wallet]
+    );
+    const entry = wlResult.rows[0];
+    if (!entry || !entry.is_active) {
+      throw new Error('Wallet not whitelisted for minting');
+    }
+    if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+      throw new Error('Mint limit reached');
+    }
 
-  // Create pending log entry
-  const logResult = await query(
-    `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
-     VALUES ($1, $2, $3, $4, $5, 'pending')
-     RETURNING id`,
-    [userId, wallet, mintConfig.soulbound ? 'soulbound' : 'standard', mintConfig.name, JSON.stringify({
-      symbol: mintConfig.symbol,
-      description: mintConfig.description,
-      image: mintConfig.image,
-      attributes: mintConfig.attributes,
-    })]
-  );
-  const mintLogId = logResult.rows[0].id;
+    // Reserve the mint slot immediately
+    await client.query(
+      'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
+      [wallet]
+    );
+
+    // Create pending log entry
+    const logResult = await client.query(
+      `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
+       VALUES ($1, $2, $3, $4, $5, 'pending')
+       RETURNING id`,
+      [userId, wallet, mintConfig.soulbound ? 'soulbound' : 'standard', mintConfig.name, JSON.stringify({
+        symbol: mintConfig.symbol,
+        description: mintConfig.description,
+        image: mintConfig.image,
+        attributes: mintConfig.attributes,
+      })]
+    );
+
+    return { mintLogId: logResult.rows[0].id };
+  });
 
   try {
-    // Execute the mint
+    // Execute the mint (outside transaction — on-chain call can be slow)
     const { assetId, signature, leafData } = await mintCompressedNFT({
       name: mintConfig.name,
       uri: mintConfig.uri,
@@ -225,25 +239,23 @@ export async function executeMint(
       soulbound: mintConfig.soulbound,
     });
 
-    // Update log and whitelist atomically
-    await transaction(async (client) => {
-      await client.query(
-        `UPDATE mint_log SET asset_id = $1, signature = $2, status = 'confirmed', confirmed_at = NOW()
-         WHERE id = $3`,
-        [assetId, signature, mintLogId]
-      );
-      await client.query(
-        'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
-        [wallet]
-      );
-    });
+    // Update log with confirmed status
+    await query(
+      `UPDATE mint_log SET asset_id = $1, signature = $2, status = 'confirmed', confirmed_at = NOW()
+       WHERE id = $3`,
+      [assetId, signature, mintLogId]
+    );
 
     return { assetId, signature, mintLogId, leafData };
   } catch (error: any) {
-    // Mark log as failed
+    // Mark log as failed and release the reserved mint slot
     await query(
       `UPDATE mint_log SET status = 'failed', error_message = $1 WHERE id = $2`,
       [error.message || 'Unknown error', mintLogId]
+    );
+    await query(
+      'UPDATE mint_whitelist SET mints_used = GREATEST(mints_used - 1, 0) WHERE wallet_address = $1',
+      [wallet]
     );
     throw error;
   }
@@ -390,6 +402,7 @@ export async function confirmUserMint(
   signatureBase58: string,
   userId: string,
   wallet: string,
+  options?: { skipWhitelistIncrement?: boolean },
 ): Promise<MintResult> {
   const umi = getUmi();
   const bs58 = require('bs58');
@@ -426,17 +439,24 @@ export async function confirmUserMint(
     } : {}),
   };
 
-  // Update mint_log and whitelist atomically
+  // Update mint_log and whitelist atomically with row lock
   await transaction(async (client) => {
     await client.query(
       `UPDATE mint_log SET asset_id = $1, signature = $2, status = 'confirmed', confirmed_at = NOW()
-       WHERE id = $3 AND user_id = $4 AND status = 'prepared'`,
+       WHERE id = $3 AND user_id = $4 AND status IN ('prepared', 'pending')`,
       [assetId, signatureBase58, mintLogId, userId]
     );
-    await client.query(
-      'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
-      [wallet]
-    );
+    // Skip whitelist increment if already reserved at prepare time (e.g. PFP flow)
+    if (!options?.skipWhitelistIncrement) {
+      await client.query(
+        'SELECT id FROM mint_whitelist WHERE wallet_address = $1 FOR UPDATE',
+        [wallet]
+      );
+      await client.query(
+        'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
+        [wallet]
+      );
+    }
   });
 
   return { assetId, signature: signatureBase58, mintLogId, leafData };

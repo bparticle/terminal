@@ -154,9 +154,15 @@ export async function verifySoulbound(assetId: string): Promise<{
     return { isFrozen: false, delegate: null, owner: null };
   }
 
-  const isFrozen = asset.ownership?.frozen === true;
+  const frozen = asset.ownership?.frozen === true;
   const delegate = asset.ownership?.delegate || null;
   const owner = asset.ownership?.owner || null;
+
+  // Verify the freeze delegate is our authority — if not, the item could be unfrozen by someone else
+  const umi = getUmi();
+  const authorityKey = umi.identity.publicKey.toString();
+  const delegateValid = delegate === authorityKey;
+  const isFrozen = frozen && delegateValid;
 
   return { isFrozen, delegate, owner };
 }
@@ -202,54 +208,79 @@ export async function mintAndFreezeSoulbound(
   mintLogId: string;
   alreadyMinted?: boolean;
 }> {
-  // Deduplication: skip if already minted for this user
+  // Deduplication: atomically reserve the user+item slot before minting.
+  // Uses INSERT ON CONFLICT on the (user_id, item_name) unique index.
   const itemName = mintConfig.itemName || mintConfig.name;
-  const existing = await checkSoulboundExists(userId, itemName);
-  if (existing) {
-    return {
-      assetId: existing.asset_id,
-      mintSignature: '',
-      freezeSignature: existing.freeze_signature || '',
-      mintLogId: existing.mint_log_id || '',
-      alreadyMinted: true,
-    };
+  const reserveResult = await query(
+    `INSERT INTO soulbound_items (user_id, wallet_address, asset_id, item_name, is_frozen, metadata)
+     VALUES ($1, $2, $3, $4, FALSE, $5)
+     ON CONFLICT (user_id, item_name) DO NOTHING
+     RETURNING id`,
+    [userId, wallet, `pending-${userId}-${itemName}`, itemName, JSON.stringify({})]
+  );
+
+  if (reserveResult.rowCount === 0) {
+    // Already exists — return existing record
+    const existing = await checkSoulboundExists(userId, itemName);
+    if (existing) {
+      return {
+        assetId: existing.asset_id,
+        mintSignature: '',
+        freezeSignature: existing.freeze_signature || '',
+        mintLogId: existing.mint_log_id || '',
+        alreadyMinted: true,
+      };
+    }
+    throw new Error('Soulbound item already being minted');
   }
 
-  // Step 1: Mint the cNFT (returns leaf data for freeze)
-  const mintResult = await executeMint(userId, wallet, { ...mintConfig, soulbound: true });
+  const reservationId = reserveResult.rows[0].id;
 
-  // Step 2: Wait for DAS to index the proof, then freeze
-  await new Promise((r) => setTimeout(r, 10000));
-
-  let freezeSignature: string;
   try {
-    const freezeResult = await freezeAsset(mintResult.assetId, wallet, mintResult.leafData);
-    freezeSignature = freezeResult.signature;
-  } catch (error: any) {
-    console.error('Freeze failed after mint:', error);
-    throw new Error(`Minted successfully (${mintResult.assetId}) but freeze failed: ${error.message}`);
+    // Step 1: Mint the cNFT (returns leaf data for freeze)
+    const mintResult = await executeMint(userId, wallet, { ...mintConfig, soulbound: true });
+
+    // Step 2: Wait for DAS to index the proof, then freeze
+    await new Promise((r) => setTimeout(r, 10000));
+
+    let freezeSignature: string;
+    try {
+      const freezeResult = await freezeAsset(mintResult.assetId, wallet, mintResult.leafData);
+      freezeSignature = freezeResult.signature;
+    } catch (error: any) {
+      console.error('Freeze failed after mint:', error);
+      throw new Error(`Minted successfully (${mintResult.assetId}) but freeze failed: ${error.message}`);
+    }
+
+    // Step 3: Update reservation with real data
+    await query(
+      `UPDATE soulbound_items
+       SET asset_id = $1, mint_log_id = $2, is_frozen = TRUE, freeze_signature = $3,
+           metadata = $4
+       WHERE id = $5`,
+      [
+        mintResult.assetId,
+        mintResult.mintLogId,
+        freezeSignature,
+        JSON.stringify({
+          name: mintConfig.name,
+          description: mintConfig.description,
+          image: mintConfig.image,
+          attributes: mintConfig.attributes,
+        }),
+        reservationId,
+      ]
+    );
+
+    return {
+      assetId: mintResult.assetId,
+      mintSignature: mintResult.signature,
+      freezeSignature,
+      mintLogId: mintResult.mintLogId,
+    };
+  } catch (error) {
+    // Clean up the reservation on failure so the user can retry
+    await query('DELETE FROM soulbound_items WHERE id = $1', [reservationId]);
+    throw error;
   }
-
-  // Step 3: Register in database
-  await registerSoulboundItem({
-    userId,
-    wallet,
-    assetId: mintResult.assetId,
-    itemName: mintConfig.itemName || mintConfig.name,
-    mintLogId: mintResult.mintLogId,
-    freezeSignature,
-    metadata: {
-      name: mintConfig.name,
-      description: mintConfig.description,
-      image: mintConfig.image,
-      attributes: mintConfig.attributes,
-    },
-  });
-
-  return {
-    assetId: mintResult.assetId,
-    mintSignature: mintResult.signature,
-    freezeSignature,
-    mintLogId: mintResult.mintLogId,
-  };
 }

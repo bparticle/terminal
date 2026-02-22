@@ -6,6 +6,7 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  statement_timeout: 30000,
   // Neon and most cloud Postgres providers require SSL in production
   ssl: config.nodeEnv === 'production' ? {
     rejectUnauthorized: true,

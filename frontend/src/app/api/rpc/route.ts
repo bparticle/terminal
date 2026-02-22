@@ -11,7 +11,6 @@ const ALLOWED_METHODS = [
   'getRecentBlockhash',
   'getSignatureStatuses',
   'getFeeForMessage',
-  'sendTransaction',
   'simulateTransaction',
   'searchAssets',
   'getAsset',

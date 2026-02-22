@@ -163,7 +163,11 @@ router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, re
       reward_description: validateString(req.body.reward_description, 'reward_description', { required: true, maxLength: 500 })!,
       reward_nft_mint: validateString(req.body.reward_nft_mint, 'reward_nft_mint', { maxLength: 100 }),
       sets_state: validateString(req.body.sets_state, 'sets_state', { maxLength: 200 }),
-      expires_at: req.body.expires_at ? new Date(req.body.expires_at).toISOString() : undefined,
+      expires_at: req.body.expires_at ? (() => {
+        const d = new Date(req.body.expires_at);
+        if (isNaN(d.getTime())) throw new AppError('Invalid expires_at date', 400);
+        return d.toISOString();
+      })() : undefined,
       is_active: typeof req.body.is_active === 'boolean' ? req.body.is_active : true,
       created_by: req.user!.walletAddress,
     });
@@ -198,7 +202,15 @@ router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, 
     if (req.body.reward_nft_mint !== undefined) validatedData.reward_nft_mint = validateString(req.body.reward_nft_mint, 'reward_nft_mint', { maxLength: 100 });
     if (req.body.sets_state !== undefined) validatedData.sets_state = validateString(req.body.sets_state, 'sets_state', { maxLength: 200 });
     if (req.body.is_active !== undefined && typeof req.body.is_active === 'boolean') validatedData.is_active = req.body.is_active;
-    if (req.body.expires_at !== undefined) validatedData.expires_at = req.body.expires_at ? new Date(req.body.expires_at).toISOString() : null;
+    if (req.body.expires_at !== undefined) {
+      if (req.body.expires_at) {
+        const d = new Date(req.body.expires_at);
+        if (isNaN(d.getTime())) throw new AppError('Invalid expires_at date', 400);
+        validatedData.expires_at = d.toISOString();
+      } else {
+        validatedData.expires_at = null;
+      }
+    }
 
     const campaign = await updateCampaign(req.params.id, validatedData);
     if (!campaign) {
