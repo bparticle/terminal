@@ -124,7 +124,7 @@ async function main() {
     ...(isVideo
       ? { image: '', animation_url: fileUri }
       : { image: fileUri }),
-    external_url: 'https://terminal.so',
+    external_url: 'https://scanlines.io',
     attributes: [
       { trait_type: 'Type', value: 'Inventory Item' },
     ],

@@ -96,7 +96,7 @@ export async function uploadPfpAndMetadata(params: {
     symbol: params.symbol,
     description: params.description,
     image: imageUri,
-    external_url: 'https://terminal.so',
+    external_url: 'https://scanlines.io',
     attributes: params.attributes,
     properties: {
       files: [{ uri: imageUri, type: 'image/png' }],
@@ -136,7 +136,7 @@ export async function uploadPfpAndMetadataFast(params: {
     symbol: params.symbol,
     description: params.description,
     image: imageUri,
-    external_url: 'https://terminal.so',
+    external_url: 'https://scanlines.io',
     attributes: params.attributes,
     properties: {
       files: [{ uri: imageUri, type: 'image/png' }],
