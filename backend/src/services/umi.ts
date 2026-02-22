@@ -2,7 +2,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplBubblegum } from '@metaplex-foundation/mpl-bubblegum';
 import { Keypair } from '@solana/web3.js';
 import { keypairIdentity, publicKey, type Umi } from '@metaplex-foundation/umi';
-import { config } from '../config/constants';
+import { config, getHeliusRpcUrl } from '../config/constants';
 
 let _umi: Umi | null = null;
 
@@ -58,7 +58,7 @@ export function getUmi(): Umi {
     throw new Error('COLLECTION_AUTHORITY_KEYPAIR not configured');
   }
 
-  const endpoint = `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
+  const endpoint = getHeliusRpcUrl();
   const umi = createUmi(endpoint).use(mplBubblegum());
 
   const secretKey = parseKeypairBytes(config.collectionAuthorityKeypair);

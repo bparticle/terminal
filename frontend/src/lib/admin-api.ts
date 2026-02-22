@@ -88,6 +88,19 @@ export async function getSiteStatus(): Promise<{ maintenance: boolean; message: 
   return response.json();
 }
 
+export interface SiteInfo {
+  solanaNetwork: 'devnet' | 'mainnet-beta';
+}
+
+/**
+ * Admin: get server environment info (Solana network, etc.)
+ */
+export async function getSiteInfo(): Promise<SiteInfo> {
+  const response = await fetchWithAuth('site/info');
+  if (!response.ok) return { solanaNetwork: 'mainnet-beta' };
+  return response.json();
+}
+
 /**
  * Admin: update site settings (maintenance mode toggle + message)
  */

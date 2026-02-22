@@ -20,28 +20,48 @@ async function run() {
     ssl: { rejectUnauthorized: false },
   });
 
+  const specificFile = process.argv[2];
+
   try {
     console.log('Connecting to database...');
     const client = await pool.connect();
     console.log('Connected!\n');
 
-    // Run migration
-    console.log('--- Running migration 001_initial_schema.sql ---');
-    const migrationSQL = fs.readFileSync(
-      path.join(__dirname, 'migrations', '001_initial_schema.sql'),
-      'utf-8'
-    );
-    await client.query(migrationSQL);
-    console.log('Migration complete.\n');
+    const migrationsDir = path.join(__dirname, 'migrations');
 
-    // Run seed
-    console.log('--- Running seed.sql ---');
-    const seedSQL = fs.readFileSync(
-      path.join(__dirname, 'seed.sql'),
-      'utf-8'
-    );
-    await client.query(seedSQL);
-    console.log('Seed complete.\n');
+    if (specificFile) {
+      // Run a specific migration file
+      const filePath = path.isAbsolute(specificFile)
+        ? specificFile
+        : path.join(migrationsDir, specificFile);
+      const fileName = path.basename(filePath);
+      console.log(`--- Running ${fileName} ---`);
+      const sql = fs.readFileSync(filePath, 'utf-8');
+      await client.query(sql);
+      console.log('Done.\n');
+    } else {
+      // Run all migrations in order
+      const files = fs.readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort();
+
+      for (const file of files) {
+        console.log(`--- Running ${file} ---`);
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+        await client.query(sql);
+        console.log('Done.');
+      }
+      console.log();
+
+      // Run seed
+      const seedPath = path.join(__dirname, 'seed.sql');
+      if (fs.existsSync(seedPath)) {
+        console.log('--- Running seed.sql ---');
+        const seedSQL = fs.readFileSync(seedPath, 'utf-8');
+        await client.query(seedSQL);
+        console.log('Done.\n');
+      }
+    }
 
     // Verify
     const tables = await client.query(`
@@ -49,14 +69,8 @@ async function run() {
       WHERE table_schema = 'public'
       ORDER BY table_name
     `);
-    console.log('Tables created:');
+    console.log('Tables in database:');
     tables.rows.forEach((r) => console.log(`  - ${r.table_name}`));
-
-    const campaigns = await client.query('SELECT id, name, target_states FROM campaigns');
-    console.log('\nSeeded campaigns:');
-    campaigns.rows.forEach((r) =>
-      console.log(`  - ${r.name} (targets: ${r.target_states.join(', ')})`)
-    );
 
     client.release();
     console.log('\nAll done!');

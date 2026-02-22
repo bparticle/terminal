@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useAuth } from '@/context/AuthProvider';
-import { checkAdminStatus } from '@/lib/admin-api';
+import { checkAdminStatus, getSiteInfo, type SiteInfo } from '@/lib/admin-api';
 import Campaigns from './components/Campaigns';
 import GameUserStatus from './components/GameUserStatus';
 import GameReset from './components/GameReset';
@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('campaigns');
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,6 +34,10 @@ export default function AdminPage() {
     try {
       const adminStatus = await checkAdminStatus();
       setIsAdmin(adminStatus);
+      if (adminStatus) {
+        const info = await getSiteInfo();
+        setSiteInfo(info);
+      }
     } catch (error) {
       console.error('Admin check failed:', error);
       setIsAdmin(false);
@@ -113,6 +118,15 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-6 border-b border-green-900 pb-4">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl text-green-400">ADMIN PANEL</h1>
+            {siteInfo && (
+              <span className={`px-2 py-0.5 text-xs font-bold border ${
+                siteInfo.solanaNetwork === 'devnet'
+                  ? 'text-yellow-400 border-yellow-700 bg-yellow-900/30'
+                  : 'text-green-400 border-green-700 bg-green-900/30'
+              }`}>
+                {siteInfo.solanaNetwork === 'devnet' ? 'DEVNET' : 'MAINNET'}
+              </span>
+            )}
             <span className="text-xs text-gray-500">
               {publicKey?.toBase58().slice(0, 8)}...{publicKey?.toBase58().slice(-4)}
             </span>

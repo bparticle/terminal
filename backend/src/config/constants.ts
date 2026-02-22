@@ -44,6 +44,7 @@ export const config = {
   apiKey,
   frontendUrl: process.env.FRONTEND_URL || '',
   heliusApiKey: process.env.HELIUS_API_KEY || '',
+  solanaNetwork: (process.env.SOLANA_NETWORK || 'mainnet-beta') as 'devnet' | 'mainnet-beta',
   collectionMintAddress: process.env.COLLECTION_MINT_ADDRESS || '',
   adminWallets: (process.env.ADMIN_WALLETS || '').split(',').map(w => w.trim()).filter(Boolean),
   collectionAuthorityKeypair: process.env.COLLECTION_AUTHORITY_KEYPAIR || '',
@@ -52,3 +53,14 @@ export const config = {
   pfpCollectionMint: process.env.PFP_COLLECTION_MINT || '',
   itemsCollectionMint: process.env.ITEMS_COLLECTION_MINT || '',
 };
+
+/**
+ * Build the Helius RPC URL for the configured Solana network.
+ * Helius subdomains use "devnet" or "mainnet" (not "mainnet-beta").
+ */
+export function getHeliusRpcUrl(): string {
+  const subdomain = config.solanaNetwork === 'devnet' ? 'devnet' : 'mainnet';
+  return `https://${subdomain}.helius-rpc.com/?api-key=${config.heliusApiKey}`;
+}
+
+console.log(`Solana network: ${config.solanaNetwork}`);

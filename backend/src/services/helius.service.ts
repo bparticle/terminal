@@ -1,7 +1,5 @@
 import fetch from 'node-fetch';
-import { config } from '../config/constants';
-
-const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
+import { config, getHeliusRpcUrl } from '../config/constants';
 const COLLECTION_MINT = config.collectionMintAddress;
 
 export interface NFTAsset {
@@ -22,7 +20,7 @@ export async function fetchWalletCollections(walletAddress: string) {
   }
 
   try {
-    const response = await fetch(HELIUS_RPC_URL, {
+    const response = await fetch(getHeliusRpcUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -71,7 +69,7 @@ export async function getNFTDetails(assetId: string) {
   }
 
   try {
-    const response = await fetch(HELIUS_RPC_URL, {
+    const response = await fetch(getHeliusRpcUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -10,7 +10,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplBubblegum } from '@metaplex-foundation/mpl-bubblegum';
 import { keypairIdentity, createGenericFile, type Umi } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
-import { config } from '../config/constants';
+import { config, getHeliusRpcUrl } from '../config/constants';
 import { parseKeypairBytes } from './umi';
 
 let _uploadUmi: Umi | null = null;
@@ -29,7 +29,7 @@ function getUploadUmi(): Umi {
     throw new Error('COLLECTION_AUTHORITY_KEYPAIR not configured');
   }
 
-  const endpoint = `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
+  const endpoint = getHeliusRpcUrl();
 
   const umi = createUmi(endpoint)
     .use(mplBubblegum())

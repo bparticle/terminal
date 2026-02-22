@@ -1,12 +1,10 @@
 import fetch from 'node-fetch';
 import { publicKey } from '@metaplex-foundation/umi';
 import { mintV2, parseLeafFromMintV2Transaction } from '@metaplex-foundation/mpl-bubblegum';
-import { config } from '../config/constants';
+import { config, getHeliusRpcUrl } from '../config/constants';
 import { query, transaction } from '../config/database';
 import { WhitelistEntry, MintLogEntry, MintParams, MintResult, MintLeafData } from '../types';
 import { getUmi } from './umi';
-
-const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
 
 // ── Whitelist CRUD ─────────────────────────────
 
@@ -254,7 +252,7 @@ export async function confirmMintTransaction(signature: string): Promise<{
     throw new Error('Helius API key not configured');
   }
 
-  const response = await fetch(HELIUS_RPC_URL, {
+  const response = await fetch(getHeliusRpcUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -73,4 +73,19 @@ router.put(
   }
 );
 
+/**
+ * GET /api/v1/site/info
+ * Admin only — returns server environment info (Solana network, etc.)
+ */
+router.get(
+  '/info',
+  requireAuth as any,
+  requireAdmin as any,
+  async (_req: AuthenticatedRequest, res: Response) => {
+    res.json({
+      solanaNetwork: config.solanaNetwork,
+    });
+  }
+);
+
 export default router;

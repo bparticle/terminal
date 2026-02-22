@@ -1,20 +1,18 @@
 import fetch from 'node-fetch';
 import { publicKey, some } from '@metaplex-foundation/umi';
 import { freezeV2 } from '@metaplex-foundation/mpl-bubblegum';
-import { config } from '../config/constants';
+import { config, getHeliusRpcUrl } from '../config/constants';
 import { query } from '../config/database';
 import { SoulboundItem, MintParams, MintLeafData } from '../types';
 import { executeMint } from './mint.service';
 import { getNFTDetails } from './helius.service';
 import { getUmi } from './umi';
 
-const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${config.heliusApiKey}`;
-
 /**
  * Get the asset proof needed for Bubblegum instructions
  */
 async function getAssetProof(assetId: string): Promise<any> {
-  const response = await fetch(HELIUS_RPC_URL, {
+  const response = await fetch(getHeliusRpcUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
