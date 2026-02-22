@@ -50,6 +50,7 @@ export default function GameTerminal() {
   const outputEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentNodeIdRef = useRef<string | null>(null);
+  const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // ── Refs for use in stable callbacks ──────────
   const soloModeRef = useRef(soloMode);
@@ -453,8 +454,19 @@ export default function GameTerminal() {
     [publicKey, connected, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
   );
 
-  // Focus input on click
-  const handleTerminalClick = useCallback(() => {
+  const handleTerminalMouseDown = useCallback((e: React.MouseEvent) => {
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  // Focus input on click, but not if user is selecting text
+  const handleTerminalClick = useCallback((e: React.MouseEvent) => {
+    const dx = e.clientX - mouseDownPosRef.current.x;
+    const dy = e.clientY - mouseDownPosRef.current.y;
+    if (dx * dx + dy * dy > 25) return;
+
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+
     inputRef.current?.focus();
   }, []);
 
@@ -466,7 +478,7 @@ export default function GameTerminal() {
       </div>
       <div className="retro-container">
         {/* Main Terminal */}
-        <div className="terminal-section" onClick={handleTerminalClick}>
+        <div className="terminal-section" onMouseDown={handleTerminalMouseDown} onClick={handleTerminalClick}>
           <div className="terminal-header">
             <span>TERMINAL ADVENTURE</span>
             <span className="terminal-location">{currentLocation}</span>
@@ -482,7 +494,7 @@ export default function GameTerminal() {
             </button>
           </div>
 
-          <div className="terminal-output">
+          <div className="terminal-output" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
             {isAuthenticating && (
               <div className="terminal-line text-yellow-400">
                 Authenticating wallet...

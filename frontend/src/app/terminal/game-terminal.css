@@ -137,6 +137,8 @@
   padding: 20px;
   z-index: 3;
   position: relative;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .terminal-line {
