@@ -422,6 +422,11 @@ export class GameEngine {
       this.outputFn('');
       this.outputFn(`Asset: ${result.assetId.slice(0, 20)}...`, 'text-gray-400');
 
+      // Show the PFP in the Monitor
+      if (result.imageUri) {
+        window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: result.imageUri } }));
+      }
+
       // Set state flags
       this.save.game_state.has_pfp = true;
       this.save.game_state.pfp_count = (this.save.game_state.pfp_count || 0) + 1;

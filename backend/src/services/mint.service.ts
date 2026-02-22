@@ -146,14 +146,17 @@ export async function mintCompressedNFT(params: {
   const { signature: sigBytes } = await builder.sendAndConfirm(umi);
 
   // Parse the asset ID from the on-chain transaction logs (retry for RPC indexing delay)
+  // Devnet indexing is significantly slower, so use more retries with longer delays
+  const maxAttempts = config.solanaNetwork === 'devnet' ? 15 : 5;
+  const retryDelay = config.solanaNetwork === 'devnet' ? 4000 : 2000;
   let leaf;
-  for (let attempt = 1; attempt <= 5; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       leaf = await parseLeafFromMintV2Transaction(umi, sigBytes);
       break;
     } catch {
-      if (attempt === 5) throw new Error('Could not parse asset ID from mint transaction after 5 attempts');
-      await new Promise((r) => setTimeout(r, 2000));
+      if (attempt === maxAttempts) throw new Error(`Could not parse asset ID from mint transaction after ${maxAttempts} attempts`);
+      await new Promise((r) => setTimeout(r, retryDelay));
     }
   }
   const parsedLeaf = leaf!;

@@ -1,5 +1,7 @@
 import { GameEngine } from './game-engine';
 import { checkWhitelistStatus, getMintHistory, checkMintStatus, getSoulboundItems, verifySoulbound } from './mint-api';
+import { checkPfpStatus } from './pfp-api';
+import { updateProfilePfp } from './api';
 
 export interface TerminalContext {
   engine: GameEngine | null;
@@ -49,6 +51,7 @@ export const commands: Record<string, Command> = {
       ctx.addOutput('NFT:', 'text-yellow-400');
       ctx.addOutput('  mint          Mint commands (status/history/confirm)');
       ctx.addOutput('  soulbound     Soulbound item commands (list/verify)');
+      ctx.addOutput('  pfp           PFP avatar commands (list/set/clear)');
       ctx.addOutput('');
     },
   },
@@ -359,6 +362,90 @@ export const commands: Record<string, Command> = {
       }
 
       ctx.addOutput('Unknown subcommand. Type "soulbound help" for usage.', 'text-red-400');
+    },
+  },
+
+  pfp: {
+    description: 'PFP avatar commands',
+    requiresWallet: true,
+    execute: async (args, ctx) => {
+      const sub = args.trim().toLowerCase();
+
+      if (sub === 'help') {
+        ctx.addOutput('=== PFP COMMANDS ===', 'text-cyan-400');
+        ctx.addOutput('');
+        ctx.addOutput('  pfp              List your PFPs');
+        ctx.addOutput('  pfp list         List your PFPs');
+        ctx.addOutput('  pfp set <n>      Set PFP #n as your avatar');
+        ctx.addOutput('  pfp clear        Remove avatar (show matrix rain)');
+        ctx.addOutput('');
+        return;
+      }
+
+      if (!sub || sub === 'list') {
+        ctx.addOutput('Fetching your PFPs...', 'text-gray-400');
+        try {
+          const status = await checkPfpStatus();
+          if (status.pfps.length === 0) {
+            ctx.addOutput('You don\'t have any PFPs yet.', 'text-gray-400');
+            ctx.addOutput('Visit the Identity Terminal in-game to mint one.', 'text-gray-400');
+            return;
+          }
+          ctx.addOutput('=== YOUR PFPS ===', 'text-cyan-400');
+          ctx.addOutput('');
+          status.pfps.forEach((pfp, idx) => {
+            ctx.addOutput(`  [${idx + 1}]  ${pfp.name}`, 'text-white');
+            ctx.addOutput(`       Asset: ${pfp.assetId.slice(0, 20)}...`, 'text-gray-400');
+          });
+          ctx.addOutput('');
+          ctx.addOutput('Use "pfp set <number>" to set one as your avatar.', 'text-gray-400');
+        } catch {
+          ctx.addOutput('Failed to fetch PFPs.', 'text-red-400');
+        }
+        return;
+      }
+
+      if (sub.startsWith('set')) {
+        const numStr = sub.substring(3).trim();
+        const num = parseInt(numStr, 10);
+        if (!numStr || isNaN(num) || num < 1) {
+          ctx.addOutput('Usage: pfp set <number>', 'text-yellow-400');
+          ctx.addOutput('Type "pfp list" to see your PFPs.', 'text-gray-400');
+          return;
+        }
+
+        ctx.addOutput('Fetching your PFPs...', 'text-gray-400');
+        try {
+          const status = await checkPfpStatus();
+          if (num > status.pfps.length) {
+            ctx.addOutput(`Invalid selection. You have ${status.pfps.length} PFP${status.pfps.length !== 1 ? 's' : ''}.`, 'text-red-400');
+            return;
+          }
+
+          const selected = status.pfps[num - 1];
+          ctx.addOutput(`Setting ${selected.name} as your avatar...`, 'text-gray-400');
+          await updateProfilePfp(selected.imageUri, selected.assetId);
+
+          window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: selected.imageUri } }));
+          ctx.addOutput(`Avatar updated to ${selected.name}.`, 'text-green-400');
+        } catch {
+          ctx.addOutput('Failed to update avatar.', 'text-red-400');
+        }
+        return;
+      }
+
+      if (sub === 'clear') {
+        try {
+          await updateProfilePfp('', '');
+          window.dispatchEvent(new CustomEvent('clear-display'));
+          ctx.addOutput('Avatar cleared. Matrix rain restored.', 'text-green-400');
+        } catch {
+          ctx.addOutput('Failed to clear avatar.', 'text-red-400');
+        }
+        return;
+      }
+
+      ctx.addOutput('Unknown subcommand. Type "pfp help" for usage.', 'text-red-400');
     },
   },
 };

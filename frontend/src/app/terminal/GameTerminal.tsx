@@ -181,6 +181,10 @@ export default function GameTerminal() {
           addOutput(`Welcome back, ${profile.name}.`, 'text-green-400');
           addOutput('Resuming your adventure...', 'text-gray-400');
           addOutput('');
+
+          if (profile.pfp_image_url) {
+            window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: profile.pfp_image_url } }));
+          }
         } else {
           // New user - start onboarding
           setOnboardingState('ask_name');
