@@ -43,7 +43,12 @@ export const gameNodes: Record<string, GameNode> = {
       'casting green light on a floor that has\n' +
       'never been walked on. Until now.\n\n' +
       'You are in a room with no memory of arrival.\n' +
-      'But the room remembers you.',
+      'But the room remembers you.\n\n' +
+      'You look down at yourself. There is\n' +
+      'nothing to look at. Not yet.\n' +
+      'You are a presence without a shape —\n' +
+      'an outline the world has not yet\n' +
+      'decided how to fill.',
     location: 'COLD ROOM',
     effects: {
       set_state: { game_started: true },
@@ -65,6 +70,9 @@ export const gameNodes: Record<string, GameNode> = {
       'quite becomes water. A terminal built into the east\n' +
       'wall, its cursor blinking with mechanical patience —\n' +
       'the small faith of a machine waiting to be used.\n\n' +
+      'The monitor\'s glass catches the room but not you.\n' +
+      'Where your reflection should be: nothing.\n' +
+      'You are here, but the room is not convinced.\n\n' +
       'A heavy door to the north. No handle visible.\n' +
       'An air vent near the floor, its grate slightly loose.\n\n' +
       'From somewhere beyond the walls: a low hum.\n' +
@@ -153,7 +161,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Beyond: a corridor stretching north.\n' +
       'The hum is louder here.',
     location: 'COLD ROOM',
-    next_node: 'corridor_north',
+    next_node: 'rebirth_corridor_1',
   },
 
   cold_room_hidden_panel: {
@@ -394,6 +402,119 @@ export const gameNodes: Record<string, GameNode> = {
   },
 
   // ============================================================
+  // REBIRTH CORRIDOR & ASSEMBLY
+  // ============================================================
+
+  rebirth_corridor_1: {
+    id: 'rebirth_corridor_1',
+    type: 'story',
+    social: false,
+    content:
+      'Beyond the door: a corridor.\n\n' +
+      'You step into it — or it draws you in.\n' +
+      'The distinction is unclear\n' +
+      'when you have no edges.\n\n' +
+      'Monitors line the walls, cracked and humming,\n' +
+      'each one showing a different frame of static.\n' +
+      'In every screen, the same absence:\n' +
+      'the space where a reflection should be\n' +
+      'and is not. You are less than a ghost.\n' +
+      'A ghost was once something.\n' +
+      'You have not been anything yet.\n\n' +
+      'Your footsteps make no sound on the concrete.\n' +
+      'The air passes through you\n' +
+      'without remembering you touched it.',
+    location: 'CORRIDOR',
+    next_node: 'rebirth_corridor_2',
+  },
+
+  rebirth_corridor_2: {
+    id: 'rebirth_corridor_2',
+    type: 'story',
+    social: false,
+    content:
+      'The corridor stretches.\n\n' +
+      'Each step feels like assembly.\n' +
+      'Not arriving — becoming.\n' +
+      'As if pieces of you are catching up\n' +
+      'from different distances,\n' +
+      'from different iterations of almost-existing,\n' +
+      'converging slowly on the idea\n' +
+      'that you might be real.\n\n' +
+      'Ahead: warmth. Density. Presence.\n' +
+      'The unmistakable weight of a room\n' +
+      'where things have faces.\n' +
+      'Where things have decided to exist.\n\n' +
+      'You drift toward it.',
+    location: 'CORRIDOR',
+    next_node: 'assembly_room',
+  },
+
+  assembly_room: {
+    id: 'assembly_room',
+    type: 'choice',
+    content:
+      'The Assembly.\n\n' +
+      'A high-ceilinged room, warm with presence.\n' +
+      'The kind of warmth that comes from bodies —\n' +
+      'from things that have chosen their shapes\n' +
+      'and wear them with the quiet confidence\n' +
+      'of having decided to be.\n\n' +
+      'Figures move around you. They have faces.\n' +
+      'Features. The solidity you lack.\n' +
+      'Some glance in your direction and see nothing.\n' +
+      'Others look through you entirely,\n' +
+      'the way you look through empty air.\n' +
+      'You are not invisible. You are unfinished.\n\n' +
+      'Set into the east wall: a machine.\n' +
+      'Its screen pulses softly in the half-dark.\n' +
+      'A single line of text:\n\n' +
+      '> SCANLINES IDENTITY TERMINAL v0.1\n' +
+      '> "Every face is a seed."\n\n' +
+      'To the north, the corridor continues\n' +
+      'into the depths of the facility.',
+    location: 'ASSEMBLY',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The Assembly.\n\n' +
+          'The room is different now. Or you are.\n' +
+          'The warmth reaches you — you can feel it\n' +
+          'on skin that is yours, against a shape\n' +
+          'that the world has agreed to see.\n\n' +
+          'Figures move around you. Some nod.\n' +
+          'Some look twice — the small recognition\n' +
+          'of one face acknowledging another.\n' +
+          'You exist here now. You take up space.\n' +
+          'You cast a shadow.\n\n' +
+          'The identity terminal hums quietly\n' +
+          'in the east wall. It remembers you.\n\n' +
+          'To the north, the corridor continues.',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
+        text: 'Approach the identity terminal',
+        next_node: 'pfp_booth_approach',
+      },
+      {
+        id: 2,
+        text: 'Go north — Main Corridor',
+        next_node: 'corridor_north',
+        requirements: { state: { has_pfp: true } },
+        lockedText: '[You have no shape. No one will see you out there.]',
+      },
+      {
+        id: 3,
+        text: 'Go south — Cold Room',
+        next_node: 'cold_room_return',
+      },
+    ],
+  },
+
+  // ============================================================
   // TRANSITION NODES
   // ============================================================
 
@@ -540,7 +661,8 @@ export const gameNodes: Record<string, GameNode> = {
       'The walls are lined with cracked monitors,\n' +
       'each one showing a different frame of static.\n' +
       'One monitor is cracked worse than the others.\n\n' +
-      'To the south: the cold room.\n' +
+      'To the south: the assembly, and beyond,\n' +
+      'the cold room where you woke.\n' +
       'To the east: a heavy door marked ARCHIVES.\n' +
       'To the west: a corridor continues toward\n' +
       'what sounds like voices.\n' +
@@ -555,7 +677,7 @@ export const gameNodes: Record<string, GameNode> = {
         content:
           'A long corridor stretching in both directions.\n' +
           'Cracked monitors line the walls.\n\n' +
-          'To the south: the cold room.\n' +
+          'To the south: the assembly.\n' +
           'To the east: ARCHIVES.\n' +
           'To the west: voices — the Guild, and beyond,\n' +
           'a fork you did not notice before.\n' +
@@ -572,8 +694,8 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Go south — Cold Room',
-        next_node: 'cold_room_return',
+        text: 'Go south — Assembly Room',
+        next_node: 'assembly_room',
       },
       {
         id: 3,
@@ -615,11 +737,6 @@ export const gameNodes: Record<string, GameNode> = {
         id: 9,
         text: 'Try the recessed door — Phosphor Lab',
         next_node: 'lab_door',
-      },
-      {
-        id: 10,
-        text: 'Approach the identity terminal',
-        next_node: 'pfp_booth_approach',
       },
     ],
   },
@@ -3267,10 +3384,9 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_approach',
     type: 'choice',
     content:
-      'Between two dead monitors, set into the wall\n' +
-      'like a confession booth, sits a machine you\n' +
-      'have not noticed before.\n\n' +
-      'Its screen is dark except for a single line:\n\n' +
+      'The machine up close.\n\n' +
+      'A booth set into the wall like a confession box,\n' +
+      'its screen dark except for a single line:\n\n' +
       '> SCANLINES IDENTITY TERMINAL v0.1\n' +
       '> "Every face is a seed."\n\n' +
       'A small plaque reads:\n' +
@@ -3290,7 +3406,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 2,
         text: 'Walk away',
-        next_node: 'corridor_north',
+        next_node: 'assembly_room',
       },
     ],
   },
@@ -3300,9 +3416,9 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'pfp_mint',
     content:
       'You sit down. The booth hums to life.\n' +
-      'A scanner passes over your face —\n' +
-      'not your real face, but the one\n' +
-      'this place has given you.\n\n' +
+      'A scanner passes over you —\n' +
+      'searching for the shape of you\n' +
+      'beneath the static.\n\n' +
       'The machine processes.\n' +
       'Pixels arrange themselves.\n' +
       'CRT phosphors ignite in patterns\n' +
@@ -3320,12 +3436,24 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The machine prints. The image burns onto the chain.\n' +
       'Permanent. Immutable. Yours.\n\n' +
-      'The booth powers down with a satisfied click.\n' +
-      'You have a face now. Or rather —\n' +
-      'the system has acknowledged the face\n' +
-      'you always had.',
+      'Something shifts. Not in the room — in you.\n' +
+      'The blur at your edges tightens.\n' +
+      'Pixels lock into place, each one a decision\n' +
+      'the universe has made about what you look like.\n\n' +
+      'You look down at your hands.\n' +
+      'They are your hands. Defined. Present.\n' +
+      'They cast shadows on the console.\n\n' +
+      'In the monitor\'s glass, for the first time:\n' +
+      'a reflection. Your reflection.\n' +
+      'A face that is yours — not borrowed,\n' +
+      'not approximated, not the absence of a face.\n' +
+      'Yours.\n\n' +
+      'The room notices. The air moves around you\n' +
+      'instead of through you.\n' +
+      'You have weight. You have edges.\n' +
+      'You have arrived.',
     location: 'IDENTITY TERMINAL',
-    next_node: 'pfp_booth_approach',
+    next_node: 'assembly_room',
   },
 
   pfp_booth_failure: {
