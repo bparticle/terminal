@@ -10,7 +10,7 @@
     "lint": "eslint src/",
     "test": "jest --verbose",
     "test:security": "jest --verbose --testPathPattern=security",
-    "update-pfp": "npm install scanlines-pfp-generator && npm run build"
+    "update-pfp": "node scripts/update-pfp-generator.js && npm install && npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -32,7 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^2.7.0",
     "pg": "^8.13.0",
-    "scanlines-pfp-generator": "file:../../scanlines/packages/pfp-generator",
+    "scanlines-pfp-generator": "file:./packages/scanlines-pfp-generator.tgz",
     "socket.io": "^4.8.3",
     "tweetnacl": "^1.0.3",
     "uuid": "^10.0.0"
