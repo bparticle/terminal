@@ -1,38 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-interface MonitorState {
-  type: 'idle' | 'image';
-  imageUrl?: string;
+interface MonitorProps {
+  imageUrl?: string | null;
 }
 
-export default function Monitor() {
-  const [state, setState] = useState<MonitorState>({ type: 'idle' });
+export default function Monitor({ imageUrl }: MonitorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const showImage = !!imageUrl;
 
-  // Listen for display-image events
   useEffect(() => {
-    const handleDisplay = (e: CustomEvent<{ imageUrl: string }>) => {
-      setState({ type: 'image', imageUrl: e.detail.imageUrl });
-    };
-
-    const handleClear = () => {
-      setState({ type: 'idle' });
-    };
-
-    window.addEventListener('display-image', handleDisplay as EventListener);
-    window.addEventListener('clear-display', handleClear);
-
-    return () => {
-      window.removeEventListener('display-image', handleDisplay as EventListener);
-      window.removeEventListener('clear-display', handleClear);
-    };
-  }, []);
-
-  // Draw idle animation on canvas
-  useEffect(() => {
-    if (state.type !== 'idle' || !canvasRef.current) return;
+    if (showImage || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -46,7 +25,6 @@ export default function Monitor() {
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw matrix-style rain effect
       const style = getComputedStyle(document.documentElement);
       const color = style.getPropertyValue('--primary-color').trim() || '#2dfe39';
 
@@ -67,12 +45,12 @@ export default function Monitor() {
     draw();
 
     return () => cancelAnimationFrame(animFrame);
-  }, [state.type]);
+  }, [showImage]);
 
   return (
     <div className="panel-box monitor-container">
       <div className="monitor-screen">
-        {state.type === 'idle' && (
+        {!showImage && (
           <canvas
             ref={canvasRef}
             width={220}
@@ -80,10 +58,10 @@ export default function Monitor() {
             style={{ width: '100%', height: '100%', borderRadius: '4px', display: 'block' }}
           />
         )}
-        {state.type === 'image' && state.imageUrl && (
+        {showImage && (
           <img
-            src={state.imageUrl}
-            alt="Display"
+            src={imageUrl!}
+            alt="PFP Avatar"
             style={{
               width: '100%',
               height: '100%',
@@ -93,7 +71,6 @@ export default function Monitor() {
             }}
           />
         )}
-        {/* CRT overlay */}
         <div className="monitor-overlay" />
       </div>
     </div>

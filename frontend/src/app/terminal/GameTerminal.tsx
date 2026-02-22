@@ -45,6 +45,7 @@ export default function GameTerminal() {
   const [chatMode, setChatMode] = useState(false);
   const [soloMode, setSoloMode] = useState(false);
   const [isPrivateRoom, setIsPrivateRoom] = useState(false);
+  const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -62,6 +63,21 @@ export default function GameTerminal() {
   useEffect(() => {
     isPrivateRoomRef.current = isPrivateRoom;
   }, [isPrivateRoom]);
+
+  // ── Monitor image (display-image / clear-display events) ──
+  useEffect(() => {
+    const handleDisplay = (e: CustomEvent<{ imageUrl: string }>) => {
+      setMonitorImageUrl(e.detail.imageUrl || null);
+    };
+    const handleClear = () => setMonitorImageUrl(null);
+
+    window.addEventListener('display-image', handleDisplay as EventListener);
+    window.addEventListener('clear-display', handleClear);
+    return () => {
+      window.removeEventListener('display-image', handleDisplay as EventListener);
+      window.removeEventListener('clear-display', handleClear);
+    };
+  }, []);
 
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
@@ -598,7 +614,7 @@ export default function GameTerminal() {
 
         {/* Side Panel (Desktop) */}
         <div className="side-panel">
-          <Monitor />
+          <Monitor imageUrl={monitorImageUrl} />
           <StatsBox walletAddress={publicKey?.toBase58() || null} />
           <InventoryBox items={inventory} />
           <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
@@ -611,7 +627,7 @@ export default function GameTerminal() {
               className="mobile-sidebar"
               onClick={(e) => e.stopPropagation()}
             >
-              <Monitor />
+              <Monitor imageUrl={monitorImageUrl} />
               <StatsBox walletAddress={publicKey?.toBase58() || null} />
               <InventoryBox items={inventory} />
               <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
