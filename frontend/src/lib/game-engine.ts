@@ -1013,9 +1013,15 @@ export class GameEngine {
     }
 
     // Check state requirements
+    // When expected value is false, check that the state is falsy (not set / undefined / false)
     if (requirements.state) {
       for (const [key, value] of Object.entries(requirements.state)) {
-        if (this.save.game_state[key] !== value) return false;
+        const actual = this.save.game_state[key];
+        if (value === false) {
+          if (actual) return false;
+        } else {
+          if (actual !== value) return false;
+        }
       }
     }
 

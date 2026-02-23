@@ -195,6 +195,12 @@
 .text-gray-400 { color: #9ca3af; }
 .text-gray-500 { color: #6b7280; }
 
+/* Inline emphasis — bright white "reverse video" feel */
+.text-emphasis {
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.5), 0 0 14px rgba(255, 255, 255, 0.15);
+}
+
 /* Locked choices (visible but not enabled) */
 .terminal-line.choice-locked {
   color: var(--primary-dim);

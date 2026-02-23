@@ -16,8 +16,24 @@ import ChatModeToggle from './components/ChatModeToggle';
 import ScanlineTitle from './components/ScanlineTitle';
 import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
+import IframeGame from '@/components/terminal/IframeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
 import './game-terminal.css';
+
+const godotGameConfig: Record<string, { title: string; src: string }> = {
+  snake_godot: { title: 'Snake', src: '/games/snake/snake.html' },
+};
+
+function parseFormattedText(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <span key={i} className="text-emphasis">{part.slice(2, -2)}</span>;
+    }
+    return part;
+  });
+}
 
 interface OutputLine {
   text: string;
@@ -252,7 +268,14 @@ export default function GameTerminal() {
       handleLocationChange,
       setInventory,
       (gameId: string) => {
-        setActiveGame(gameId);
+        if (godotGameConfig[gameId]) {
+          setActiveGame(gameId);
+        } else if (gameId === 'snake') {
+          setActiveGame('snake');
+        } else {
+          addOutput(`Unknown game: ${gameId}`, 'text-red-400');
+          addOutput('Press ENTER to continue...', 'text-gray-400');
+        }
       },
       signAndSubmit
     );
@@ -472,6 +495,24 @@ export default function GameTerminal() {
     setActiveGame(null);
   }, []);
 
+  // Godot iframe game handlers
+  const handleGodotMessage = useCallback((data: any) => {
+    if (!engineRef.current || !data?.event) return;
+    const event: string = data.event;
+    const metrics: Record<string, any> = data.metrics || {};
+    engineRef.current.handleMinigameEvent(event, metrics);
+    if (!engineRef.current.isMinigameRunning()) {
+      setActiveGame(null);
+    }
+  }, []);
+
+  const handleGodotExit = useCallback(() => {
+    if (engineRef.current) {
+      engineRef.current.handleMinigameEvent('exit', { score: 0 });
+    }
+    setActiveGame(null);
+  }, []);
+
   // Handle clicking a choice or "press ENTER to continue"
   const handleChoiceClick = useCallback(
     (value: string) => {
@@ -593,7 +634,7 @@ export default function GameTerminal() {
                       : undefined
                   }
                 >
-                  {line.text}
+                  {line.text ? parseFormattedText(line.text) : '\u00A0'}
                 </div>
               );
             })}
@@ -650,13 +691,25 @@ export default function GameTerminal() {
             )}
           </form>
 
-          {/* Snake game overlay */}
+          {/* Canvas snake game overlay */}
           {activeGame === 'snake' && (
             <div className="minigame-overlay">
               <SnakeGame
                 onGameOver={handleSnakeGameOver}
                 onExit={handleSnakeExit}
                 autoStart
+              />
+            </div>
+          )}
+
+          {/* Godot iframe game overlay */}
+          {activeGame && godotGameConfig[activeGame] && (
+            <div className="minigame-overlay">
+              <IframeGame
+                title={godotGameConfig[activeGame].title}
+                src={godotGameConfig[activeGame].src}
+                onMessage={handleGodotMessage}
+                onExitRequested={handleGodotExit}
               />
             </div>
           )}
