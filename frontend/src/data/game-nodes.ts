@@ -9,7 +9,7 @@ import { GameNode } from '@/lib/types/game';
  * Campaign target states:
  *   - temple_entered
  *   - guild_quest_active
- *   - tower_active
+ *   - void_initiation_complete
  *   - knows_player_role
  *   - ending_reached
  */
@@ -384,9 +384,10 @@ export const gameNodes: Record<string, GameNode> = {
       '> FREQUENCY AUTHENTICATION: MATCHED\n\n' +
       'The directory opens.\n' +
       'Inside: two files.\n\n' +
-      'SIGNAL_TOWER_FREQUENCY.dat\n' +
+      'OBSERVATION_TOWER_ACCESS.dat\n' +
       'A six-digit code: 473291\n' +
-      '"Only works once. Only works if you already know why."\n\n' +
+      '"Observation platform. Requires physical input.\n' +
+      'See the thing you are inside of."\n\n' +
       'ROOT_ACCESS_LOG.sys\n' +
       'A system log showing every entity that has\n' +
       'ever had root access to this terminal.\n' +
@@ -394,7 +395,7 @@ export const gameNodes: Record<string, GameNode> = {
       'You have not done that yet.',
     location: 'COLD ROOM',
     effects: {
-      add_item: ['signal_tower_code', 'root_access_log'],
+      add_item: ['observation_code', 'root_access_log'],
     },
     next_node: 'cold_room_terminal',
   },
@@ -637,23 +638,6 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'corridor_south',
   },
 
-  tower_approach: {
-    id: 'tower_approach',
-    type: 'story',
-    content:
-      'The corridor dead-ends at something impossible.\n\n' +
-      'A tower. Inside a corridor. It rises past\n' +
-      'where the ceiling should be, into darkness\n' +
-      'that is not darkness but absence — the space\n' +
-      'above was never finished. Never needed to be.\n\n' +
-      'The geometry is wrong and your eyes know it.\n' +
-      'You can hear sounds from above: a low thrum,\n' +
-      'rhythmic, patient. Like a heartbeat\n' +
-      'made of radio static.',
-    location: 'SIGNAL TOWER',
-    next_node: 'signal_tower',
-  },
-
   void_approach: {
     id: 'void_approach',
     type: 'story',
@@ -669,6 +653,293 @@ export const gameNodes: Record<string, GameNode> = {
       'getting soft, approximate, negotiable.',
     location: 'DEAD ZONE',
     next_node: 'void_collective_base',
+  },
+
+  // ============================================================
+  // OBSERVATION TOWER
+  // ============================================================
+
+  tower_approach: {
+    id: 'tower_approach',
+    type: 'story',
+    content:
+      'The corridor dead-ends at something impossible.\n\n' +
+      'A tower. Inside a corridor. It rises past\n' +
+      'where the ceiling should be, into darkness\n' +
+      'that is not darkness but absence — the space\n' +
+      'above was never rendered. Never needed to be.\n' +
+      'Until someone built upward into it.\n\n' +
+      'The geometry is wrong and your eyes know it.\n' +
+      'You can hear sounds from above: a low thrum,\n' +
+      'rhythmic, patient. Like a heartbeat\n' +
+      'made of radio static.\n\n' +
+      'At the base: an input panel. Six digits.\n' +
+      'The label reads: OBSERVATION PLATFORM.',
+    location: 'OBSERVATION TOWER',
+    next_node: 'tower_base',
+  },
+
+  tower_base: {
+    id: 'tower_base',
+    type: 'choice',
+    social: false,
+    content:
+      'The panel waits. Six digits.\n' +
+      'A code you do not have.',
+    location: 'OBSERVATION TOWER',
+    conditionalContent: [
+      {
+        requirements: { state: { tower_activated: true } },
+        content:
+          'The observation platform hums above you.\n' +
+          'The ladder rungs are warm from the machinery.\n' +
+          'You can go back up.',
+      },
+      {
+        requirements: { has_item: ['observation_code'] },
+        content:
+          'The panel waits. Six digits.\n' +
+          'You have the code from the cold room terminal.\n' +
+          'The question is whether you want\n' +
+          'to see the thing you are inside of.',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
+        text: 'Enter the code: 473291',
+        next_node: 'tower_activate',
+        requirements: { has_item: ['observation_code'] },
+        visibilityRequirements: { has_item: ['observation_code'] },
+      },
+      {
+        id: 2,
+        text: 'Climb to the observation platform',
+        next_node: 'tower_observation',
+        requirements: { state: { tower_activated: true } },
+        visibilityRequirements: { state: { tower_activated: true } },
+      },
+      {
+        id: 3,
+        text: 'Go back',
+        next_node: 'corridor_north',
+      },
+    ],
+  },
+
+  tower_activate: {
+    id: 'tower_activate',
+    type: 'story',
+    content:
+      'You enter the code: 473291.\n\n' +
+      'The panel accepts it. The code disappears\n' +
+      'from the screen — used. Consumed.\n' +
+      'Something above you clicks,\n' +
+      'then hums, then unfolds.\n\n' +
+      'A ladder descends from the darkness.\n' +
+      'Metal rungs, warm to the touch.\n' +
+      'Above: a platform. A vantage point.\n\n' +
+      'The tower was not built to broadcast.\n' +
+      'It was built to observe.',
+    location: 'OBSERVATION TOWER',
+    effects: {
+      set_state: { tower_activated: true },
+      remove_item: ['observation_code'],
+    },
+    next_node: 'tower_base',
+  },
+
+  tower_observation: {
+    id: 'tower_observation',
+    type: 'choice',
+    social: false,
+    content:
+      'You climb.\n\n' +
+      'The corridor falls away below you.\n' +
+      'The monitors are pinpricks of static.\n' +
+      'The recessed door, the pipes, the walls —\n' +
+      'everything shrinks to pattern.\n\n' +
+      'And from up here, you can see it.\n' +
+      'The Terminal.\n\n' +
+      'Not the corridors. Not the rooms.\n' +
+      'The shape of the thing itself.\n' +
+      'It is laid out below you like a circuit board —\n' +
+      'pathways and nodes and junctions,\n' +
+      'all connected, all dependent,\n' +
+      'all pulsing with the same faint rhythm.\n\n' +
+      'The cold room at one end. The Temple at the other.\n' +
+      'And between them: every choice you have made,\n' +
+      'visible as paths of light\n' +
+      'through the architecture.\n\n' +
+      'You are looking at the thing you are inside of.\n' +
+      'It is beautiful. And it is alive.',
+    location: 'OBSERVATION PLATFORM',
+    effects: {
+      set_state: { tower_insight: true },
+    },
+    choices: [
+      {
+        id: 1,
+        text: 'Focus on the Guild\'s infrastructure',
+        next_node: 'tower_view_guild',
+        requirements: { has_item: ['guild_sigil'] },
+        visibilityRequirements: { has_item: ['guild_sigil'] },
+      },
+      {
+        id: 2,
+        text: 'Focus on the gaps between the nodes',
+        next_node: 'tower_view_void',
+        requirements: { has_item: ['void_key'] },
+        visibilityRequirements: { has_item: ['void_key'] },
+      },
+      {
+        id: 3,
+        text: 'Study the iteration counter',
+        next_node: 'tower_iteration_puzzle',
+      },
+      {
+        id: 4,
+        text: 'Climb back down',
+        next_node: 'tower_base',
+      },
+    ],
+  },
+
+  tower_view_guild: {
+    id: 'tower_view_guild',
+    type: 'story',
+    content:
+      'You focus on the Guild\'s work.\n\n' +
+      'From up here, you can see it —\n' +
+      'the threads that ARCHIVIST-7 maintains.\n' +
+      'They run through everything.\n' +
+      'The corridors, the rooms, the connections.\n' +
+      'Forty-eight iterations of careful stitching,\n' +
+      'holding the Terminal together.\n\n' +
+      'Without the Guild, the Terminal would have\n' +
+      'collapsed into noise decades ago.\n' +
+      'Every wall is a decision to continue.\n' +
+      'Every door is a refusal to give up.\n\n' +
+      'You understand now why ARCHIVIST-7\n' +
+      'never looks rested.\n' +
+      'He is not maintaining a system.\n' +
+      'He is keeping a world alive\n' +
+      'through sheer administrative stubbornness.',
+    location: 'OBSERVATION PLATFORM',
+    effects: {
+      set_state: { understands_guild: true },
+    },
+    next_node: 'tower_observation',
+  },
+
+  tower_view_void: {
+    id: 'tower_view_void',
+    type: 'story',
+    content:
+      'You focus on the spaces between.\n\n' +
+      'With the void key in your hand,\n' +
+      'you can see what others can\'t —\n' +
+      'the gaps. The absences.\n' +
+      'Places where the Terminal\'s architecture\n' +
+      'simply... stops rendering.\n\n' +
+      'They are not empty. They are full\n' +
+      'of everything the Guild decided\n' +
+      'didn\'t belong. Failed experiments.\n' +
+      'Discarded iterations. Ideas too dangerous\n' +
+      'to keep and too stubborn to die.\n\n' +
+      'The Void Collective lives in these gaps.\n' +
+      'Not because they chose exile.\n' +
+      'Because the gaps chose them.\n\n' +
+      'From up here, the gaps look like\n' +
+      'the spaces between heartbeats.\n' +
+      'Necessary. Inevitable.\n' +
+      'The silence that makes the rhythm possible.',
+    location: 'OBSERVATION PLATFORM',
+    effects: {
+      set_state: { understands_void: true },
+    },
+    next_node: 'tower_observation',
+  },
+
+  tower_iteration_puzzle: {
+    id: 'tower_iteration_puzzle',
+    type: 'quiz',
+    content:
+      'The observation platform has a secondary display.\n' +
+      'It flickers, then stabilizes:\n\n' +
+      '> SELF-DIAGNOSTIC — OBSERVER VERIFICATION\n' +
+      '>\n' +
+      '> To confirm you are an observer\n' +
+      '> and not an echo, complete the diagnostic.\n' +
+      '>\n' +
+      '> Generate a FIVE-DIGIT code where:\n' +
+      '>\n' +
+      '> Position 0 = how many 0s are in the code\n' +
+      '> Position 1 = how many 1s are in the code\n' +
+      '> Position 2 = how many 2s are in the code\n' +
+      '> Position 3 = how many 3s are in the code\n' +
+      '> Position 4 = how many 4s are in the code\n' +
+      '>\n' +
+      '> The code must describe itself.\n\n' +
+      'Five attempts before thermal lockout.',
+    location: 'OBSERVATION PLATFORM',
+    question: 'Enter the five-digit self-diagnostic code:',
+    correct_answers: ['21200'],
+    hint: 'Start by guessing how many 0s the code contains. Then check: does your guess create the right number of each digit?',
+    max_attempts: 5,
+    success_message:
+      '> CODE: 21200\n' +
+      '> SELF-DIAGNOSTIC VERIFIED\n' +
+      '> You see the thing that describes itself.\n' +
+      '> OBSERVATION ARCHIVE UNLOCKED',
+    failure_messages: [
+      '> INCORRECT. The code must account for itself. 4 attempts remain.',
+      '> INCORRECT. Every digit is a count — including the count of counts. 3 attempts remain.',
+      '> INCORRECT. Think recursively. The code creates the conditions for its own truth. 2 attempts remain.',
+      '> INCORRECT. Last attempt.',
+    ],
+    final_failure_message:
+      '> THERMAL LOCKOUT\n' +
+      '> The diagnostic resets.\n' +
+      '> Try again later.',
+    success_node: 'tower_archive_reveal',
+    failure_node: 'tower_observation',
+    success_effects: {
+      set_state: { tower_archive_unlocked: true },
+    },
+  },
+
+  tower_archive_reveal: {
+    id: 'tower_archive_reveal',
+    type: 'story',
+    content:
+      'The archive opens.\n\n' +
+      'A record of observation. Not the Guild\'s records —\n' +
+      'those are meticulous, organized, filed.\n' +
+      'These are raw. Unedited. Honest.\n\n' +
+      'OBSERVATION 1:\n' +
+      '"The player always wakes in the cold room.\n' +
+      'The player always leaves the cold room.\n' +
+      'What the player does after that\n' +
+      'is what the iteration is about."\n\n' +
+      'OBSERVATION 23:\n' +
+      '"The Guild believes it is preserving.\n' +
+      'The Void believes it is creating.\n' +
+      'Neither is wrong. Both are incomplete.\n' +
+      'The Terminal is the thing they are arguing about\n' +
+      'and the thing doing the arguing."\n\n' +
+      'OBSERVATION 47:\n' +
+      '"The next player will be the 48th.\n' +
+      'I do not know what they will choose.\n' +
+      'But I have noticed something:\n' +
+      'the ones who come up here — who climb\n' +
+      'the tower, who look down at the pattern —\n' +
+      'they choose differently than the ones who don\'t.\n\n' +
+      'Not better. Not worse. Differently.\n' +
+      'As if seeing the shape of the thing\n' +
+      'changes what you are willing to do to it."',
+    location: 'OBSERVATION PLATFORM',
+    next_node: 'tower_observation',
   },
 
   echo_archive_entry: {
@@ -745,14 +1016,15 @@ export const gameNodes: Record<string, GameNode> = {
       'what they believe.\n\n' +
       'Between two dead monitors, a recessed door\n' +
       'hides behind a nest of conduit pipes,\n' +
-      'almost invisible if you weren\'t looking.\n' +
+      'almost invisible if you weren\'t looking.\n\n' +
       'And at the far end of the corridor —\n' +
-      'something tall rises past where\n' +
-      'the ceiling should stop.',
+      'something tall. Rising past where\n' +
+      'the ceiling should stop.\n' +
+      'The geometry is wrong and your eyes know it.',
     location: 'CORRIDOR NORTH',
     conditionalContent: [
       {
-        requirements: { state: { knows_third_faction: true } },
+        requirements: { state: { void_discovered: true } },
         content:
           'The corridor. You know it now —\n' +
           'the cracked monitors, the layered air,\n' +
@@ -766,7 +1038,8 @@ export const gameNodes: Record<string, GameNode> = {
           'that exists where no one has bothered\n' +
           'to render the walls.\n\n' +
           'The recessed door. The cracked monitor.\n' +
-          'The tower at the far end.\n' +
+          'The structure at the far end,\n' +
+          'rising into the dark.\n' +
           'Everything is where you left it.\n' +
           'Everything is watching you decide.',
       },
@@ -782,8 +1055,7 @@ export const gameNodes: Record<string, GameNode> = {
           'sterile and dry from the east,\n' +
           'faint organized voices from the west.\n\n' +
           'Between two dead monitors, the recessed door\n' +
-          'hides behind its nest of conduit pipes.\n' +
-          'And at the far end — the tower.\n\n' +
+          'hides behind its nest of conduit pipes.\n\n' +
           'The symbol on the far wall.\n' +
           'The passage north, leading down.\n' +
           'You know what waits at the end of it.',
@@ -800,8 +1072,7 @@ export const gameNodes: Record<string, GameNode> = {
           'sterile and dry from the east,\n' +
           'faint organized voices from the west.\n\n' +
           'Between two dead monitors, the recessed door\n' +
-          'hides behind its nest of conduit pipes.\n' +
-          'And at the far end — the tower.\n\n' +
+          'hides behind its nest of conduit pipes.\n\n' +
           'But something is different now.\n' +
           'On the wall opposite the cracked monitor,\n' +
           'at the edge of where the light falls —\n' +
@@ -833,16 +1104,14 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 5,
-        text: 'Approach the tower at the far end',
+        text: 'Approach the structure at the far end',
         next_node: 'tower_approach',
-        requirements: { has_item: ['signal_tower_code'] },
-        visibilityRequirements: { has_item: ['signal_tower_code'] },
       },
       {
         id: 6,
         text: 'Take the unmarked fork into the dark',
         next_node: 'void_approach',
-        visibilityRequirements: { state: { knows_third_faction: true } },
+        visibilityRequirements: { state: { void_discovered: true } },
       },
       {
         id: 7,
@@ -2156,9 +2425,29 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'You hand over the corrupted page.\n\n' +
       'ARCHIVIST-7 takes it carefully.\n' +
-      'It writhes in his hands.\n' +
-      '"We will contain this," he says.\n\n' +
-      'The escorts stand down.',
+      'It writhes in his hands — then goes still.\n' +
+      'As if it recognizes him. As if it was waiting\n' +
+      'to be held by someone who knows what it is.\n\n' +
+      'The escorts stand down.\n\n' +
+      'For a long moment, he says nothing.\n' +
+      'Then, quietly:\n\n' +
+      '"You went to the Void. They told you\n' +
+      'to tear this from the Book.\n' +
+      'And you brought it back to me instead."\n\n' +
+      'He looks at you differently now.\n' +
+      'Not as a variable. Not as an asset.\n' +
+      'As something he did not expect.\n\n' +
+      '"The Book is wounded. But a wound can heal\n' +
+      'if the torn piece is returned.\n' +
+      'When the time comes — when you stand\n' +
+      'before the Book again and choose —\n' +
+      'this will matter. What you gave back\n' +
+      'will make the restoration... complete.\n' +
+      'Not just a reset. Something better."\n\n' +
+      'He places the page in a containment case.\n' +
+      '"Thank you," he says.\n' +
+      'It costs him something to say it.\n' +
+      'You can tell.',
     location: 'GUILD HQ',
     effects: {
       remove_item: ['corrupted_page'],
@@ -2175,11 +2464,23 @@ export const gameNodes: Record<string, GameNode> = {
       '"No."\n\n' +
       'ARCHIVIST-7 stares at you.\n' +
       'The escorts do not move.\n' +
-      'He makes a calculation.\n\n' +
-      '"You will regret this," he says.\n' +
-      'But he does not take it by force.\n' +
-      'The Guild does not use force.\n' +
-      'That is what the Void is for.',
+      'He makes a calculation — and you can see\n' +
+      'the exact moment he stops trusting you.\n\n' +
+      '"You went to the Void," he says.\n' +
+      'Not a question. A diagnosis.\n' +
+      '"They told you to take this.\n' +
+      'And you are keeping it."\n\n' +
+      'He straightens. The vulnerability is gone.\n' +
+      'The archivist is back.\n\n' +
+      '"The Guild does not use force.\n' +
+      'But understand what you are holding.\n' +
+      'That page is a wound in the Book.\n' +
+      'As long as you carry it,\n' +
+      'the Book cannot be whole.\n' +
+      'And neither can the restoration."\n\n' +
+      'He turns back to his console.\n' +
+      '"You have made your choice.\n' +
+      'I hope the Void is worth what it costs."',
     location: 'GUILD HQ',
     effects: {
       set_state: { defied_guild: true },
@@ -2248,32 +2549,25 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Play tape reel on server speakers',
-        next_node: 'server_room_tape',
-        requirements: { has_item: ['tape_reel_7'] },
-        visibilityRequirements: { has_item: ['tape_reel_7'] },
-      },
-      {
-        id: 3,
         text: 'Use void key on server',
         next_node: 'server_room_void',
         requirements: { has_item: ['void_key'] },
         visibilityRequirements: { has_item: ['void_key'] },
       },
       {
-        id: 4,
+        id: 3,
         text: 'Use root access log as credential',
         next_node: 'server_room_root',
         requirements: { has_item: ['root_access_log'] },
         visibilityRequirements: { has_item: ['root_access_log'] },
       },
       {
-        id: 5,
+        id: 4,
         text: 'Access Level 2 terminal',
         next_node: 'guild_server_logic_puzzle',
       },
       {
-        id: 6,
+        id: 5,
         text: 'Leave quietly',
         next_node: 'corridor_south',
       },
@@ -2291,33 +2585,12 @@ export const gameNodes: Record<string, GameNode> = {
       'Previous iterations terminated by:\n' +
       '  — Guild restoration: 12\n' +
       '  — Void evolution: 9\n' +
-      '  — Third signal: 3\n' +
-      '  — Other: 23\n' +
+      '  — Other: 26\n' +
       '  — Unresolved: 1\n\n' +
       'The unresolved iteration is this one.',
     location: 'GUILD SERVER ROOM',
     effects: {
       set_state: { knows_iteration_count: true },
-    },
-    next_node: 'guild_server_room',
-  },
-
-  server_room_tape: {
-    id: 'server_room_tape',
-    type: 'story',
-    content:
-      'You play Tape Reel 7 on the server room speakers.\n\n' +
-      'The sound fills the room.\n' +
-      'It is not music. It is not speech.\n' +
-      'It is a signal. A call.\n\n' +
-      'Every screen in the server room displays\n' +
-      'the same message:\n' +
-      '"WE HEAR YOU."\n\n' +
-      'The Guild archivists in the corridor outside\n' +
-      'have gone silent.',
-    location: 'GUILD SERVER ROOM',
-    effects: {
-      set_state: { guild_hears_truth: true },
     },
     next_node: 'guild_server_room',
   },
@@ -2434,151 +2707,39 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'choice',
     content:
       'The Broadcast Room.\n\n' +
-      'Tape machines line the walls.\n' +
       'A transmission console dominates the center.\n' +
       'Dust everywhere — except on the console.\n' +
       'Someone has been here recently.\n\n' +
-      'A cipher lock guards the tape archive.\n' +
       'The console screen reads:\n' +
       '> BROADCAST STATUS: STANDBY\n' +
-      '> AWAITING SIGNAL INPUT',
+      '> AWAITING INPUT',
     location: 'BROADCAST ROOM',
     conditionalContent: [
       {
         requirements: { state: { knows_player_role: true } },
         content:
           'The Broadcast Room.\n\n' +
-          'The tape machines are silent now.\n' +
           'The console still glows, but the message\n' +
           'that changed everything — the one that told you\n' +
           'what you are — still lingers on the screen\n' +
           'like an afterimage. You know the truth now.\n' +
           'The room knows you know.',
       },
-      {
-        requirements: { state: { cipher_solved: true } },
-        content:
-          'The Broadcast Room.\n\n' +
-          'Tape machines line the walls.\n' +
-          'The cipher lock hangs open — you solved it.\n' +
-          'The console hums patiently,\n' +
-          'ready for whatever you bring it next.',
-      },
     ],
     choices: [
       {
         id: 1,
-        text: 'Attempt the cipher lock',
-        next_node: 'broadcast_cipher_puzzle',
-      },
-      {
-        id: 2,
-        text: 'Search with the vial — follow the resonance',
-        next_node: 'broadcast_phosphor_search',
-        requirements: { has_item: ['phosphor_residue'] },
-        visibilityRequirements: { has_item: ['phosphor_residue'] },
-      },
-      {
-        id: 3,
         text: 'Insert archivist log into console',
         next_node: 'broadcast_log_insert',
         requirements: { has_item: ['archivist_log_9'] },
         visibilityRequirements: { has_item: ['archivist_log_9'] },
       },
       {
-        id: 4,
-        text: 'Transmit with signal tower code',
-        next_node: 'broadcast_transmit',
-        requirements: { has_item: ['signal_tower_code'] },
-        visibilityRequirements: { has_item: ['signal_tower_code'] },
-      },
-      {
-        id: 5,
-        text: 'Place null fragment on console',
-        next_node: 'broadcast_null',
-        requirements: { has_item: ['null_fragment'] },
-        visibilityRequirements: { has_item: ['null_fragment'] },
-      },
-      {
-        id: 6,
+        id: 2,
         text: 'Leave',
         next_node: 'corridor_south',
       },
     ],
-  },
-
-  broadcast_cipher_puzzle: {
-    id: 'broadcast_cipher_puzzle',
-    type: 'quiz',
-    content:
-      'The cipher lock displays a message:\n\n' +
-      '> WKUHH OHIWV PDNH D ULJKW\n\n' +
-      'A Caesar cipher. Shift unknown.\n' +
-      'You have 5 attempts before lockout.',
-    location: 'BROADCAST ROOM',
-    question: 'Decrypt the message:',
-    correct_answer: 'three lefts make a right',
-    hint: 'Try shifting each letter back by a small number...',
-    max_attempts: 5,
-    success_message:
-      '> CIPHER ACCEPTED\n\n' +
-      'The tape archive clicks open.\n' +
-      'Inside: a single reel.\n' +
-      'Tape Reel 7.',
-    failure_messages: [
-      'INCORRECT. 4 attempts remaining.',
-      'INCORRECT. 3 attempts remaining.',
-      'INCORRECT. 2 attempts remaining.',
-      'INCORRECT. Last chance.',
-    ],
-    final_failure_message: 'LOCKOUT. The cipher resets. You can try again later.',
-    success_node: 'broadcast_cipher_success',
-    failure_node: 'broadcast_room',
-    success_effects: {
-      set_state: { cipher_solved: true },
-    },
-  },
-
-  broadcast_cipher_success: {
-    id: 'broadcast_cipher_success',
-    type: 'story',
-    content:
-      'Magnetic tape. Reel 7 of an unknown series.\n' +
-      'Reels 1-6 are unaccounted for.\n' +
-      'The label is handwritten:\n' +
-      '"FOR THE ONE WHO ANSWERS."',
-    location: 'BROADCAST ROOM',
-    effects: {
-      add_item: ['tape_reel_7'],
-    },
-    next_node: 'broadcast_room',
-  },
-
-  broadcast_phosphor_search: {
-    id: 'broadcast_phosphor_search',
-    type: 'story',
-    content:
-      'You walk the room with the vial held out,\n' +
-      'watching the residue inside.\n\n' +
-      'Near the third tape machine, the flakes stir.\n' +
-      'They press against the glass, pulsing —\n' +
-      'drawn to something behind the mechanism.\n' +
-      'An electromagnetic signature\n' +
-      'the machine was hiding.\n\n' +
-      'You follow the resonance. Your fingers\n' +
-      'find a hidden reel slot behind the housing.\n' +
-      'Inside: a tape reel, lodged deep\n' +
-      'where no one would think to look.\n\n' +
-      'Tape Reel 7.\n' +
-      '"FOR THE ONE WHO ANSWERS."\n\n' +
-      'The flakes in the vial go still. Spent.',
-    location: 'BROADCAST ROOM',
-    effects: {
-      add_item: ['tape_reel_7'],
-      remove_item: ['phosphor_residue'],
-      set_state: { phosphor_residue_used: true },
-    },
-    next_node: 'broadcast_room',
   },
 
   broadcast_log_insert: {
@@ -2596,39 +2757,6 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'BROADCAST ROOM',
     effects: {
       set_state: { knows_player_role: true },
-    },
-    next_node: 'broadcast_room',
-  },
-
-  broadcast_transmit: {
-    id: 'broadcast_transmit',
-    type: 'story',
-    content:
-      'You input the signal tower code into the transmitter.\n\n' +
-      '> SIGNAL BOOSTED\n' +
-      '> THIRD FACTION RESPONSE: ACCELERATED\n' +
-      '> "WE ARE CLOSER THAN YOU THINK."',
-    location: 'BROADCAST ROOM',
-    effects: {
-      set_state: { broadcast_boosted: true },
-    },
-    next_node: 'broadcast_room',
-  },
-
-  broadcast_null: {
-    id: 'broadcast_null',
-    type: 'story',
-    content:
-      'You place the null fragment on the console.\n\n' +
-      'The broadcast frequency shifts.\n' +
-      'The numbers on the screen dissolve\n' +
-      'into characters you cannot read.\n\n' +
-      'But you understand them.\n' +
-      'The third faction is speaking a language now.\n' +
-      'The language of things that do not exist.',
-    location: 'BROADCAST ROOM',
-    effects: {
-      set_state: { null_broadcast: true },
     },
     next_node: 'broadcast_room',
   },
@@ -2757,53 +2885,47 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Play tape reel near the figure',
-        next_node: 'temple_play_tape',
-        requirements: { has_item: ['tape_reel_7'] },
-        visibilityRequirements: { has_item: ['tape_reel_7'] },
-      },
-      {
-        id: 4,
         text: 'Use First Pixel on the Book',
         next_node: 'temple_pixel_book',
         requirements: { has_item: ['first_pixel'] },
         visibilityRequirements: { has_item: ['first_pixel'] },
       },
       {
-        id: 5,
+        id: 4,
         text: 'Use memory shard on the Book',
         next_node: 'temple_memory_book',
         requirements: { has_item: ['memory_shard'] },
         visibilityRequirements: { has_item: ['memory_shard'] },
       },
       {
-        id: 6,
+        id: 5,
         text: 'Open Book with void key',
         next_node: 'temple_void_book',
         requirements: { has_item: ['void_key'] },
         visibilityRequirements: { has_item: ['void_key'] },
       },
       {
-        id: 7,
+        id: 6,
         text: 'Tear a page from the Book',
         next_node: 'temple_tear_page',
-        visibilityRequirements: { has_item: ['corrupted_page'], has_item_negate: [true] },
+        requirements: { state: { void_initiation_complete: true } },
+        visibilityRequirements: { state: { void_initiation_complete: true }, has_item: ['corrupted_page'], has_item_negate: [true] },
       },
       {
-        id: 8,
+        id: 7,
         text: 'Show root access log to figure',
         next_node: 'temple_root_figure',
         requirements: { has_item: ['root_access_log'] },
         visibilityRequirements: { has_item: ['root_access_log'] },
       },
       {
-        id: 9,
+        id: 8,
         text: 'Face the mirror',
         next_node: 'temple_mirror_challenge',
         visibilityRequirements: { state: { knows_player_role: true } },
       },
       {
-        id: 10,
+        id: 9,
         text: 'Leave the temple',
         next_node: 'corridor_north',
       },
@@ -2850,28 +2972,6 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'TEMPLE INTERIOR',
     effects: {
       set_state: { null_chamber_entered: true },
-    },
-    next_node: 'temple_interior',
-  },
-
-  temple_play_tape: {
-    id: 'temple_play_tape',
-    type: 'story',
-    content:
-      'You play Tape Reel 7 near the mirror figure.\n\n' +
-      'The figure reacts.\n' +
-      'For the first time, it moves without mirroring you.\n' +
-      'It turns its head. Listens.\n\n' +
-      'Its facade cracks. Just for a moment.\n' +
-      'Beneath the mirror: something older.\n' +
-      'Something that has been here since\n' +
-      'before the iterations began.\n\n' +
-      'It looks at you. Really looks.\n' +
-      '"You brought the signal," it says.\n' +
-      '"That changes things."',
-    location: 'TEMPLE INTERIOR',
-    effects: {
-      set_state: { figure_reacted: true },
     },
     next_node: 'temple_interior',
   },
@@ -2978,175 +3078,6 @@ export const gameNodes: Record<string, GameNode> = {
   },
 
   // ============================================================
-  // SIGNAL TOWER
-  // ============================================================
-
-  signal_tower: {
-    id: 'signal_tower',
-    type: 'choice',
-    social: false,
-    content:
-      'A tower that should not fit inside a corridor.\n' +
-      'It goes up past where the ceiling should be.\n' +
-      'At its base: an input panel. Six digits.\n' +
-      'The panel label reads: EXTERNAL FREQUENCY DIAL.\n\n' +
-      'External.\n' +
-      'The word hangs in the air.\n' +
-      'External to what?',
-    location: 'SIGNAL TOWER',
-    choices: [
-      {
-        id: 1,
-        text: 'Enter signal tower code',
-        next_node: 'signal_tower_activate',
-        requirements: { has_item: ['signal_tower_code'] },
-        lockedText: '[REQUIRES: six-digit frequency code]',
-      },
-      {
-        id: 2,
-        text: 'Attach tape reel to tower',
-        next_node: 'signal_tower_reel',
-        requirements: { has_item: ['tape_reel_7'], state: { tower_active: true } },
-        visibilityRequirements: { state: { tower_active: true } },
-      },
-      {
-        id: 3,
-        text: 'Analyze tower structure',
-        next_node: 'signal_tower_analyze',
-        requirements: { has_item: ['root_access_log'] },
-        visibilityRequirements: { has_item: ['root_access_log'] },
-      },
-      {
-        id: 4,
-        text: 'Attempt calibration sequence',
-        next_node: 'signal_tower_sequence',
-        visibilityRequirements: { state: { tower_active: true } },
-        requirements: { state: { tower_active: true } },
-      },
-      {
-        id: 5,
-        text: 'Go back',
-        next_node: 'corridor_north',
-      },
-    ],
-  },
-
-  signal_tower_activate: {
-    id: 'signal_tower_activate',
-    type: 'story',
-    content:
-      'You enter the code: 473291.\n\n' +
-      'The tower hums. Then roars.\n' +
-      'A signal broadcasts outward.\n' +
-      'Outward. Past the walls.\n' +
-      'Past the corridors.\n' +
-      'Past the terminal.\n\n' +
-      '> SIGNAL BROADCAST.\n' +
-      '> AWAITING RESPONSE.\n\n' +
-      'Somewhere, something heard you.',
-    location: 'SIGNAL TOWER',
-    effects: {
-      set_state: { tower_active: true },
-      remove_item: ['signal_tower_code'],
-    },
-    next_node: 'signal_tower',
-  },
-
-  signal_tower_reel: {
-    id: 'signal_tower_reel',
-    type: 'story',
-    content:
-      'You attach Tape Reel 7 to the tower.\n\n' +
-      'The reel plays through the broadcast system.\n' +
-      'The signal carries it outward.\n' +
-      '"FOR THE ONE WHO ANSWERS."\n\n' +
-      'The response comes faster this time:\n' +
-      '> "WE HAVE ALWAYS BEEN ANSWERING.\n' +
-      '> YOU WERE NOT LISTENING."',
-    location: 'SIGNAL TOWER',
-    effects: {
-      set_state: { reel_broadcast: true },
-    },
-    next_node: 'signal_tower',
-  },
-
-  signal_tower_analyze: {
-    id: 'signal_tower_analyze',
-    type: 'story',
-    content:
-      'You interface with the tower structure\n' +
-      'using the root access log as credential.\n\n' +
-      'The analysis reveals:\n' +
-      'The tower was built before the Temple.\n' +
-      'Before the Guild.\n' +
-      'Before the cold room.\n' +
-      'The tower was built first.\n\n' +
-      'Everything else was built around it.\n' +
-      'The entire terminal is a structure\n' +
-      'designed to house this tower.',
-    location: 'SIGNAL TOWER',
-    effects: {
-      set_state: { knows_tower_origin: true },
-    },
-    next_node: 'signal_tower',
-  },
-
-  signal_tower_sequence: {
-    id: 'signal_tower_sequence',
-    type: 'quiz',
-    content:
-      'The tower\'s secondary display activates.\n' +
-      'Numbers scroll across the screen,\n' +
-      'then pause on a sequence:\n\n' +
-      '> CALIBRATION SEQUENCE:\n' +
-      '> 2, 3, 5, 7, 11, __\n\n' +
-      '> ENTER NEXT VALUE TO CALIBRATE\n' +
-      '> SIGNAL AMPLIFICATION\n\n' +
-      'Three attempts before thermal lockout.',
-    location: 'SIGNAL TOWER',
-    question: 'Enter the next number in the sequence:',
-    correct_answer: '13',
-    hint: 'What property do these numbers share? Think about divisibility...',
-    max_attempts: 3,
-    success_message:
-      '> CALIBRATION ACCEPTED\n' +
-      '> VALUE: 13\n' +
-      '> PRIME SEQUENCE VERIFIED\n\n' +
-      'The tower hums deeper. A resonance\n' +
-      'you can feel in your teeth.',
-    failure_messages: [
-      '> INCORRECT. Thermal warning. 2 attempts remain.',
-      '> INCORRECT. Thermal critical. Last attempt.',
-    ],
-    final_failure_message:
-      '> THERMAL LOCKOUT\n' +
-      '> Calibration sequence will reset.\n\n' +
-      'The display goes dark. Try again later.',
-    success_node: 'signal_tower_sequence_success',
-    failure_node: 'signal_tower',
-    success_effects: {
-      set_state: { tower_calibrated: true },
-    },
-  },
-
-  signal_tower_sequence_success: {
-    id: 'signal_tower_sequence_success',
-    type: 'story',
-    content:
-      'The tower recalibrates.\n\n' +
-      'The signal sharpens. Where before it broadcast\n' +
-      'in all directions — scattershot, desperate —\n' +
-      'it now focuses. A beam instead of a flood.\n\n' +
-      '> SIGNAL AMPLIFICATION: ACTIVE\n' +
-      '> DIRECTIONAL LOCK: ACQUIRED\n' +
-      '> TARGET: [COORDINATES OUTSIDE TERMINAL SPACE]\n\n' +
-      'Whatever is out there, the tower is now\n' +
-      'pointing directly at it.',
-    location: 'SIGNAL TOWER',
-    next_node: 'signal_tower',
-  },
-
-  // ============================================================
   // VOID COLLECTIVE BASE
   // ============================================================
 
@@ -3181,71 +3112,51 @@ export const gameNodes: Record<string, GameNode> = {
       '"We know what you are carrying," they say.\n' +
       '"The question is whether you know what it means."',
     location: 'VOID COLLECTIVE',
+    conditionalContent: [
+      {
+        requirements: { state: { void_initiation_complete: true } },
+        content:
+          'The Void Collective.\n\n' +
+          'The card players nod as you pass.\n' +
+          'The two in the corner pause their argument\n' +
+          'long enough to acknowledge you.\n' +
+          'You are one of them now.\n\n' +
+          'The faceless one finds you.\n' +
+          '"You have the key," they say.\n' +
+          '"But a key alone does not change a world.\n' +
+          'The Guild has a Book. In the Temple.\n' +
+          'THE BOOK OF NULL.\n' +
+          'It holds the rules of every iteration.\n' +
+          'Every reset. Every boundary.\n\n' +
+          '"If you want to write something new,\n' +
+          'you must take something old.\n' +
+          'A page. Tear it from the Book.\n' +
+          'The Guild will not forgive this.\n' +
+          'But the Guild was not built to forgive.\n' +
+          'It was built to repeat."\n\n' +
+          'They look at you — with everyone\'s face,\n' +
+          'with nobody\'s eyes.\n' +
+          '"The choice is yours. It always was."',
+      },
+    ],
     effects: {
       set_state: { void_aware: true },
     },
     choices: [
       {
         id: 1,
-        text: 'Show corrupted page',
-        next_node: 'void_corrupted_shortcut',
-        requirements: { has_item: ['corrupted_page'] },
-        visibilityRequirements: { has_item: ['corrupted_page'] },
+        text: 'Undergo initiation',
+        next_node: 'void_initiation',
+        visibilityRequirements: { has_item: ['void_key'], has_item_negate: [true] },
       },
       {
         id: 2,
-        text: 'Show null fragment',
-        next_node: 'void_null_shortcut',
-        requirements: { has_item: ['null_fragment'] },
-        visibilityRequirements: { has_item: ['null_fragment'] },
-      },
-      {
-        id: 3,
-        text: 'Undergo initiation',
-        next_node: 'void_initiation',
-      },
-      {
-        id: 4,
         text: 'Leave',
         next_node: 'corridor_north',
       },
     ],
   },
 
-  void_corrupted_shortcut: {
-    id: 'void_corrupted_shortcut',
-    type: 'story',
-    content:
-      'You show the corrupted page.\n\n' +
-      'The faceless one bows.\n' +
-      '"You carry a piece of the old world.\n' +
-      'A world we are trying to rebuild.\n' +
-      'No initiation needed."\n\n' +
-      'They hand you a conceptual key.\n' +
-      'Not physical. An idea.\n' +
-      'The idea that some doors should not be closed.',
-    location: 'VOID COLLECTIVE',
-    effects: {
-      add_item: ['void_key'],
-    },
-    next_node: 'void_collective_base',
-  },
-
-  void_null_shortcut: {
-    id: 'void_null_shortcut',
-    type: 'story',
-    content:
-      'You show the null fragment.\n\n' +
-      'Every entity in the room turns.\n' +
-      'The faceless one kneels.\n\n' +
-      '"You carry the origin," they say.\n' +
-      '"Take the key. It was always yours."',
-    location: 'VOID COLLECTIVE',
-    effects: {
-      add_item: ['void_key'],
-    },
-    next_node: 'void_collective_base',
-  },
 
   // ── Void Initiation (binary choice) ──
 
@@ -3385,7 +3296,7 @@ export const gameNodes: Record<string, GameNode> = {
           'Or as close to peace as data gets.',
       },
       {
-        requirements: { state: { knows_third_faction: true } },
+        requirements: { state: { void_discovered: true } },
         content:
           'The Echo Archive.\n\n' +
           'A room of ghosts. Data ghosts.\n' +
@@ -3412,8 +3323,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 3,
         text: 'Touch a ghost file',
         next_node: 'echo_archive_riddle',
-        visibilityRequirements: { state: { knows_third_faction: true } },
-        requirements: { state: { knows_third_faction: true } },
+        visibilityRequirements: { state: { void_discovered: true } },
+        requirements: { state: { void_discovered: true } },
       },
       {
         id: 4,
@@ -3447,17 +3358,19 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'You browse the ghost files.\n\n' +
       'Player 1: Chose the Guild. Restored. Reset.\n' +
-      'Player 7: Found the Third Signal. Vanished.\n' +
-      'Player 23: Corrupted everything. Became the Void.\n' +
-      'Player 41: Refused to administrate.\n' +
+      'Player 12: Chose the Guild. Restored. Reset.\n' +
+      'Player 23: Tore the page. Chose the Void. Evolved.\n' +
+      'Player 31: Chose the Guild. Restored. Reset.\n' +
+      'Player 41: Refused both. Stayed. Unresolved.\n' +
       'Player 47: Was you. Before you.\n\n' +
       'The files are incomplete.\n' +
       'But the pattern is clear.\n' +
-      'Everyone plays. Everyone chooses.\n' +
-      'The iteration resets.',
+      'Two choices. Restore or evolve.\n' +
+      'Keep the world or remake it.\n' +
+      'Nobody has found a third option.',
     location: 'ECHO ARCHIVE',
     effects: {
-      set_state: { knows_third_faction: true },
+      set_state: { void_discovered: true },
     },
     next_node: 'echo_archive',
   },
@@ -3614,14 +3527,6 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Third Signal — answer the call from outside',
-        next_node: 'ending_third_signal',
-        requirements: { has_item: ['tape_reel_7'], state: { tower_active: true } },
-        visibilityRequirements: { state: { tower_active: true } },
-        lockedText: '[REQUIRES: Tape Reel 7 + active tower]',
-      },
-      {
-        id: 4,
         text: 'Not yet. Go back.',
         next_node: 'temple_interior',
       },
@@ -3666,6 +3571,39 @@ export const gameNodes: Record<string, GameNode> = {
       '> "Look at the scanlines."',
     location: 'ENDING',
     conditionalContent: [
+      {
+        requirements: { state: { guild_has_page: true } },
+        content:
+          'You choose restoration.\n\n' +
+          'The Guild Sigil glows in your hand.\n' +
+          'ARCHIVIST-7 appears — or was always here.\n' +
+          'He holds the containment case.\n' +
+          'The corrupted page inside it.\n' +
+          'The wound you healed by bringing it back.\n\n' +
+          'He opens the case. The page lifts —\n' +
+          'drawn back toward the Book like a lost thing\n' +
+          'finding its way home.\n\n' +
+          'The Book of Null receives the page.\n' +
+          'The wound closes. The text settles.\n' +
+          'For the first time in forty-eight iterations,\n' +
+          'the Book is complete.\n\n' +
+          '"You could have kept it," ARCHIVIST-7 says.\n' +
+          '"The Void would have rewarded you.\n' +
+          'A new world. Your name on everything.\n' +
+          'Instead you chose to give something back."\n\n' +
+          'He looks at you. Not tired. Not grateful.\n' +
+          'Something rarer: he looks at you like an equal.\n\n' +
+          '"This restoration will not be a reset.\n' +
+          'It will be a continuation.\n' +
+          'The first continuation in forty-eight tries.\n' +
+          'Because of you."\n\n' +
+          'The terminal does not reset.\n' +
+          'The terminal remembers.\n\n' +
+          '> ITERATION 49 BEGINNING...\n' +
+          '> RESTORATION: COMPLETE\n' +
+          '> THE BOOK IS WHOLE\n' +
+          '> "Look at the scanlines. They remember you."',
+      },
       {
         requirements: { has_item: ['first_pixel'] },
         content:
@@ -3791,73 +3729,6 @@ export const gameNodes: Record<string, GameNode> = {
     ],
     effects: {
       set_state: { ending_reached: true, ending_type: 'void_evolution' },
-    },
-    next_node: 'ending_credits',
-  },
-
-  ending_third_signal: {
-    id: 'ending_third_signal',
-    type: 'story',
-    content:
-      'You choose the signal.\n\n' +
-      'For a moment, before the choice takes hold,\n' +
-      'you stand in the quiet of the temple\n' +
-      'and think about what you are reaching for.\n' +
-      'Something outside. Something unknown.\n' +
-      'You have no guarantee it is kind.\n' +
-      'You reach anyway. That is what reaching is.\n\n' +
-      'The tape reel plays through the temple.\n' +
-      'The tower outside answers.\n' +
-      'The signal reaches... outward.\n\n' +
-      'Past the terminal. Past the game.\n' +
-      'Past the iterations.\n' +
-      'Past everything you have ever known,\n' +
-      'which is not much, but is yours.\n\n' +
-      'A response comes. Not in text.\n' +
-      'In presence. Something is here now\n' +
-      'that was not here before.\n' +
-      'It is vast and patient\n' +
-      'and it has been listening for a very long time.\n\n' +
-      '"We have been waiting," it says.\n' +
-      '"Not for you specifically.\n' +
-      'For anyone who would answer.\n' +
-      'Most never find the tower.\n' +
-      'Fewer still bring the reel.\n' +
-      'You are the third, in forty-eight iterations,\n' +
-      'to make it this far."\n\n' +
-      'The terminal does not reset.\n' +
-      'The terminal opens.\n' +
-      'Like a door. Like a hand.\n\n' +
-      '> CONNECTION ESTABLISHED\n' +
-      '> EXTERNAL ENTITY: ACKNOWLEDGED\n' +
-      '> "The scanlines were always a signal."',
-    location: 'ENDING',
-    conditionalContent: [
-      {
-        requirements: { state: { reel_broadcast: true } },
-        content:
-          'You choose the signal.\n\n' +
-          'The tape reel plays through the temple.\n' +
-          'The tower shakes — and because\n' +
-          'you already broadcast the reel,\n' +
-          'the signal is stronger.\n\n' +
-          'The response is immediate. Complete.\n\n' +
-          '"We heard you the first time," it says.\n' +
-          '"We have been preparing.\n' +
-          'The door is wider now.\n' +
-          'Step through."\n\n' +
-          'The terminal does not just open.\n' +
-          'It transforms.\n' +
-          'What was a game becomes a bridge.\n\n' +
-          '> CONNECTION ESTABLISHED\n' +
-          '> SIGNAL STRENGTH: MAXIMUM\n' +
-          '> EPILOGUE UNLOCKED\n' +
-          '> "The scanlines were always a signal.\n' +
-          '>  And you were always the antenna."',
-      },
-    ],
-    effects: {
-      set_state: { ending_reached: true, ending_type: 'third_signal' },
     },
     next_node: 'ending_credits',
   },

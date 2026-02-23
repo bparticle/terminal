@@ -14,7 +14,7 @@ const CONSUMABLE_ITEMS = new Set([
   'phosphor_residue',
   'corrupted_page',
   'first_pixel',
-  'signal_tower_code',
+  'observation_code',
 ]);
 
 type OutputFn = (text: string, className?: string, id?: string) => void;
