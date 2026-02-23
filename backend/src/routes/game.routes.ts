@@ -89,16 +89,20 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
     const game_state = validateJsonObject(req.body.game_state, 'game_state', { maxSizeBytes: 50_000 });
     const inventory = validateJsonArray(req.body.inventory, 'inventory', { maxItems: 100, maxSizeBytes: 10_000 }) as string[] | undefined;
     const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
+    const save_version = typeof req.body.save_version === 'number' ? req.body.save_version : undefined;
 
-    // 1. Update game save
+    // 1. Update game save (with optimistic locking when save_version is provided)
     const save = await updateGameSave(wallet_address, {
       current_node_id,
       location,
       game_state,
       inventory,
       name,
-    });
+    }, save_version);
 
+    if (!save && save_version !== undefined) {
+      throw new AppError('Save version mismatch — game data was reset externally. Please reload.', 409);
+    }
     if (!save) {
       throw new AppError('No save found to update', 404);
     }

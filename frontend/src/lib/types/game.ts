@@ -124,6 +124,7 @@ export interface GameSave {
   game_state: Record<string, any>;
   inventory: string[];
   name?: string;
+  save_version?: number;
   created_at?: string;
   updated_at?: string;
 }

@@ -9,6 +9,7 @@ export interface GameSave {
   game_state: Record<string, any>;
   inventory: string[];
   name: string;
+  save_version: number;
   created_at: string;
   updated_at: string;
 }
@@ -81,11 +82,16 @@ export async function saveGame(data: {
   game_state: Record<string, any>;
   inventory: string[];
   name: string;
+  save_version?: number;
 }): Promise<{ save: GameSave }> {
   const response = await fetchWithAuth('game/save', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+
+  if (response.status === 409) {
+    throw new Error('Save version mismatch');
+  }
 
   if (!response.ok) {
     throw new Error('Failed to save game');

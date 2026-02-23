@@ -34,12 +34,16 @@ export async function createGameSave(data: CreateGameSaveInput): Promise<GameSav
 }
 
 /**
- * Update an existing game save
+ * Update an existing game save.
+ * When expectedSaveVersion is provided, the update uses optimistic locking:
+ * the row is only updated if save_version matches, preventing stale in-memory
+ * data (e.g. from an auto-save timer) from overwriting an admin reset.
  */
 export async function updateGameSave(
   walletAddress: string,
-  data: Partial<Pick<GameSave, 'current_node_id' | 'location' | 'game_state' | 'inventory' | 'name'>>
-): Promise<GameSave> {
+  data: Partial<Pick<GameSave, 'current_node_id' | 'location' | 'game_state' | 'inventory' | 'name'>>,
+  expectedSaveVersion?: number
+): Promise<GameSave | null> {
   const updates: string[] = [];
   const values: any[] = [];
   let paramIndex = 1;
@@ -66,12 +70,18 @@ export async function updateGameSave(
   }
 
   values.push(walletAddress);
+  let whereClause = `wallet_address = $${paramIndex++}`;
+
+  if (expectedSaveVersion !== undefined) {
+    whereClause += ` AND save_version = $${paramIndex++}`;
+    values.push(expectedSaveVersion);
+  }
 
   const result = await query(
-    `UPDATE game_saves SET ${updates.join(', ')} WHERE wallet_address = $${paramIndex} RETURNING *`,
+    `UPDATE game_saves SET ${updates.join(', ')} WHERE ${whereClause} RETURNING *`,
     values
   );
-  return result.rows[0];
+  return result.rows[0] || null;
 }
 
 /**
@@ -97,7 +107,8 @@ export async function resetPlayerData(walletAddress: string): Promise<void> {
       current_node_id = 'start',
       location = 'HUB',
       game_state = '{}'::jsonb,
-      inventory = '[]'::jsonb
+      inventory = '[]'::jsonb,
+      save_version = save_version + 1
      WHERE wallet_address = $1`,
     [walletAddress]
   );
@@ -114,7 +125,8 @@ export async function resetAllPlayerData(): Promise<{ playersReset: number }> {
       current_node_id = 'start',
       location = 'HUB',
       game_state = '{}'::jsonb,
-      inventory = '[]'::jsonb`
+      inventory = '[]'::jsonb,
+      save_version = save_version + 1`
   );
   return { playersReset: result.rowCount || 0 };
 }

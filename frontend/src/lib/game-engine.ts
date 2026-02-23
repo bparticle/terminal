@@ -123,7 +123,6 @@ export class GameEngine {
       clearInterval(this.autoSaveTimer);
       this.autoSaveTimer = null;
     }
-    this.autoSave();
   }
 
   private async fetchNFTs(walletAddress: string): Promise<void> {
@@ -1117,19 +1116,30 @@ export class GameEngine {
     if (!this.save || !this.save.wallet_address) return;
 
     try {
-      await saveGame({
+      const result = await saveGame({
         current_node_id: this.save.current_node_id,
         location: this.save.location,
         game_state: this.save.game_state,
         inventory: this.save.inventory,
         name: this.save.name || 'Wanderer',
+        save_version: this.save.save_version,
       });
+
+      if (result.save.save_version !== undefined) {
+        this.save.save_version = result.save.save_version;
+      }
 
       // Notify UI components (e.g. StatsBox) that progress may have changed
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('game-progress-updated'));
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes('version mismatch')) {
+        this.outputFn('');
+        this.outputFn('Game data was reset by an admin. Reloading...', 'text-yellow-400');
+        await this.reloadGame();
+        return;
+      }
       console.error('Auto-save failed:', error);
     }
   }
@@ -1152,6 +1162,7 @@ export class GameEngine {
       await resetGame();
 
       const name = this.save?.name || 'Wanderer';
+      const nextVersion = (this.save?.save_version || 1) + 1;
       this.save = {
         wallet_address: this.walletAddress,
         current_node_id: 'start',
@@ -1159,6 +1170,7 @@ export class GameEngine {
         game_state: { player_name: name },
         inventory: [],
         name,
+        save_version: nextVersion,
       };
 
       this.currentNode = gameNodes['start'];
