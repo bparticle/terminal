@@ -541,13 +541,17 @@ export const gameNodes: Record<string, GameNode> = {
       'The screen reacts. The /null directory flickers —\n' +
       'then opens.\n\n' +
       'The directory should not exist.\n' +
-      'Inside: a shard of something that used to be a file.\n' +
+      'Inside: nothing. A file that used to be a file.\n' +
+      'The absence of data, catalogued and preserved.\n' +
       'It is very quiet. Not silent — quiet.\n' +
       'Like it is listening.\n\n' +
-      'You take it. The flakes in the vial go dark.',
+      'The vial goes dark. The residue spent.\n' +
+      'But the terminal remembers\n' +
+      'that you asked to see nothing.\n' +
+      'And it showed you.',
     location: 'COLD ROOM',
     effects: {
-      add_item: ['null_fragment'],
+      set_state: { null_accessed: true },
       remove_item: ['phosphor_residue'],
     },
     next_node: 'cold_room_terminal',
@@ -2279,7 +2283,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Between the lines: "To control what players know."',
     location: 'REGISTRY OFFICE',
     effects: {
-      add_item: ['guild_access_files'],
+      set_state: { guild_is_lying: true },
     },
     next_node: 'registry_office',
   },
@@ -2835,13 +2839,6 @@ export const gameNodes: Record<string, GameNode> = {
         visibilityRequirements: { has_item: ['first_pixel'] },
       },
       {
-        id: 3,
-        text: 'Show memory shard',
-        next_node: 'guild_show_memory',
-        requirements: { has_item: ['memory_shard'] },
-        visibilityRequirements: { has_item: ['memory_shard'] },
-      },
-      {
         id: 4,
         text: 'Show corrupted page',
         next_node: 'guild_show_corrupted_page',
@@ -2902,39 +2899,6 @@ export const gameNodes: Record<string, GameNode> = {
     ],
     effects: {
       set_state: { archivist_destabilized: true, shown_log: true },
-    },
-    next_node: 'guild_hq',
-  },
-
-  guild_show_memory: {
-    id: 'guild_show_memory',
-    type: 'story',
-    content:
-      'You hold out the memory shard.\n\n' +
-      'ARCHIVIST-7 freezes.\n' +
-      'Not a pause. A freeze. 8 seconds.\n' +
-      'His eyes do not move.\n' +
-      'The screens behind him flicker.\n\n' +
-      'When he resumes:\n' +
-      '"Previous iterations are not... relevant\n' +
-      'to current operations."\n\n' +
-      'But his voice has changed.\n' +
-      'He knows. He has always known.',
-    location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { shown_memory: true } },
-        content:
-          'You hold out the memory shard again.\n\n' +
-          'ARCHIVIST-7 does not freeze this time.\n' +
-          'He barely glances at it.\n\n' +
-          '"I remember what it contains.\n' +
-          'That is my function. Remembering.\n' +
-          'You might consider developing one."',
-      },
-    ],
-    effects: {
-      set_state: { archivist_destabilized: true, shown_memory: true },
     },
     next_node: 'guild_hq',
   },
@@ -3490,25 +3454,11 @@ export const gameNodes: Record<string, GameNode> = {
         next_node: 'temple_read_book',
       },
       {
-        id: 2,
-        text: 'Use null fragment on mirror figure',
-        next_node: 'temple_null_figure',
-        requirements: { has_item: ['null_fragment'] },
-        visibilityRequirements: { has_item: ['null_fragment'] },
-      },
-      {
         id: 3,
         text: 'Use First Pixel on the Book',
         next_node: 'temple_pixel_book',
         requirements: { has_item: ['first_pixel'] },
         visibilityRequirements: { has_item: ['first_pixel'] },
-      },
-      {
-        id: 4,
-        text: 'Use memory shard on the Book',
-        next_node: 'temple_memory_book',
-        requirements: { has_item: ['memory_shard'] },
-        visibilityRequirements: { has_item: ['memory_shard'] },
       },
       {
         id: 5,
@@ -3608,27 +3558,6 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'temple_interior',
   },
 
-  temple_null_figure: {
-    id: 'temple_null_figure',
-    type: 'story',
-    content:
-      'You press the null fragment against the mirror figure.\n\n' +
-      'The figure fractures.\n' +
-      'It splits into two.\n' +
-      'One half: you.\n' +
-      'The other half: the absence of you.\n\n' +
-      'Between them: a chamber that was always here.\n' +
-      'A place for things that do not exist\n' +
-      'to exist anyway.\n\n' +
-      'You step inside.\n' +
-      'The chamber knows you.\n' +
-      'It has been waiting 48 iterations.',
-    location: 'TEMPLE INTERIOR',
-    effects: {
-      set_state: { null_chamber_entered: true },
-    },
-    next_node: 'temple_interior',
-  },
 
   temple_pixel_book: {
     id: 'temple_pixel_book',
@@ -3647,30 +3576,10 @@ export const gameNodes: Record<string, GameNode> = {
     effects: {
       set_state: { book_is_frame: true, first_pixel_spent: true },
       remove_item: ['first_pixel'],
-      add_item: ['spent_first_pixel'],
     },
     next_node: 'temple_interior',
   },
 
-  temple_memory_book: {
-    id: 'temple_memory_book',
-    type: 'story',
-    content:
-      'You press the memory shard against the Book.\n\n' +
-      'The Book opens to a page you have never seen.\n' +
-      'But you have seen it. Before.\n\n' +
-      'The previous player\'s run plays out\n' +
-      'in text on the page:\n' +
-      'They chose the Guild. They restored.\n' +
-      'They thought they won.\n' +
-      'Then the iteration reset.\n' +
-      'And you began.',
-    location: 'TEMPLE INTERIOR',
-    effects: {
-      set_state: { saw_previous_run: true },
-    },
-    next_node: 'temple_interior',
-  },
 
   temple_void_book: {
     id: 'temple_void_book',
@@ -4000,15 +3909,22 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'The echo key opens the inner vault.\n\n' +
-      'Inside: a shard of memory.\n' +
-      'Warm to the touch. It knows a name.\n' +
+      'Inside: not an object. A presence.\n' +
+      'Warm. It knows a name.\n' +
       'Not your name. The name before yours.\n' +
       'From the player who came here\n' +
       'in the previous iteration.\n\n' +
-      'A memory shard. Fragile. Important.',
+      'You can\'t take it. It isn\'t a thing.\n' +
+      'But it touches you as you stand there —\n' +
+      'a flash of someone else\'s final moment.\n' +
+      'They chose the Guild. They restored.\n' +
+      'They thought they won.\n' +
+      'Then the iteration reset.\n' +
+      'And you began.\n\n' +
+      'The memory fades. But the knowledge stays.',
     location: 'ECHO ARCHIVE',
     effects: {
-      add_item: ['memory_shard'],
+      set_state: { saw_previous_run: true },
     },
     next_node: 'echo_archive',
   },
