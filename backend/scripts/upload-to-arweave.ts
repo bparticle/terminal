@@ -27,7 +27,7 @@ function parseArgs(argv: string[]) {
   let file = '';
   let name = 'Inventory Item';
   let description = 'A soulbound inventory item from Terminal.';
-  let symbol = 'TERM';
+  let symbol = 'SCAN';
   let useDevnet = false;
 
   for (let i = 0; i < args.length; i++) {

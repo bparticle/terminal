@@ -71,7 +71,7 @@ async function main() {
     coreCollection,
     metadata: {
       name: 'Test Item — Oil Can',
-      symbol: 'TERM',
+      symbol: 'SCAN',
       uri: '',  // empty URI is fine for a test
       sellerFeeBasisPoints: 0,
       creators: [{ address: ownerAddress, verified: true, share: 100 }],

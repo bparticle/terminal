@@ -72,7 +72,7 @@ async function main() {
     coreCollection,
     metadata: {
       name: 'Cold Room Key',
-      symbol: 'TERM',
+      symbol: 'SCAN',
       uri: 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1',
       sellerFeeBasisPoints: 0,
       creators: [{ address: ownerAddress, verified: true, share: 100 }],
