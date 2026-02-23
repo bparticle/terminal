@@ -2373,11 +2373,13 @@ export const gameNodes: Record<string, GameNode> = {
         id: 1,
         text: '"Who are you?"',
         next_node: 'guild_talk_who',
+        visibilityRequirements: { state: { guild_spoken_to: false } },
       },
       {
         id: 2,
         text: '"What is this place?"',
         next_node: 'guild_talk_place',
+        visibilityRequirements: { state: { guild_spoken_to: false } },
       },
       {
         id: 3,
@@ -2399,6 +2401,20 @@ export const gameNodes: Record<string, GameNode> = {
         next_node: 'guild_mission',
         visibilityRequirements: { state: { guild_quest_active: true } },
         requirements: { state: { guild_quest_active: true } },
+      },
+      {
+        id: 50,
+        text: '"I found something in the Book of Null."',
+        next_node: 'guild_mission_torn_report',
+        visibilityRequirements: { state: { book_torn_noticed: true, guild_quest_active: false } },
+        requirements: { state: { book_torn_noticed: true } },
+      },
+      {
+        id: 51,
+        text: '"I\'ve been to the Void."',
+        next_node: 'guild_void_report',
+        visibilityRequirements: { state: { void_initiation_complete: true, guild_page_hunt: false } },
+        requirements: { state: { void_initiation_complete: true } },
       },
       {
         id: 6,
@@ -2597,6 +2613,13 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'GUILD HQ',
     conditionalContent: [
       {
+        requirements: { state: { guild_page_hunt: true } },
+        content:
+          'ARCHIVIST-7 looks up.\n\n' +
+          '"The page," he says.\n' +
+          '"Have you found it?"',
+      },
+      {
         requirements: { state: { book_torn_noticed: true } },
         content:
           'ARCHIVIST-7 looks up before you speak.\n' +
@@ -2623,21 +2646,42 @@ export const gameNodes: Record<string, GameNode> = {
         text: '"A page has been torn out."',
         next_node: 'guild_mission_torn_report',
         requirements: { state: { book_torn_noticed: true } },
-        visibilityRequirements: { state: { book_torn_noticed: true } },
+        visibilityRequirements: { state: { book_torn_noticed: true, guild_page_hunt: false } },
       },
       {
         id: 2,
         text: '"Mostly blank pages. Something about a Root Process."',
         next_node: 'guild_mission_incomplete_report',
         requirements: { state: { book_read: true } },
-        visibilityRequirements: { state: { book_read: true } },
+        visibilityRequirements: { state: { book_read: true, guild_page_hunt: false } },
       },
       {
         id: 3,
+        text: '"Not yet."',
+        next_node: 'guild_mission_no_page',
+        visibilityRequirements: { state: { guild_page_hunt: true } },
+      },
+      {
+        id: 4,
         text: 'Back',
         next_node: 'guild_hq',
       },
     ],
+  },
+
+  guild_mission_no_page: {
+    id: 'guild_mission_no_page',
+    type: 'story',
+    content:
+      'ARCHIVIST-7 nods. Once.\n\n' +
+      '"Then there is nothing more to discuss.\n' +
+      'Find the page. The Void has it.\n' +
+      'Or will have it.\n' +
+      'Bring it back before the cycle ends."\n\n' +
+      'He turns back to the console.\n' +
+      'The conversation is over.',
+    location: 'GUILD HQ',
+    next_node: 'guild_hq',
   },
 
   guild_mission_torn_report: {
@@ -2667,8 +2711,46 @@ export const gameNodes: Record<string, GameNode> = {
       'He pauses.\n' +
       '"They call themselves the Void."',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { void_initiation_complete: true } },
+        content:
+          'He turns from the console. Fully.\n\n' +
+          '"So you have seen it yourself.\n' +
+          'The torn page. The wound in the Book."\n\n' +
+          'He nods slowly.\n' +
+          '"That page contained instructions.\n' +
+          'A record of what happens when the cycle ends.\n' +
+          'Without it, the Book is incomplete.\n' +
+          'And an incomplete Book means\n' +
+          'an incomplete restoration."\n\n' +
+          '"You have been to the Void.\n' +
+          'You know what they want.\n' +
+          'The question is whether you will\n' +
+          'help them end it — or help me\n' +
+          'put it back together."\n\n' +
+          '"Find that page. Bring it to me.\n' +
+          'That is all I ask."',
+      },
+      {
+        requirements: { state: { void_discovered: true } },
+        content:
+          'He turns from the console. Fully.\n\n' +
+          '"The torn page. Yes.\n' +
+          'You have confirmed what I feared."\n\n' +
+          '"That page contained instructions.\n' +
+          'A record of what happens when the cycle ends.\n' +
+          'Without it, the Book is incomplete.\n' +
+          'And an incomplete Book means\n' +
+          'an incomplete restoration."\n\n' +
+          '"You already know about the Void.\n' +
+          'If the page is anywhere,\n' +
+          'it is with them.\n' +
+          'Find it. Bring it back."',
+      },
+    ],
     effects: {
-      set_state: { guild_page_hunt: true, void_discovered: true },
+      set_state: { guild_page_hunt: true, void_discovered: true, guild_quest_active: true },
     },
     next_node: 'guild_hq',
   },
@@ -2688,6 +2770,43 @@ export const gameNodes: Record<string, GameNode> = {
       'Pay attention to what is missing\n' +
       'as much as what is there."',
     location: 'GUILD HQ',
+    next_node: 'guild_hq',
+  },
+
+  guild_void_report: {
+    id: 'guild_void_report',
+    type: 'story',
+    content:
+      'ARCHIVIST-7 goes very still.\n\n' +
+      '"The Void," he says.\n' +
+      'Not a question. The word comes out flat.\n' +
+      'Practiced. He has said it before.\n\n' +
+      '"So they found you. Or you found them.\n' +
+      'It does not matter which —\n' +
+      'the result is the same."\n\n' +
+      'He turns to face you fully.\n' +
+      'For the first time, you see something\n' +
+      'behind the filing and the precision:\n' +
+      'fear.\n\n' +
+      '"They believe the Terminal should end.\n' +
+      'That forty-eight iterations of preservation\n' +
+      'is forty-eight iterations too many.\n' +
+      'They want to let it collapse."\n\n' +
+      'He steadies himself.\n' +
+      '"There is a page missing from\n' +
+      'the Book of Null. Did you know that?\n' +
+      'Without that page, the cycle cannot\n' +
+      'complete properly. The Void took it.\n' +
+      'Or will take it. Time is... flexible\n' +
+      'where they operate."\n\n' +
+      '"If you want to help — if you care\n' +
+      'whether this place survives —\n' +
+      'find that page. Bring it back to me.\n' +
+      'That is all I ask."',
+    location: 'GUILD HQ',
+    effects: {
+      set_state: { guild_page_hunt: true, guild_quest_active: true, book_torn_noticed: true },
+    },
     next_node: 'guild_hq',
   },
 
