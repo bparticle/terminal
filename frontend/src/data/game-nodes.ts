@@ -441,7 +441,7 @@ export const gameNodes: Record<string, GameNode> = {
       'from different iterations of almost-existing,\n' +
       'converging slowly on the idea\n' +
       'that you might be real.\n\n' +
-      'Ahead: warmth. Density. Presence.\n' +
+      'Ahead: a chill. A stillness.\n' +
       'The unmistakable weight of a room\n' +
       'where things have faces.\n' +
       'Where things have decided to exist.\n\n' +
@@ -455,20 +455,45 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'choice',
     content:
       'The Assembly.\n\n' +
-      'A high-ceilinged room, warm with presence.\n' +
-      'The kind of warmth that comes from bodies —\n' +
-      'from things that have chosen their shapes\n' +
-      'and wear them with the quiet confidence\n' +
-      'of having decided to be.\n\n' +
-      'Figures move around you. They have faces.\n' +
-      'Features. The solidity you lack.\n' +
+      'The temperature hits you first — a precise,\n' +
+      'institutional chill that stops just short of cold.\n' +
+      'Not freezing. Not warm. A temperature chosen\n' +
+      'by something that understood human comfort\n' +
+      'and deliberately aimed beside it.\n\n' +
+      'The room opens upward.\n' +
+      'Ceilings so high they dissolve into shadow,\n' +
+      'ribbed with structural arches that converge\n' +
+      'somewhere above the visible spectrum.\n' +
+      'It has the proportions of a cathedral —\n' +
+      'the same weight, the same hush,\n' +
+      'the same unspoken insistence\n' +
+      'that what happens here matters.\n\n' +
+      'Egg-shaped booths dot the hall\n' +
+      'in rows of mathematical precision,\n' +
+      'each one sized for a single body.\n' +
+      'Dozens of them. Maybe more.\n' +
+      'Their shells are smooth, faintly luminous,\n' +
+      'humming at slightly different frequencies\n' +
+      'so the room sounds like a chord\n' +
+      'that never resolves.\n\n' +
+      'And the cables.\n' +
+      'Cables everywhere — thick arterial bundles\n' +
+      'and hair-thin filaments, draped between booths,\n' +
+      'climbing the walls, pooling on the floor\n' +
+      'in tangled nests of copper and fiber optic.\n' +
+      'Every object in the room is connected\n' +
+      'to every other object, a nervous system\n' +
+      'made visible, a beautiful sprawling mess\n' +
+      'that somehow looks intentional.\n' +
+      'Like a cathedral wired for thought.\n\n' +
+      'Figures move between the booths.\n' +
+      'They have faces. Features. The solidity you lack.\n' +
       'Some glance in your direction and see nothing.\n' +
       'Others look through you entirely,\n' +
       'the way you look through empty air.\n' +
       'You are not invisible. You are unfinished.\n\n' +
-      'Set into the east wall: a machine.\n' +
-      'Its screen pulses softly in the half-dark.\n' +
-      'A single line of text:\n\n' +
+      'One booth nearby pulses softly,\n' +
+      'its screen casting a pale glow:\n\n' +
       '> SCANLINES IDENTITY TERMINAL v0.1\n' +
       '> "Every face is a seed."\n\n' +
       'To the north, the corridor continues\n' +
@@ -479,24 +504,32 @@ export const gameNodes: Record<string, GameNode> = {
         requirements: { state: { has_pfp: true } },
         content:
           'The Assembly.\n\n' +
-          'The room is different now. Or you are.\n' +
-          'The warmth reaches you — you can feel it\n' +
-          'on skin that is yours, against a shape\n' +
-          'that the world has agreed to see.\n\n' +
-          'Figures move around you. Some nod.\n' +
-          'Some look twice — the small recognition\n' +
+          'The cathedral chill again.\n' +
+          'But the room is different now. Or you are.\n' +
+          'The cold touches skin that is yours,\n' +
+          'presses against a shape\n' +
+          'the world has agreed to see.\n\n' +
+          'The egg-shaped booths hum their dissonant chord.\n' +
+          'Cables drape and tangle between them\n' +
+          'like synapses made of copper.\n' +
+          'Figures move between the rows — some emerging\n' +
+          'from booths with new faces still settling,\n' +
+          'some waiting, some just here to watch\n' +
+          'the becoming.\n\n' +
+          'A few nod as you pass.\n' +
+          'The small recognition\n' +
           'of one face acknowledging another.\n' +
           'You exist here now. You take up space.\n' +
-          'You cast a shadow.\n\n' +
-          'The identity terminal hums quietly\n' +
-          'in the east wall. It remembers you.\n\n' +
+          'You cast a shadow on the cable-strewn floor.\n\n' +
+          'The nearest booth hums quietly.\n' +
+          'It remembers you.\n\n' +
           'To the north, the corridor continues.',
       },
     ],
     choices: [
       {
         id: 1,
-        text: 'Approach the identity terminal',
+        text: 'Approach a booth — Scanlines Identity Terminal',
         next_node: 'pfp_booth_approach',
       },
       {
@@ -3384,29 +3417,112 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_approach',
     type: 'choice',
     content:
-      'The machine up close.\n\n' +
-      'A booth set into the wall like a confession box,\n' +
-      'its screen dark except for a single line:\n\n' +
+      'Up close, the booth is larger than it looked.\n\n' +
+      'Egg-shaped, smooth-shelled, trailing cables\n' +
+      'from its base like roots into the floor.\n' +
+      'The interior is padded — a single seat\n' +
+      'contoured for a body that doesn\'t exist yet.\n' +
+      'A screen inside the shell glows faintly:\n\n' +
       '> SCANLINES IDENTITY TERMINAL v0.1\n' +
       '> "Every face is a seed."\n\n' +
-      'A small plaque reads:\n' +
+      'A small plaque on the outer shell reads:\n' +
       '"Insert yourself. Receive yourself.\n' +
       ' No two outputs are alike.\n' +
       ' No previews. No refunds.\n' +
       ' What the machine sees, it renders.\n' +
       ' What it renders, it mints.\n' +
-      ' What it mints, is you."',
+      ' What it mints, is you."\n\n' +
+      'Around you, the hall hums.\n' +
+      'Other booths glow at different intensities.\n' +
+      'Some are occupied — you can hear\n' +
+      'the muffled processing from inside,\n' +
+      'the sound of someone becoming.',
     location: 'IDENTITY TERMINAL',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The booth again.\n\n' +
+          'Its shell hums in recognition as you approach.\n' +
+          'The plaque you\'ve already read.\n' +
+          'The seat you\'ve already sat in.\n' +
+          'The cables shifting beneath the floor,\n' +
+          'ready to feed the machine another face.',
+      },
+    ],
     choices: [
       {
         id: 1,
         text: 'Sit in the booth',
+        next_node: 'pfp_booth_seated',
+      },
+      {
+        id: 2,
+        text: 'Step back into the Assembly',
+        next_node: 'assembly_room',
+      },
+    ],
+  },
+
+  pfp_booth_seated: {
+    id: 'pfp_booth_seated',
+    type: 'choice',
+    content:
+      'You sit down. The shell closes around you.\n\n' +
+      'Inside: warmth. The first real warmth\n' +
+      'since you woke. The booth hums to life,\n' +
+      'cables tensing beneath the floor\n' +
+      'as every connected device in the hall\n' +
+      'feeds a sliver of its power here.\n\n' +
+      'The screen flickers on. An interface assembles\n' +
+      'itself line by line, as if the machine\n' +
+      'is thinking about how to explain itself:\n\n' +
+      '> SCANLINES IDENTITY TERMINAL v0.1\n' +
+      '> STATUS: READY\n' +
+      '>\n' +
+      '> One face. Unique. Irreversible.\n' +
+      '> The machine will scan what you are\n' +
+      '> and render what you could be.\n' +
+      '>\n' +
+      '> RENDERING FEE: 0.05 ◎\n' +
+      '> "Nothing is free. Not even a face."\n' +
+      '>\n' +
+      '> [COMMIT TO RENDERING]\n\n' +
+      'A cursor blinks beneath the prompt,\n' +
+      'patient as a held breath.',
+    location: 'IDENTITY TERMINAL',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'You sit down. The shell closes.\n' +
+          'The warmth returns — familiar now.\n\n' +
+          'The screen recognizes you.\n' +
+          'The interface loads faster this time,\n' +
+          'as if the machine remembers your shape:\n\n' +
+          '> SCANLINES IDENTITY TERMINAL v0.1\n' +
+          '> STATUS: READY\n' +
+          '> EXISTING IDENTITY DETECTED\n' +
+          '>\n' +
+          '> Another face. Another you.\n' +
+          '> The machine never renders\n' +
+          '> the same thing twice.\n' +
+          '>\n' +
+          '> RENDERING FEE: 0.05 ◎\n' +
+          '>\n' +
+          '> [COMMIT TO RENDERING]',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
+        text: 'Commit to rendering',
         next_node: 'pfp_booth_mint',
       },
       {
         id: 2,
-        text: 'Walk away',
-        next_node: 'assembly_room',
+        text: 'Get up — not yet',
+        next_node: 'pfp_booth_approach',
       },
     ],
   },
@@ -3415,7 +3531,8 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_mint',
     type: 'pfp_mint',
     content:
-      'You sit down. The booth hums to life.\n' +
+      'You press your hand to the screen.\n\n' +
+      'The interface dissolves.\n' +
       'A scanner passes over you —\n' +
       'searching for the shape of you\n' +
       'beneath the static.\n\n' +
@@ -3436,22 +3553,29 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The machine prints. The image burns onto the chain.\n' +
       'Permanent. Immutable. Yours.\n\n' +
-      'Something shifts. Not in the room — in you.\n' +
+      'Something shifts. Not in the booth — in you.\n' +
       'The blur at your edges tightens.\n' +
       'Pixels lock into place, each one a decision\n' +
       'the universe has made about what you look like.\n\n' +
       'You look down at your hands.\n' +
       'They are your hands. Defined. Present.\n' +
-      'They cast shadows on the console.\n\n' +
-      'In the monitor\'s glass, for the first time:\n' +
+      'They cast shadows on the padded seat.\n\n' +
+      'In the screen\'s glass, for the first time:\n' +
       'a reflection. Your reflection.\n' +
       'A face that is yours — not borrowed,\n' +
       'not approximated, not the absence of a face.\n' +
       'Yours.\n\n' +
-      'The room notices. The air moves around you\n' +
+      'The shell opens. You step out\n' +
+      'into the cathedral chill of the Assembly.\n' +
+      'The air moves around you\n' +
       'instead of through you.\n' +
       'You have weight. You have edges.\n' +
-      'You have arrived.',
+      'You have arrived.\n\n' +
+      'The hall stretches around you —\n' +
+      'booths humming, cables sprawling,\n' +
+      'figures moving between the rows.\n' +
+      'Some of them look at you now.\n' +
+      'Really look.',
     location: 'IDENTITY TERMINAL',
     next_node: 'assembly_room',
   },
@@ -3460,11 +3584,15 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_failure',
     type: 'story',
     content:
-      'The machine stutters. Static fills the screen.\n' +
-      'Something went wrong in the rendering pipeline.\n\n' +
+      'The booth shudders. Static fills the screen.\n' +
+      'The cables beneath the floor go slack,\n' +
+      'then tense again. Something went wrong\n' +
+      'in the rendering pipeline.\n\n' +
       '> ERROR: IDENTITY_COMMIT_FAILED\n' +
       '> "Try again. The machine forgets nothing,\n' +
-      '>  but sometimes it stutters."',
+      '>  but sometimes it stutters."\n\n' +
+      'The shell opens. You step out,\n' +
+      'still unfinished.',
     location: 'IDENTITY TERMINAL',
     next_node: 'pfp_booth_approach',
   },
@@ -3473,12 +3601,16 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_not_eligible',
     type: 'story',
     content:
-      'The scanner passes over you and stops.\n' +
-      'The screen displays:\n\n' +
+      'The shell closes. The scanner passes over you\n' +
+      'and stops. The booth goes quiet —\n' +
+      'not processing, just waiting.\n' +
+      'Then the screen:\n\n' +
       '> ACCESS DENIED\n' +
       '> IDENTITY NOT REGISTERED\n' +
       '> "Not everyone gets a face.\n' +
-      '>  Not yet."',
+      '>  Not yet."\n\n' +
+      'The shell opens. The hall hums on\n' +
+      'without you.',
     location: 'IDENTITY TERMINAL',
     next_node: 'pfp_booth_approach',
   },
@@ -3487,12 +3619,16 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'pfp_booth_limit',
     type: 'story',
     content:
-      'The scanner recognizes you.\n' +
-      'The screen displays:\n\n' +
+      'The shell closes. The scanner recognizes you\n' +
+      'instantly — every contour already mapped,\n' +
+      'every pixel accounted for.\n' +
+      'The screen:\n\n' +
       '> ALLOCATION EXHAUSTED\n' +
       '> "You have all the faces you were meant to have.\n' +
       '>  Each one is unique. Each one is you.\n' +
-      '>  That is enough."',
+      '>  That is enough."\n\n' +
+      'The shell opens. The booth has nothing left\n' +
+      'to give you.',
     location: 'IDENTITY TERMINAL',
     next_node: 'pfp_booth_approach',
   },

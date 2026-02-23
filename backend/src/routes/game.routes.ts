@@ -165,7 +165,16 @@ router.get('/users', requireAuth, requireAdmin, async (_req: AuthenticatedReques
         gs.location,
         gs.game_state,
         gs.inventory,
-        gs.updated_at as last_played_at
+        gs.updated_at as last_played_at,
+        COALESCE(
+          (SELECT json_agg(json_build_object(
+            'state_name', a.state_name,
+            'state_value', a.state_value,
+            'achieved_at', a.achieved_at
+          ) ORDER BY a.achieved_at ASC)
+          FROM achievements a WHERE a.wallet_address = u.wallet_address),
+          '[]'::json
+        ) as achievements
       FROM users u
       LEFT JOIN game_saves gs ON gs.user_id = u.id
       ORDER BY gs.updated_at DESC NULLS LAST`

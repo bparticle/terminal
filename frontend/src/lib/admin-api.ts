@@ -1,5 +1,11 @@
 import { fetchWithAuth } from './api';
 
+export interface UserAchievement {
+  state_name: string;
+  state_value: string;
+  achieved_at: string;
+}
+
 export interface GameUser {
   user_id: string;
   wallet_address: string;
@@ -13,6 +19,7 @@ export interface GameUser {
   game_state: Record<string, any> | null;
   inventory: string[] | null;
   last_played_at: string | null;
+  achievements: UserAchievement[];
 }
 
 export interface GameMetadata {

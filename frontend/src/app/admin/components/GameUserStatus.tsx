@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { getGameUsers, getGameMetadata, resetPlayer, type GameUser, type GameMetadata } from '@/lib/admin-api';
+import { getAllCampaigns, type Campaign } from '@/lib/campaign-api';
 
 export default function GameUserStatus() {
   const [users, setUsers] = useState<GameUser[]>([]);
@@ -18,6 +19,7 @@ export default function GameUserStatus() {
   const [showItemFilter, setShowItemFilter] = useState(false);
   const [resettingPlayer, setResettingPlayer] = useState<string | null>(null);
   const [confirmResetWallet, setConfirmResetWallet] = useState<string | null>(null);
+  const [campaignTargetStates, setCampaignTargetStates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
@@ -27,12 +29,21 @@ export default function GameUserStatus() {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, metadataData] = await Promise.all([
+      const [usersData, metadataData, campaignsData] = await Promise.all([
         getGameUsers(),
         getGameMetadata(),
+        getAllCampaigns().catch(() => [] as Campaign[]),
       ]);
       setUsers(usersData);
       setMetadata(metadataData);
+
+      const allTargetStates = new Set<string>();
+      for (const campaign of campaignsData) {
+        for (const state of campaign.target_states) {
+          allTargetStates.add(state);
+        }
+      }
+      setCampaignTargetStates(allTargetStates);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -323,8 +334,14 @@ export default function GameUserStatus() {
                           {Object.entries(user.game_state).map(([key, value]) => (
                             <span
                               key={key}
-                              className="px-1.5 py-0.5 bg-green-900/20 text-green-400 border border-green-900/50"
+                              className="relative px-1.5 py-0.5 bg-green-900/20 text-green-400 border border-green-900/50"
                             >
+                              {campaignTargetStates.has(key) && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-yellow-400"
+                                  title="Campaign target state"
+                                />
+                              )}
                               {key}={String(value)}
                             </span>
                           ))}
@@ -352,6 +369,34 @@ export default function GameUserStatus() {
                         </div>
                       ) : (
                         <span className="text-gray-600">Empty</span>
+                      )}
+                    </div>
+
+                    {/* Achievements */}
+                    <div>
+                      <span className="text-gray-400 block mb-1">
+                        Achievements ({user.achievements?.length || 0}):
+                      </span>
+                      {user.achievements && user.achievements.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.achievements.map((a) => (
+                            <span
+                              key={a.state_name}
+                              className="relative px-1.5 py-0.5 bg-purple-900/20 text-purple-400 border border-purple-900/50"
+                              title={`Achieved: ${new Date(a.achieved_at).toLocaleString()}`}
+                            >
+                              {campaignTargetStates.has(a.state_name) && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-yellow-400"
+                                  title="Campaign target state"
+                                />
+                              )}
+                              {a.state_name}={a.state_value}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-600">None</span>
                       )}
                     </div>
 

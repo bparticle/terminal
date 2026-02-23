@@ -35,6 +35,8 @@ export class GameEngine {
   } | null = null;
   // Maps displayed choice number (1,2,3...) to the actual choice object
   private displayedChoiceMap: Map<number, { id: number; next_node: string }> = new Map();
+  private spinnerTimers = new Map<string, ReturnType<typeof setInterval>>();
+  private static readonly SPINNER_FRAMES = ['|', '/', '-', '\\'];
 
   constructor(
     private outputFn: OutputFn,
@@ -299,6 +301,33 @@ export class GameEngine {
     this.outputFn(node.start_prompt || 'Press ENTER to start the game!', 'text-cyan-400');
   }
 
+  private startSpinner(text: string, id: string, className = 'text-cyan-400'): void {
+    const existing = this.spinnerTimers.get(id);
+    if (existing) clearInterval(existing);
+
+    let frame = 0;
+    const tick = () => {
+      const ch = GameEngine.SPINNER_FRAMES[frame % GameEngine.SPINNER_FRAMES.length];
+      this.outputFn(`  ${ch} ${text}`, className, id);
+      frame++;
+    };
+    tick();
+    this.spinnerTimers.set(id, setInterval(tick, 120));
+  }
+
+  private stopSpinner(id: string, text: string, success = true): void {
+    const timer = this.spinnerTimers.get(id);
+    if (timer) {
+      clearInterval(timer);
+      this.spinnerTimers.delete(id);
+    }
+    this.outputFn(
+      `  ${success ? '\u2713' : '\u2717'} ${text}`,
+      success ? 'text-gray-500' : 'text-red-400',
+      id,
+    );
+  }
+
   private async handleMintActionNode(node: GameNode): Promise<void> {
     if (!this.save || !node.mint_config) return;
 
@@ -307,12 +336,14 @@ export class GameEngine {
     content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
     this.outputFn('');
 
-    // Check whitelist
-    this.outputFn('Checking mint eligibility...', 'text-gray-400');
+    let mintStep = 0;
+    const mintId = () => `mint-step-${mintStep}`;
+
+    this.startSpinner('Checking mint eligibility', mintId());
     try {
       const status = await checkWhitelistStatus();
       if (!status.whitelisted) {
-        this.outputFn('You are not whitelisted for minting.', 'text-red-400');
+        this.stopSpinner(mintId(), 'Not whitelisted', false);
         if (node.mint_not_whitelisted_node) {
           this.outputFn('');
           this.outputFn('Press ENTER to continue...', 'text-gray-400');
@@ -320,46 +351,53 @@ export class GameEngine {
         }
         return;
       }
+      this.stopSpinner(mintId(), 'Eligibility confirmed');
+      mintStep++;
 
       const mintConfig = node.mint_config;
       let result: any;
 
       if (mintConfig.soulbound) {
-        // Soulbound mints stay server-paid (multi-step pipeline needs full server control)
-        this.outputFn('Minting...', 'text-yellow-400');
+        this.startSpinner('Minting soulbound token', mintId(), 'text-yellow-400');
         result = await mintSoulbound(mintConfig);
+        this.stopSpinner(mintId(), 'Soulbound token minted');
         this.soulboundItemNames.add(mintConfig.itemName || mintConfig.name);
+        mintStep++;
       } else if (this.signAndSubmitFn) {
-        // User-paid flow: prepare → wallet sign → confirm
-        this.outputFn('Preparing mint transaction...', 'text-gray-400');
+        this.startSpinner('Preparing transaction', mintId());
         const prepared = await prepareMint({
           name: mintConfig.name,
           uri: mintConfig.uri,
           symbol: mintConfig.symbol,
           collection: mintConfig.collection,
         });
+        this.stopSpinner(mintId(), 'Transaction prepared');
+        mintStep++;
 
-        this.outputFn('Please approve the transaction in your wallet... (includes 0.05 SOL fee)', 'text-yellow-400');
+        this.startSpinner('Awaiting wallet approval (0.05 SOL fee)', mintId(), 'text-yellow-400');
         const signedTxBase64 = await this.signAndSubmitFn(prepared.transactionBase64);
+        this.stopSpinner(mintId(), 'Transaction signed');
+        mintStep++;
 
-        this.outputFn('Confirming on-chain...', 'text-gray-400');
+        this.startSpinner('Confirming on-chain', mintId());
         result = await confirmMint(prepared.mintLogId, signedTxBase64);
+        this.stopSpinner(mintId(), 'Confirmed on-chain');
+        mintStep++;
       } else {
-        // Fallback: server-paid (no wallet signing available)
-        this.outputFn('Minting...', 'text-yellow-400');
+        this.startSpinner('Minting', mintId(), 'text-yellow-400');
         result = await executeMint(mintConfig);
+        this.stopSpinner(mintId(), 'Minted');
+        mintStep++;
       }
 
       this.outputFn(`Mint successful! Asset: ${result.assetId.slice(0, 16)}...`, 'text-green-400');
 
-      // Add to inventory if itemName configured
       if (mintConfig.itemName && !this.save.inventory.includes(mintConfig.itemName)) {
         this.save.inventory.push(mintConfig.itemName);
         this.outputFn(`[Item obtained: ${mintConfig.itemName}]`, 'text-yellow-400');
         this.inventoryChangeFn?.(this.buildInventoryItems());
       }
 
-      // Set state flags
       this.save.game_state[`minted_${node.id}`] = true;
       this.save.game_state[`asset_${node.id}`] = result.assetId;
 
@@ -371,7 +409,8 @@ export class GameEngine {
 
       await this.autoSave();
     } catch (error: any) {
-      // Handle wallet rejection specifically
+      this.stopSpinner(mintId(), 'Error', false);
+
       const msg = error.message || 'Unknown error';
       if (msg.includes('User rejected') || msg.includes('rejected the request')) {
         this.outputFn('Transaction cancelled.', 'text-yellow-400');
@@ -397,13 +436,15 @@ export class GameEngine {
     content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
     this.outputFn('');
 
-    // Check eligibility
-    this.outputFn('Checking PFP mint eligibility...', 'text-gray-400');
+    let pfpStep = 0;
+    const pfpId = () => `pfp-step-${pfpStep}`;
+
+    this.startSpinner('Checking PFP mint eligibility', pfpId());
     try {
       const status = await checkPfpStatus();
 
       if (!status.whitelisted) {
-        this.outputFn('You are not eligible for PFP minting.', 'text-red-400');
+        this.stopSpinner(pfpId(), 'Not eligible', false);
         if (node.pfp_mint_not_eligible_node) {
           this.outputFn('');
           this.outputFn('Press ENTER to continue...', 'text-gray-400');
@@ -413,7 +454,7 @@ export class GameEngine {
       }
 
       if (!status.canMint) {
-        this.outputFn(`You've used all ${status.maxMints} of your PFP mints.`, 'text-yellow-400');
+        this.stopSpinner(pfpId(), `All ${status.maxMints} mints used`, false);
         if (status.pfpCount > 0) {
           this.outputFn(`You own ${status.pfpCount} Scanlines PFP${status.pfpCount > 1 ? 's' : ''}.`, 'text-gray-400');
         }
@@ -425,78 +466,69 @@ export class GameEngine {
         return;
       }
 
+      this.stopSpinner(pfpId(), 'Eligibility confirmed');
+      pfpStep++;
+
       const remaining = status.mintsRemaining === -1 ? '\u221E' : status.mintsRemaining;
       this.outputFn(`Mints remaining: ${remaining}/${status.maxMints}`, 'text-cyan-400');
       this.outputFn('');
 
       const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-      // Step helpers: update the SAME line from active (cyan) → done (gray)
-      let stepIdx = 0;
-      let currentStepText = '';
       const stepActive = (text: string) => {
-        currentStepText = text;
-        this.outputFn(`  \u2236 ${text}...`, 'text-cyan-400', `pfp-step-${stepIdx}`);
+        this.startSpinner(text, pfpId());
       };
-      const stepDone = () => {
-        this.outputFn(`  \u2713 ${currentStepText}`, 'text-gray-500', `pfp-step-${stepIdx}`);
-        stepIdx++;
+      const stepDone = (text: string) => {
+        this.stopSpinner(pfpId(), text);
+        pfpStep++;
       };
 
       let result: any;
 
       if (this.signAndSubmitFn) {
-        // ── IDENTITY GENERATION SEQUENCE ──
         this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
         this.outputFn('');
 
-        // Start server prepare (generate + Arweave upload + build tx) in background
         const preparePromise = preparePfpMint();
 
-        // Show render steps with staggered timing while server works
         stepActive('Seeding identity generator');
         await delay(500 + Math.random() * 400);
-        stepDone();
+        stepDone('Identity generator seeded');
 
         stepActive('Computing face vectors');
         await delay(400 + Math.random() * 300);
-        stepDone();
+        stepDone('Face vectors computed');
 
         stepActive('Rendering feature matrix');
         await delay(400 + Math.random() * 300);
-        stepDone();
+        stepDone('Feature matrix rendered');
 
         stepActive('Applying CRT phosphor mapping');
         await delay(300 + Math.random() * 200);
-        stepDone();
+        stepDone('CRT phosphor mapping applied');
 
-        // Arweave upload is the slow part — wait for prepare to finish
         stepActive('Encoding to chain format');
         const prepared = await preparePromise;
-        stepDone();
+        stepDone('Encoded to chain format');
 
-        // Wallet signing (returns signed tx as base64, does NOT submit)
         stepActive('Submitting to Solana');
         this.outputFn('');
         this.outputFn('  Approve transaction in wallet (0.05 SOL fee)', 'text-yellow-400');
         const signedTxBase64 = await this.signAndSubmitFn(prepared.transactionBase64);
-        stepDone();
+        stepDone('Submitted to Solana');
 
-        // Backend submits to Helius and confirms on-chain
         stepActive('Confirming transaction');
         result = await confirmPfpMint(prepared.mintLogId, signedTxBase64);
-        stepDone();
+        stepDone('Transaction confirmed');
 
-        // Use traits from prepare response
         result.traits = prepared.pfpData.traits;
         result.imageUri = result.imageUri || prepared.pfpData.imageUri;
       } else {
-        // Fallback: server-paid
         this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
         this.outputFn('');
         stepActive('Generating');
         result = await mintPfp();
-        stepDone();
+        stepDone('Generated');
       }
 
       this.outputFn('');
@@ -533,7 +565,8 @@ export class GameEngine {
 
       await this.autoSave();
     } catch (error: any) {
-      // Handle wallet rejection specifically
+      this.stopSpinner(pfpId(), 'Error', false);
+
       const msg = error.message || 'Unknown error';
       if (msg.includes('User rejected') || msg.includes('rejected the request')) {
         this.outputFn('Transaction cancelled.', 'text-yellow-400');
