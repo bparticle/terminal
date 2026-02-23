@@ -884,7 +884,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 3,
         text: 'Go back',
-        next_node: 'corridor_north',
+        next_node: 'corridor_north_deep',
       },
     ],
   },
@@ -1233,7 +1233,7 @@ export const gameNodes: Record<string, GameNode> = {
   },
 
   // ============================================================
-  // CORRIDOR NORTH — Main Hub
+  // CORRIDOR NORTH — Entry
   // ============================================================
 
   corridor_north: {
@@ -1259,68 +1259,20 @@ export const gameNodes: Record<string, GameNode> = {
       'Between two dead monitors, a recessed door\n' +
       'hides behind a nest of conduit pipes,\n' +
       'almost invisible if you weren\'t looking.\n\n' +
-      'And at the far end of the corridor —\n' +
-      'something tall. Rising past where\n' +
-      'the ceiling should stop.\n' +
-      'The geometry is wrong and your eyes know it.',
+      'The corridor continues north,\n' +
+      'past the last of the working monitors,\n' +
+      'into darker, quieter space.',
     location: 'CORRIDOR NORTH',
     conditionalContent: [
       {
-        requirements: { state: { void_discovered: true } },
-        content:
-          'The corridor. You know it now —\n' +
-          'the cracked monitors, the layered air,\n' +
-          'the static dreams on every screen.\n\n' +
-          'But something has shifted.\n' +
-          'A fork in the western passage\n' +
-          'you never noticed before. Or maybe\n' +
-          'it wasn\'t there before. The corridor\n' +
-          'past it goes dark — not broken dark,\n' +
-          'but empty dark. The kind of dark\n' +
-          'that exists where no one has bothered\n' +
-          'to render the walls.\n\n' +
-          'The recessed door. The cracked monitor.\n' +
-          'The structure at the far end,\n' +
-          'rising into the dark.\n' +
-          'Everything is where you left it.\n' +
-          'Everything is watching you decide.',
-      },
-      {
-        requirements: { state: { temple_known: true } },
-        content:
-          'The corridor stretches long and low,\n' +
-          'lined on both sides with cracked monitors.\n' +
-          'Each one shows a different frame of static —\n' +
-          'as if every screen is dreaming separately\n' +
-          'and none of them agree on what is real.\n\n' +
-          'The air is layered — warmer from the south,\n' +
-          'sterile and dry from the east,\n' +
-          'faint organized voices from the west.\n\n' +
-          'Between two dead monitors, the recessed door\n' +
-          'hides behind its nest of conduit pipes.\n\n' +
-          'The symbol on the far wall.\n' +
-          'The passage north, leading down.\n' +
-          'You know what waits at the end of it.',
-      },
-      {
         requirements: { state: { saw_first_frame: true } },
         content:
-          'The corridor stretches long and low,\n' +
-          'lined on both sides with cracked monitors.\n' +
-          'Each one shows a different frame of static —\n' +
-          'as if every screen is dreaming separately\n' +
-          'and none of them agree on what is real.\n\n' +
-          'The air is layered — warmer from the south,\n' +
-          'sterile and dry from the east,\n' +
-          'faint organized voices from the west.\n\n' +
-          'Between two dead monitors, the recessed door\n' +
-          'hides behind its nest of conduit pipes.\n\n' +
-          'But something is different now.\n' +
-          'On the wall opposite the cracked monitor,\n' +
-          'at the edge of where the light falls —\n' +
-          'a mark. Faint. You didn\'t notice it before.\n' +
-          'Or it wasn\'t there before.\n' +
-          'It is hard to tell the difference here.',
+          'The corridor. The cracked monitors.\n' +
+          'The static dreams. You know them now.\n\n' +
+          'Passages branch east and west.\n' +
+          'The lab door hides behind its nest of pipes.\n\n' +
+          'The corridor continues north,\n' +
+          'deeper into the facility.',
       },
     ],
     choices: [
@@ -1360,52 +1312,127 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 5,
+        text: 'Try the recessed door behind the pipes',
+        next_node: 'lab_door',
+        visibilityRequirements: { state: { found_lab: false } },
+      },
+      {
+        id: 50,
+        text: 'Go to the Phosphor Lab',
+        next_node: 'lab_interior',
+        visibilityRequirements: { state: { found_lab: true } },
+      },
+      {
+        id: 6,
+        text: 'Continue north — deeper into the corridor',
+        next_node: 'corridor_north_deep',
+      },
+    ],
+  },
+
+  // ============================================================
+  // CORRIDOR NORTH — Deep End
+  // ============================================================
+
+  corridor_north_deep: {
+    id: 'corridor_north_deep',
+    type: 'choice',
+    content:
+      'The monitors thin out here.\n' +
+      'The ones still mounted show only black —\n' +
+      'no static, no dreams. Just off.\n\n' +
+      'The corridor narrows and the air changes.\n' +
+      'Cooler. Drier. The hum of the Assembly\n' +
+      'is a memory now, replaced by something\n' +
+      'deeper — a vibration you feel in your teeth\n' +
+      'more than hear with your ears.\n\n' +
+      'At the far end — something tall.\n' +
+      'Rising past where the ceiling should stop.\n' +
+      'The geometry is wrong and your eyes know it.',
+    location: 'DEEP CORRIDOR',
+    conditionalContent: [
+      {
+        requirements: { state: { void_discovered: true } },
+        content:
+          'The deep corridor.\n' +
+          'Fewer monitors. Darker air.\n\n' +
+          'Something has shifted since last you looked.\n' +
+          'A fork you never noticed before —\n' +
+          'or maybe it wasn\'t there before.\n' +
+          'The passage beyond goes dark.\n' +
+          'Not broken dark, but empty dark.\n' +
+          'The kind of dark that exists\n' +
+          'where no one has bothered\n' +
+          'to render the walls.\n\n' +
+          'The tower. The mark.\n' +
+          'Everything is where you left it.',
+      },
+      {
+        requirements: { state: { temple_known: true } },
+        content:
+          'The deep corridor.\n' +
+          'Fewer monitors. The air is still.\n\n' +
+          'The symbol on the wall.\n' +
+          'The passage north, leading down.\n' +
+          'You know what waits at the end of it.\n\n' +
+          'The tower rises at the far end,\n' +
+          'impossible and patient.',
+      },
+      {
+        requirements: { state: { saw_first_frame: true } },
+        content:
+          'The deep corridor.\n' +
+          'Fewer monitors. The air is still.\n\n' +
+          'On the wall, at the edge of where\n' +
+          'the light falls — a mark.\n' +
+          'Faint. You didn\'t notice it before.\n' +
+          'Or it wasn\'t there before.\n\n' +
+          'The tower rises at the far end,\n' +
+          'impossible and patient.',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
         text: 'Approach the structure at the far end',
         next_node: 'tower_approach',
         visibilityRequirements: { state: { tower_activated: false } },
       },
       {
-        id: 50,
+        id: 10,
         text: 'Go to the Observation Tower',
         next_node: 'tower_approach',
         visibilityRequirements: { state: { tower_activated: true } },
       },
       {
-        id: 6,
-        text: 'Take the unmarked fork into the dark',
-        next_node: 'void_approach',
-        visibilityRequirements: { state: { void_discovered: true, void_initiation_complete: false } },
-      },
-      {
-        id: 60,
-        text: 'Go to the Void Collective',
-        next_node: 'void_approach',
-        visibilityRequirements: { state: { void_initiation_complete: true } },
-      },
-      {
-        id: 7,
+        id: 2,
         text: 'Approach the mark on the wall',
         next_node: 'corridor_north_null_approach',
         requirements: { state: { saw_first_frame: true } },
         visibilityRequirements: { state: { saw_first_frame: true } },
       },
       {
-        id: 8,
+        id: 3,
         text: 'Go north — to the Temple of Null',
         next_node: 'temple_entrance',
         visibilityRequirements: { state: { temple_known: true } },
       },
       {
-        id: 9,
-        text: 'Try the recessed door behind the pipes',
-        next_node: 'lab_door',
-        visibilityRequirements: { state: { found_lab: false } },
+        id: 4,
+        text: 'Take the unmarked fork into the dark',
+        next_node: 'void_approach',
+        visibilityRequirements: { state: { void_discovered: true, void_initiation_complete: false } },
       },
       {
-        id: 90,
-        text: 'Go to the Phosphor Lab',
-        next_node: 'lab_interior',
-        visibilityRequirements: { state: { found_lab: true } },
+        id: 40,
+        text: 'Go to the Void Collective',
+        next_node: 'void_approach',
+        visibilityRequirements: { state: { void_initiation_complete: true } },
+      },
+      {
+        id: 5,
+        text: 'Go back south',
+        next_node: 'corridor_north',
       },
     ],
   },
@@ -1832,7 +1859,7 @@ export const gameNodes: Record<string, GameNode> = {
       'You think about the cracked monitor.\n' +
       'One pixel on a field of black.\n' +
       'And before the pixel...',
-    location: 'CORRIDOR NORTH',
+    location: 'DEEP CORRIDOR',
     conditionalContent: [
       {
         requirements: { state: { temple_known: true } },
@@ -1859,7 +1886,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 3,
         text: 'Step back',
-        next_node: 'corridor_north',
+        next_node: 'corridor_north_deep',
       },
     ],
   },
@@ -1892,11 +1919,11 @@ export const gameNodes: Record<string, GameNode> = {
       'it does not open for curiosity alone.\n' +
       'You need credentials. Authorization.\n' +
       'Someone who knows what this place is.',
-    location: 'CORRIDOR NORTH',
+    location: 'DEEP CORRIDOR',
     effects: {
       set_state: { temple_known: true },
     },
-    next_node: 'corridor_north',
+    next_node: 'corridor_north_deep',
   },
 
   // ============================================================
@@ -3367,7 +3394,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 2,
         text: 'Go back',
-        next_node: 'corridor_north',
+        next_node: 'corridor_north_deep',
       },
     ],
   },
@@ -3490,7 +3517,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 9,
         text: 'Leave the temple',
-        next_node: 'corridor_north',
+        next_node: 'corridor_north_deep',
       },
     ],
   },
@@ -3722,7 +3749,7 @@ export const gameNodes: Record<string, GameNode> = {
       {
         id: 2,
         text: 'Leave',
-        next_node: 'corridor_north',
+        next_node: 'corridor_north_deep',
       },
     ],
   },
