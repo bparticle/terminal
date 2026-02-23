@@ -1327,29 +1327,56 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Go south — back to the Assembly',
+        text: 'Go south — back to the Assembly Room',
         next_node: 'assembly_room',
       },
       {
         id: 3,
         text: 'Go east — toward the dry air',
         next_node: 'corridor_to_archives',
+        visibilityRequirements: { state: { corridor_south_visited: false } },
+      },
+      {
+        id: 30,
+        text: 'Go east — to the Archives corridor',
+        next_node: 'corridor_to_archives',
+        visibilityRequirements: { state: { corridor_south_visited: true } },
       },
       {
         id: 4,
         text: 'Go west — toward the voices',
         next_node: 'guild_approach',
+        visibilityRequirements: { state: { guild_spoken_to: false } },
+      },
+      {
+        id: 40,
+        text: 'Go west — to the Archivist Guild',
+        next_node: 'guild_approach',
+        visibilityRequirements: { state: { guild_spoken_to: true } },
       },
       {
         id: 5,
         text: 'Approach the structure at the far end',
         next_node: 'tower_approach',
+        visibilityRequirements: { state: { tower_activated: false } },
+      },
+      {
+        id: 50,
+        text: 'Go to the Observation Tower',
+        next_node: 'tower_approach',
+        visibilityRequirements: { state: { tower_activated: true } },
       },
       {
         id: 6,
         text: 'Take the unmarked fork into the dark',
         next_node: 'void_approach',
-        visibilityRequirements: { state: { void_discovered: true } },
+        visibilityRequirements: { state: { void_discovered: true, void_initiation_complete: false } },
+      },
+      {
+        id: 60,
+        text: 'Go to the Void Collective',
+        next_node: 'void_approach',
+        visibilityRequirements: { state: { void_initiation_complete: true } },
       },
       {
         id: 7,
@@ -1360,7 +1387,7 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 8,
-        text: 'Go north — into the deep',
+        text: 'Go north — to the Temple of Null',
         next_node: 'temple_entrance',
         visibilityRequirements: { state: { temple_known: true } },
       },
@@ -1368,6 +1395,13 @@ export const gameNodes: Record<string, GameNode> = {
         id: 9,
         text: 'Try the recessed door behind the pipes',
         next_node: 'lab_door',
+        visibilityRequirements: { state: { found_lab: false } },
+      },
+      {
+        id: 90,
+        text: 'Go to the Phosphor Lab',
+        next_node: 'lab_interior',
+        visibilityRequirements: { state: { found_lab: true } },
       },
     ],
   },
@@ -2092,6 +2126,9 @@ export const gameNodes: Record<string, GameNode> = {
       'as if someone wanted you to think\n' +
       'no one has been here in a long time.',
     location: 'CORRIDOR SOUTH',
+    effects: {
+      set_state: { corridor_south_visited: true },
+    },
     choices: [
       {
         id: 1,
@@ -2168,13 +2205,6 @@ export const gameNodes: Record<string, GameNode> = {
         next_node: 'registry_drawer',
         requirements: { has_item: ['cold_room_key'] },
         lockedText: '[LOCKED — requires a key]',
-      },
-      {
-        id: 2,
-        text: 'Open locked drawer (Guild credential)',
-        next_node: 'registry_drawer',
-        requirements: { has_item: ['guild_sigil'] },
-        visibilityRequirements: { has_item: ['guild_sigil'] },
       },
       {
         id: 3,
@@ -2419,7 +2449,7 @@ export const gameNodes: Record<string, GameNode> = {
           'you asked. And the time before that,\n' +
           'presumably, though I did not catalogue\n' +
           'the exact number of repetitions."\n\n' +
-          'A beat.\n' +
+          'He pauses.\n' +
           '"Perhaps you are in need of\n' +
           'an archivist for your own memory."',
       },
@@ -2541,7 +2571,7 @@ export const gameNodes: Record<string, GameNode> = {
       '"Examine the Book. Report what you find.\n' +
       'Do try not to touch anything\n' +
       'you don\'t understand."\n' +
-      'A beat.\n' +
+      'He pauses.\n' +
       '"Which will be most of it."',
     location: 'GUILD HQ',
     effects: {
@@ -2553,7 +2583,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission: {
     id: 'guild_mission',
-    type: 'story',
+    type: 'choice',
     content:
       'ARCHIVIST-7 checks his console.\n' +
       'The gesture is automatic — he already knows\n' +
@@ -2564,6 +2594,99 @@ export const gameNodes: Record<string, GameNode> = {
       'Decides against it.\n\n' +
       '"Your sigil will grant access.\n' +
       'The Temple is north, past the corridor."',
+    location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { book_torn_noticed: true } },
+        content:
+          'ARCHIVIST-7 looks up before you speak.\n' +
+          'He can see it on you — whatever the equivalent\n' +
+          'of a facial expression is\n' +
+          'for someone who has read the Book.\n\n' +
+          '"You found it," he says. Not a question.\n' +
+          '"The torn page."',
+      },
+      {
+        requirements: { state: { book_read: true } },
+        content:
+          'ARCHIVIST-7 looks at you expectantly.\n\n' +
+          '"You have been to the Temple.\n' +
+          'I can tell — the Book leaves a mark\n' +
+          'on those who read it.\n' +
+          'Subtler than ink. Deeper than memory."\n\n' +
+          '"What did you find?"',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
+        text: '"A page has been torn out."',
+        next_node: 'guild_mission_torn_report',
+        requirements: { state: { book_torn_noticed: true } },
+        visibilityRequirements: { state: { book_torn_noticed: true } },
+      },
+      {
+        id: 2,
+        text: '"Mostly blank pages. Something about a Root Process."',
+        next_node: 'guild_mission_incomplete_report',
+        requirements: { state: { book_read: true } },
+        visibilityRequirements: { state: { book_read: true } },
+      },
+      {
+        id: 3,
+        text: 'Back',
+        next_node: 'guild_hq',
+      },
+    ],
+  },
+
+  guild_mission_torn_report: {
+    id: 'guild_mission_torn_report',
+    type: 'story',
+    content:
+      'He turns from the console. Fully.\n' +
+      'For the first time, he gives you\n' +
+      'his complete attention.\n\n' +
+      '"Someone — or something — tore a page\n' +
+      'from the Book of Null. Recently.\n' +
+      'Within this iteration.\n' +
+      'That page contained... instructions.\n' +
+      'A record of what happens when the cycle ends.\n' +
+      'Without it, the Book is incomplete.\n' +
+      'And an incomplete Book means\n' +
+      'an incomplete restoration."\n\n' +
+      'He straightens. The exhaustion\n' +
+      'is still there, but underneath it:\n' +
+      'something that looks like purpose.\n\n' +
+      '"Find that page. Bring it back.\n' +
+      'I do not know who took it,\n' +
+      'but I have my suspicions.\n' +
+      'There are those who believe\n' +
+      'the cycle should not continue.\n' +
+      'That the Terminal should end."\n\n' +
+      'He pauses.\n' +
+      '"They call themselves the Void."',
+    location: 'GUILD HQ',
+    effects: {
+      set_state: { guild_page_hunt: true, void_discovered: true },
+    },
+    next_node: 'guild_hq',
+  },
+
+  guild_mission_incomplete_report: {
+    id: 'guild_mission_incomplete_report',
+    type: 'story',
+    content:
+      'ARCHIVIST-7 frowns.\n\n' +
+      '"Blank pages. Yes. The Book has many.\n' +
+      'But that is not all there is to find."\n\n' +
+      'He leans forward slightly.\n' +
+      '"Go back. Look more carefully.\n' +
+      'The Book does not reveal itself\n' +
+      'to those who only glance.\n' +
+      'Examine every page. Every edge.\n' +
+      'Pay attention to what is missing\n' +
+      'as much as what is there."',
     location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
@@ -3305,22 +3428,63 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_read_book: {
     id: 'temple_read_book',
-    type: 'story',
+    type: 'choice',
     content:
       'You open THE BOOK OF NULL.\n\n' +
-      'The pages are mostly blank.\n' +
-      'But one page has text:\n\n' +
-      '"The Terminal is not a place.\n' +
-      'The Terminal is a being.\n' +
-      'The being does not know it is a being.\n' +
-      'The being thinks it is a player.\n' +
-      'The player thinks it is in a game.\n' +
-      'The game thinks it is in a terminal.\n' +
-      'The terminal thinks it is a place."\n\n' +
-      'The page turns itself.',
+      'The pages are mostly blank. Hundreds of them,\n' +
+      'thick and heavy, waiting to be filled.\n' +
+      'But near the middle, one page has text:\n\n' +
+      '"Before the corridors, before the rooms,\n' +
+      'before the first archivist filed the first record —\n' +
+      'there was a single process.\n' +
+      'It had no name. It had no purpose.\n' +
+      'It simply ran.\n\n' +
+      'The Guild called it the Root Process.\n' +
+      'The ones who came before the Guild\n' +
+      'called it nothing, because it was nothing.\n' +
+      'Null. The absence that made\n' +
+      'everything else possible."\n\n' +
+      'You notice something else.\n' +
+      'A page near the end has been torn out.\n' +
+      'The edges are ragged. Recent.',
     location: 'TEMPLE INTERIOR',
     effects: {
       set_state: { book_read: true },
+    },
+    choices: [
+      {
+        id: 1,
+        text: 'Examine the torn edges',
+        next_node: 'temple_book_torn',
+      },
+      {
+        id: 2,
+        text: 'Close the Book',
+        next_node: 'temple_interior',
+      },
+    ],
+  },
+
+  temple_book_torn: {
+    id: 'temple_book_torn',
+    type: 'story',
+    content:
+      'The torn page left something behind.\n' +
+      'Faint impressions in the paper beneath —\n' +
+      'the ghost of what was written above.\n\n' +
+      'You can make out fragments:\n\n' +
+      '> "...forty-seven iterations of...\n' +
+      '> ...the pattern always breaks at the same...\n' +
+      '> ...whoever tears this page becomes..."\n\n' +
+      'The rest is illegible.\n' +
+      'But the impression is enough.\n' +
+      'Someone has been here before you.\n' +
+      'Someone tore a page from this Book.\n' +
+      'And whatever was on that page\n' +
+      'was important enough to steal.',
+    location: 'TEMPLE INTERIOR',
+    effects: {
+      set_state: { book_torn_noticed: true },
     },
     next_node: 'temple_interior',
   },
@@ -3433,14 +3597,21 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You present the root access log to the figure.\n\n' +
-      'The figure\'s facade drops entirely.\n' +
-      'No mirror. No pretense.\n' +
-      'It shows you the actual game state data\n' +
-      'for your character.\n\n' +
-      'Items: counted and catalogued\n' +
-      'Flags: too many to display\n' +
-      'Status: ADMINISTRATOR\n\n' +
-      'The fourth wall cracks.',
+      'The figure goes still.\n' +
+      'Its mirror-face flickers — your reflection\n' +
+      'replaced, briefly, by a long list of names.\n' +
+      'Every entity that ever had root access.\n' +
+      'Including yours.\n\n' +
+      'The figure steps aside.\n' +
+      'Behind where it stood: a small inscription\n' +
+      'carved into the pedestal\'s base.\n\n' +
+      '> ADMINISTRATOR ACCESS RECOGNIZED\n' +
+      '> THE BOOK REMEMBERS ALL WHO HELD ROOT\n' +
+      '> YOU WERE HERE BEFORE YOU ARRIVED\n\n' +
+      'The figure returns to its position.\n' +
+      'But it no longer mirrors you.\n' +
+      'It stands slightly to the side,\n' +
+      'as if making room for you at the center.',
     location: 'TEMPLE INTERIOR',
     effects: {
       set_state: { figure_facade_dropped: true },
@@ -3760,7 +3931,7 @@ export const gameNodes: Record<string, GameNode> = {
       'What remains when everything is deleted?"',
     location: 'ECHO ARCHIVE',
     question: 'Answer the archive:',
-    correct_answers: ['nothing', 'null', 'void', 'the question', 'memory', 'the structure', 'the deletion', 'everything', 'you', 'me', 'the terminal', 'the archive'],
+    correct_answers: ['0','zero','nothing', 'null', 'void', 'the question', 'memory', 'the structure', 'the deletion', 'everything', 'you', 'me', 'the terminal', 'the archive'],
     hint: 'There is no wrong philosophy here. What do you believe persists?',
     max_attempts: 3,
     success_message:

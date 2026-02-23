@@ -342,7 +342,9 @@ export default function GameUserStatus() {
                                   title="Campaign target state"
                                 />
                               )}
-                              {key}={String(value)}
+                              {key}={typeof value === 'object' && value !== null
+                                ? <span className="text-green-600 cursor-help" title={JSON.stringify(value, null, 2)}>{'{…}'}</span>
+                                : String(value)}
                             </span>
                           ))}
                         </div>
