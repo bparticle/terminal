@@ -1,12 +1,15 @@
 import rateLimit from 'express-rate-limit';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * Strict rate limiter for authentication endpoints.
- * 10 requests per 15 minutes per IP.
+ * Production: 10 requests per 15 minutes per IP.
+ * Development: 200 requests per minute (accommodates HMR + Strict Mode).
  */
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: isDev ? 60 * 1000 : 15 * 60 * 1000,
+  max: isDev ? 200 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please try again later.' },
@@ -14,11 +17,11 @@ export const authLimiter = rateLimit({
 
 /**
  * Moderate rate limiter for general API endpoints.
- * 100 requests per minute per IP.
+ * 100 requests per minute per IP (1000 in dev).
  */
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: isDev ? 1000 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' },
@@ -26,11 +29,11 @@ export const apiLimiter = rateLimit({
 
 /**
  * Stricter limiter for write operations (save, profile update, etc.).
- * 30 requests per minute per IP.
+ * 30 requests per minute per IP (300 in dev).
  */
 export const writeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: isDev ? 300 : 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' },

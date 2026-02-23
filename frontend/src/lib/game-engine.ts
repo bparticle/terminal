@@ -302,12 +302,16 @@ export class GameEngine {
     this.outputFn('');
     this.outputFn(node.question || 'Answer the question:', 'quiz-question');
 
-    if (node.hint) {
+    if (node.hint && this.quizState.attempts > 0) {
       this.outputFn(`Hint: ${node.hint}`, 'text-gray-400');
     }
 
     this.outputFn('');
-    this.outputFn('Type your answer:', 'text-yellow-400');
+    if (node.exit_node) {
+      this.outputFn('Type your answer, or press ENTER to step back:', 'text-yellow-400');
+    } else {
+      this.outputFn('Type your answer:', 'text-yellow-400');
+    }
   }
 
   private handleGodotGameNode(node: GameNode): void {
@@ -842,6 +846,9 @@ export class GameEngine {
         const failIdx = this.quizState.attempts - 1;
         const failMsg = node.failure_messages?.[failIdx] || 'Incorrect. Try again.';
         this.outputFn(this.renderTemplate(failMsg), 'text-red-400');
+        if (node.hint && this.quizState.attempts >= 1) {
+          this.outputFn(`Hint: ${node.hint}`, 'text-gray-400');
+        }
         this.outputFn('');
         this.outputFn('Type your answer:', 'text-yellow-400');
       }

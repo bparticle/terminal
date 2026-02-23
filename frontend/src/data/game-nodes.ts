@@ -191,7 +191,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_hidden_panel: {
     id: 'cold_room_hidden_panel',
-    type: 'story',
+    type: 'quiz',
     content:
       'The frequency you heard... it came from here.\n' +
       'You stand close to the south wall.\n' +
@@ -201,10 +201,64 @@ export const gameNodes: Record<string, GameNode> = {
       'A panel slides open. Not mechanically.\n' +
       'Reluctantly. A compartment hidden\n' +
       'behind the concrete.\n\n' +
-      'Inside: a strange key. It hums faintly.\n' +
+      'Inside: a key. You can see it —\n' +
+      'suspended in the air, vibrating\n' +
+      'at a frequency that keeps it\n' +
+      'just out of reach.\n' +
+      'The air around it hums the same note\n' +
+      'as the one beneath the floor.\n' +
+      'A resonance barrier. The key is held\n' +
+      'in place by the very frequency\n' +
+      'that led you here.\n\n' +
+      'To cancel it out, you would need\n' +
+      'to match it exactly.',
+    location: 'COLD ROOM',
+    question: 'Enter the frequency (Hz):',
+    correct_answers: ['47.3', '47.3 hz', '47.3hz'],
+    hint: 'The terminal can analyze waveform data. Have you tried holding the key near it?',
+    max_attempts: 3,
+    success_message:
+      '> FREQUENCY MATCHED: 47.3 Hz',
+    failure_messages: [
+      'The barrier flickers but holds. Wrong frequency. 2 attempts remain.',
+      'The key vibrates faster, almost irritated. Last attempt.',
+    ],
+    final_failure_message:
+      'The barrier pulses once and the panel\n' +
+      'slides shut. Reluctantly.\n' +
+      'Like it was hoping you would get it right.\n\n' +
+      'You can try again.',
+    success_node: 'cold_room_panel_unlock',
+    failure_node: 'cold_room',
+    exit_node: 'cold_room',
+  },
+
+  cold_room_panel_unlock: {
+    id: 'cold_room_panel_unlock',
+    type: 'story',
+    content:
+      'You know the frequency now. 47.3 Hz.\n' +
+      'The terminal showed you the shape of it —\n' +
+      'the waveform hidden in the key\'s teeth.\n\n' +
+      'You focus on it. Not with your ears.\n' +
+      'With your attention. You hold the number\n' +
+      'in your mind like a tuning fork\n' +
+      'and let it ring.\n\n' +
+      'The barrier responds.\n' +
+      'Two identical frequencies,\n' +
+      'one from you, one from the field,\n' +
+      'meeting and canceling each other out.\n' +
+      'Destructive interference.\n' +
+      'The silence of two sounds\n' +
+      'agreeing to be nothing.\n\n' +
+      'The suspended key drops.\n' +
       'It drifts toward you the way things drift\n' +
       'toward the only thing in the room\n' +
-      'that is paying attention.',
+      'that is paying attention.\n\n' +
+      'An echo key. It hums at a frequency\n' +
+      'you almost recognize —\n' +
+      'the memory of a sound\n' +
+      'that hasn\'t been made yet.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['echo_key'],
