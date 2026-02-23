@@ -105,10 +105,10 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Crawl through the vent',
+        text: 'Pull the loose grate and crawl through',
         next_node: 'corridor_north_via_vent',
-        visibilityRequirements: { has_item: ['phosphor_residue'] },
-        requirements: { has_item: ['phosphor_residue'] },
+        visibilityRequirements: { state: { has_pfp: true } },
+        requirements: { state: { has_pfp: true } },
       },
       {
         id: 3,
@@ -293,7 +293,7 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 4,
-        text: 'Access /null (use phosphor residue)',
+        text: 'Hold the vial near the screen — /null',
         next_node: 'cold_room_terminal_null',
         requirements: { has_item: ['phosphor_residue'] },
         visibilityRequirements: { has_item: ['phosphor_residue'] },
@@ -372,14 +372,19 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       '> /null\n\n' +
-      'You smear the phosphor residue on the terminal screen.\n' +
-      'The residue reacts. The /null directory flickers —\n' +
+      'You hold the vial near the terminal screen.\n\n' +
+      'The phosphor residue stirs inside the glass —\n' +
+      'drawn toward the CRT\'s electromagnetic field\n' +
+      'like iron filings to a magnet.\n' +
+      'The flakes press against the vial wall,\n' +
+      'pulsing in rhythm with the monitor.\n\n' +
+      'The screen reacts. The /null directory flickers —\n' +
       'then opens.\n\n' +
       'The directory should not exist.\n' +
       'Inside: a shard of something that used to be a file.\n' +
       'It is very quiet. Not silent — quiet.\n' +
       'Like it is listening.\n\n' +
-      'You take it.',
+      'You take it. The flakes in the vial go dark.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['null_fragment'],
@@ -690,85 +695,100 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'corridor_north',
     type: 'choice',
     content:
-      'A long corridor stretching in both directions.\n' +
-      'The walls are lined with cracked monitors,\n' +
-      'each one showing a different frame of static.\n' +
-      'One monitor is cracked worse than the others.\n\n' +
-      'To the south: the assembly, and beyond,\n' +
-      'the cold room where you woke.\n' +
-      'To the east: a heavy door marked ARCHIVES.\n' +
-      'To the west: a corridor continues toward\n' +
-      'what sounds like voices.\n' +
-      'Between two dead monitors: a recessed door,\n' +
-      'half-hidden behind a nest of conduit pipes.\n' +
-      'At the far end: something tall.\n' +
-      'A tower that should not fit inside.',
+      'The corridor stretches long and low,\n' +
+      'lined on both sides with cracked monitors.\n' +
+      'Each one shows a different frame of static —\n' +
+      'as if every screen is dreaming separately\n' +
+      'and none of them agree on what is real.\n\n' +
+      'One monitor is cracked worse than the others.\n' +
+      'Something flickers behind the fracture.\n\n' +
+      'The air here is layered — warmer currents\n' +
+      'drifting from the south, carrying the hum\n' +
+      'of the Assembly\'s machines. Cooler air\n' +
+      'pushes from the east, sterile and dry,\n' +
+      'the kind that clings to old records.\n' +
+      'From the west, something else entirely:\n' +
+      'voices, faint but organized.\n' +
+      'The sound of people who have decided\n' +
+      'what they believe.\n\n' +
+      'Between two dead monitors, a recessed door\n' +
+      'hides behind a nest of conduit pipes,\n' +
+      'almost invisible if you weren\'t looking.\n' +
+      'And at the far end of the corridor —\n' +
+      'something tall rises past where\n' +
+      'the ceiling should stop.',
     location: 'CORRIDOR NORTH',
     conditionalContent: [
       {
         requirements: { state: { knows_third_faction: true } },
         content:
-          'A long corridor stretching in both directions.\n' +
-          'Cracked monitors line the walls.\n\n' +
-          'To the south: the assembly.\n' +
-          'To the east: ARCHIVES.\n' +
-          'To the west: voices — the Guild, and beyond,\n' +
-          'a fork you did not notice before.\n' +
-          'A dead zone. Off the maps.\n' +
-          'Between two dead monitors: a recessed door.\n' +
-          'At the far end: the signal tower.',
+          'The corridor. You know it now —\n' +
+          'the cracked monitors, the layered air,\n' +
+          'the static dreams on every screen.\n\n' +
+          'But something has shifted.\n' +
+          'A fork in the western passage\n' +
+          'you never noticed before. Or maybe\n' +
+          'it wasn\'t there before. The corridor\n' +
+          'past it goes dark — not broken dark,\n' +
+          'but empty dark. The kind of dark\n' +
+          'that exists where no one has bothered\n' +
+          'to render the walls.\n\n' +
+          'The recessed door. The cracked monitor.\n' +
+          'The tower at the far end.\n' +
+          'Everything is where you left it.\n' +
+          'Everything is watching you decide.',
       },
     ],
     choices: [
       {
         id: 1,
-        text: 'Examine cracked monitor',
+        text: 'Examine the cracked monitor',
         next_node: 'corridor_north_monitor',
       },
       {
         id: 2,
-        text: 'Go south — Assembly Room',
+        text: 'Go south — back to the Assembly',
         next_node: 'assembly_room',
       },
       {
         id: 3,
-        text: 'Go east — Archives & Registry',
+        text: 'Go east — toward the dry air',
         next_node: 'corridor_to_archives',
       },
       {
         id: 4,
-        text: 'Go west — Guild District',
+        text: 'Go west — toward the voices',
         next_node: 'guild_approach',
       },
       {
         id: 5,
-        text: 'Approach the signal tower',
+        text: 'Approach the tower at the far end',
         next_node: 'tower_approach',
         requirements: { has_item: ['signal_tower_code'] },
         visibilityRequirements: { has_item: ['signal_tower_code'] },
       },
       {
         id: 6,
-        text: 'Take the unmarked fork — Dead Zone',
+        text: 'Take the unmarked fork into the dark',
         next_node: 'void_approach',
         visibilityRequirements: { state: { knows_third_faction: true } },
       },
       {
         id: 7,
-        text: 'Smear phosphor residue on the NULL door',
+        text: 'Place your hand on the NULL sigil',
         next_node: 'corridor_north_null_door',
-        requirements: { has_item: ['phosphor_residue'] },
-        visibilityRequirements: { has_item: ['phosphor_residue'] },
+        requirements: { state: { saw_first_frame: true } },
+        visibilityRequirements: { state: { saw_first_frame: true } },
       },
       {
         id: 8,
-        text: 'Go north — Temple of Null',
+        text: 'Go north — into the deep',
         next_node: 'temple_entrance',
         visibilityRequirements: { state: { temple_known: true } },
       },
       {
         id: 9,
-        text: 'Try the recessed door — Phosphor Lab',
+        text: 'Try the recessed door behind the pipes',
         next_node: 'lab_door',
       },
     ],
@@ -778,15 +798,17 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'corridor_north_via_vent',
     type: 'story',
     content:
-      'You smear the phosphor residue on the vent grate.\n' +
-      'The grate loosens. You squeeze through the shaft.\n' +
+      'You grip the grate with both hands.\n\n' +
+      'Your hands. Solid now. Fingers that close\n' +
+      'around the metal with actual weight.\n' +
+      'You pull. The grate resists — then gives,\n' +
+      'screws shearing from damp concrete\n' +
+      'with a sound like something tearing free.\n\n' +
+      'You squeeze through the shaft.\n' +
       'The metal groans around you.\n' +
       'After what feels like too long, you emerge\n' +
       'into a corridor lined with cracked monitors.',
     location: 'CORRIDOR NORTH',
-    effects: {
-      remove_item: ['phosphor_residue'],
-    },
     next_node: 'corridor_north',
   },
 
@@ -927,16 +949,21 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'corridor_north_null_door',
     type: 'story',
     content:
-      'You smear the phosphor residue on the door\n' +
-      'marked with a NULL sigil.\n\n' +
-      'The door sensor reads the residue.\n' +
-      'It reads you as partially belonging.\n' +
-      'A click. The door opens a crack.\n\n' +
+      'You place your hand on the NULL sigil.\n\n' +
+      'You don\'t push. You don\'t knock.\n' +
+      'You just rest your hand there\n' +
+      'and think about what you saw\n' +
+      'in the cracked monitor —\n' +
+      'one white pixel on a field of black.\n' +
+      'The oldest thing that exists.\n\n' +
+      'And before it: nothing.\n' +
+      'Null.\n\n' +
+      'The door reads your stillness.\n' +
+      'A click. It opens a crack.\n\n' +
       'Beyond: the Temple of Null.',
     location: 'CORRIDOR NORTH',
     effects: {
       set_state: { temple_known: true, phosphor_bypass: true },
-      remove_item: ['phosphor_residue'],
     },
     next_node: 'temple_entrance',
   },
@@ -1154,41 +1181,52 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'corridor_south',
     type: 'choice',
     content:
-      'The eastern branch of the corridor.\n' +
-      'Quieter here. The monitors are intact.\n\n' +
-      'A door labeled REGISTRY OFFICE.\n' +
-      'Beyond it, a door marked BROADCAST ROOM.\n' +
-      'A third door: AUTHORIZED PERSONNEL.\n' +
-      'A fourth, barely visible: no label. Dusty.',
+      'The corridor bends east and the noise falls away.\n' +
+      'Quieter here. The monitors are intact —\n' +
+      'clean glass, steady signal, the particular\n' +
+      'calm of things that are maintained by someone\n' +
+      'who believes maintenance is a moral act.\n\n' +
+      'Doors line the passage, each one labeled\n' +
+      'in the same careful stencil.\n' +
+      'One says REGISTRY OFFICE.\n' +
+      'One says BROADCAST ROOM — a faint hum\n' +
+      'leaks from behind it, barely audible.\n' +
+      'A third reads AUTHORIZED PERSONNEL,\n' +
+      'its lock heavier than the others.\n\n' +
+      'And a fourth. Barely visible.\n' +
+      'No label. Dust on the handle\n' +
+      'so thick it looks deliberate —\n' +
+      'as if someone wanted you to think\n' +
+      'no one has been here in a long time.',
     location: 'CORRIDOR SOUTH',
     choices: [
       {
         id: 1,
-        text: 'Enter the Registry Office',
+        text: 'Try the Registry Office',
         next_node: 'registry_office',
       },
       {
         id: 2,
-        text: 'Enter the Broadcast Room',
+        text: 'Follow the hum — Broadcast Room',
         next_node: 'broadcast_room',
       },
       {
         id: 3,
-        text: 'AUTHORIZED PERSONNEL (Guild Server Room)',
+        text: 'Try the heavy lock — Authorized Personnel',
         next_node: 'guild_server_room',
         requirements: { has_item: ['guild_sigil'] },
-        lockedText: '[LOCKED — requires authorization]',
+        lockedText: '[The lock does not yield. You are not authorized.]',
       },
       {
         id: 4,
-        text: 'The unlabeled door (Echo Archive)',
+        text: 'Touch the dusty handle',
         next_node: 'echo_archive_entry',
         requirements: { has_item: ['echo_key'] },
         lockedText: '[The door does not acknowledge you]',
       },
       {
         id: 5,
-        text: 'Back to corridor',
+        text: 'Back to the main corridor',
         next_node: 'corridor_north',
       },
     ],
@@ -1918,7 +1956,7 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Search the room (use phosphor residue on tape machines)',
+        text: 'Search with the vial — follow the resonance',
         next_node: 'broadcast_phosphor_search',
         requirements: { has_item: ['phosphor_residue'] },
         visibilityRequirements: { has_item: ['phosphor_residue'] },
@@ -2003,12 +2041,20 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'broadcast_phosphor_search',
     type: 'story',
     content:
-      'You smear the phosphor residue on the tape machines.\n\n' +
-      'The residue reacts. A hidden reel slot glows.\n' +
-      'You pull out a tape reel that was lodged inside\n' +
-      'the mechanism.\n\n' +
+      'You walk the room with the vial held out,\n' +
+      'watching the residue inside.\n\n' +
+      'Near the third tape machine, the flakes stir.\n' +
+      'They press against the glass, pulsing —\n' +
+      'drawn to something behind the mechanism.\n' +
+      'An electromagnetic signature\n' +
+      'the machine was hiding.\n\n' +
+      'You follow the resonance. Your fingers\n' +
+      'find a hidden reel slot behind the housing.\n' +
+      'Inside: a tape reel, lodged deep\n' +
+      'where no one would think to look.\n\n' +
       'Tape Reel 7.\n' +
-      '"FOR THE ONE WHO ANSWERS."',
+      '"FOR THE ONE WHO ANSWERS."\n\n' +
+      'The flakes in the vial go still. Spent.',
     location: 'BROADCAST ROOM',
     effects: {
       add_item: ['tape_reel_7'],
@@ -2112,7 +2158,7 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 4,
-        text: 'Apply phosphor residue to sensor',
+        text: 'Hold the vial up to the sensor',
         next_node: 'temple_phosphor_entry',
         requirements: { has_item: ['phosphor_residue'] },
         visibilityRequirements: { has_item: ['phosphor_residue'] },
@@ -2195,11 +2241,19 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'temple_phosphor_entry',
     type: 'story',
     content:
-      'You smear the phosphor residue on the sensor.\n\n' +
-      'The sensor reads you as partially belonging.\n' +
-      'Not a clean read. The door hesitates.\n' +
-      'Then opens. Barely.\n\n' +
-      'You squeeze through.',
+      'You hold the vial up to the sensor.\n\n' +
+      'The residue inside flares — bright,\n' +
+      'brighter than you\'ve seen it.\n' +
+      'The phosphor memory resonates with something\n' +
+      'deep inside the door\'s mechanism,\n' +
+      'a frequency match across decades\n' +
+      'of stored light.\n\n' +
+      'The sensor reads the signature.\n' +
+      'Not you — the memory of every image\n' +
+      'the cracked monitor ever held.\n' +
+      'Close enough. The door opens.\n\n' +
+      'The flakes go dark in the vial.\n' +
+      'Whatever they remembered, they have given it away.',
     location: 'TEMPLE ENTRANCE',
     effects: {
       set_state: { temple_entered: true },

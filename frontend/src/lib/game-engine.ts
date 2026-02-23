@@ -8,6 +8,15 @@ import { checkPfpStatus, mintPfp, preparePfpMint, confirmPfpMint } from './pfp-a
 // Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
 const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1';
 
+// Items that are consumed or transformed during gameplay — skip soulbound minting
+const CONSUMABLE_ITEMS = new Set([
+  'glass_vial',
+  'phosphor_residue',
+  'corrupted_page',
+  'first_pixel',
+  'signal_tower_code',
+]);
+
 type OutputFn = (text: string, className?: string, id?: string) => void;
 type LocationChangeFn = (location: string, nodeId?: string) => void;
 type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean }>) => void;
@@ -970,7 +979,8 @@ export class GameEngine {
           this.outputFn(`[Item obtained: ${item}]`, 'text-yellow-400');
 
           // Background soulbound mint — fire-and-forget, one per user per item
-          if (!this.soulboundItemNames.has(item)) {
+          // Skip consumable/transient items that will be removed or transformed
+          if (!this.soulboundItemNames.has(item) && !CONSUMABLE_ITEMS.has(item)) {
             this.soulboundItemNames.add(item);
             mintSoulboundBackground(item, INVENTORY_ITEM_URI);
           }
