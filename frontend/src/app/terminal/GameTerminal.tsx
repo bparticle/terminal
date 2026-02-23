@@ -55,6 +55,7 @@ export default function GameTerminal() {
   const currentNodeIdRef = useRef<string | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const wasAuthenticatedRef = useRef(false);
+  const pfpImageUrlRef = useRef<string | null>(null);
 
   // ── Refs for use in stable callbacks ──────────
   const soloModeRef = useRef(soloMode);
@@ -219,7 +220,7 @@ export default function GameTerminal() {
           addOutput('');
 
           if (profile.pfp_image_url) {
-            window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: profile.pfp_image_url } }));
+            pfpImageUrlRef.current = profile.pfp_image_url;
           }
         } else {
           // New user - start onboarding
@@ -258,7 +259,7 @@ export default function GameTerminal() {
 
     engineRef.current = engine;
 
-    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer');
+    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer', pfpImageUrlRef.current || undefined);
 
     return () => {
       if (engineRef.current) {

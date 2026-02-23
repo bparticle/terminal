@@ -3634,6 +3634,30 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'assembly_room',
   },
 
+  pfp_booth_reclaim_success: {
+    id: 'pfp_booth_reclaim_success',
+    type: 'story',
+    content:
+      'The booth hums once — not processing,\n' +
+      'just confirming. The cables stay still.\n' +
+      'No rendering needed.\n\n' +
+      'Your face surfaces on the screen,\n' +
+      'already formed, already yours.\n' +
+      'The machine did not create it —\n' +
+      'it simply remembered.\n\n' +
+      'Something shifts. The blur at your edges\n' +
+      'tightens. Pixels lock into place.\n' +
+      'You are, once again, defined.\n\n' +
+      'The shell opens. You step out\n' +
+      'into the cathedral chill of the Assembly.\n' +
+      'The air moves around you\n' +
+      'instead of through you.\n' +
+      'You have weight. You have edges.\n' +
+      'You have returned.',
+    location: 'IDENTITY TERMINAL',
+    next_node: 'assembly_room',
+  },
+
   pfp_booth_failure: {
     id: 'pfp_booth_failure',
     type: 'story',

@@ -46,6 +46,9 @@ export class GameEngine {
   private displayedChoiceMap: Map<number, { id: number; next_node: string }> = new Map();
   private spinnerTimers = new Map<string, ReturnType<typeof setInterval>>();
   private static readonly SPINNER_FRAMES = ['|', '/', '-', '\\'];
+  private pfpImageUrl: string | null = null;
+  private pfpReclaimPending: { node: GameNode } | null = null;
+  private pfpReclaimOffered = false;
 
   constructor(
     private outputFn: OutputFn,
@@ -62,8 +65,10 @@ export class GameEngine {
   async initialize(
     walletAddress: string,
     playerName: string = 'Wanderer',
+    pfpImageUrl?: string,
   ): Promise<void> {
     this.walletAddress = walletAddress;
+    this.pfpImageUrl = pfpImageUrl || null;
 
     try {
       const response = await loadGame(walletAddress);
@@ -97,6 +102,11 @@ export class GameEngine {
 
     // Fetch owned NFTs in background
     this.fetchNFTs(walletAddress);
+
+    // Only show PFP on the monitor if the current game state has earned it
+    if (this.pfpImageUrl && this.save.game_state.has_pfp) {
+      window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: this.pfpImageUrl } }));
+    }
 
     // Display current node
     this.outputFn('');
@@ -446,6 +456,24 @@ export class GameEngine {
   private async handlePfpMintNode(node: GameNode): Promise<void> {
     if (!this.save) return;
 
+    // Reclaim path: player has a PFP from a previous playthrough but restarted
+    if (this.pfpImageUrl && !this.save.game_state.has_pfp && !this.pfpReclaimOffered) {
+      this.outputFn('The machine scans you —', 'text-white');
+      this.outputFn('and stops. The scanner holds still.', 'text-white');
+      this.outputFn('Not searching. Recognizing.', 'text-white');
+      this.outputFn('');
+      this.outputFn('> EXISTING IDENTITY DETECTED', 'text-yellow-400');
+      this.outputFn('> PATTERN MATCH: 100%', 'text-yellow-400');
+      this.outputFn('> "Your face is already on the chain.', 'text-yellow-400');
+      this.outputFn('>  The machine remembers what it rendered."', 'text-yellow-400');
+      this.outputFn('');
+      this.outputFn('[1] Reclaim your identity (free)', 'text-cyan-400');
+      this.outputFn('[2] Forge a new face (0.05 ◎)', 'text-cyan-400');
+
+      this.pfpReclaimPending = { node };
+      return;
+    }
+
     // Display node content
     const content = this.renderTemplate(node.content);
     content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
@@ -646,6 +674,25 @@ export class GameEngine {
       }
     }
 
+    // Handle PFP reclaim choice
+    if (this.pfpReclaimPending) {
+      const reclaimNode = this.pfpReclaimPending.node;
+      if (trimmed === '1') {
+        this.pfpReclaimPending = null;
+        this.save.game_state.has_pfp = true;
+        if (this.pfpImageUrl) {
+          window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: this.pfpImageUrl } }));
+        }
+        await this.autoSave();
+        await this.moveToNode('pfp_booth_reclaim_success');
+      } else if (trimmed === '2') {
+        this.pfpReclaimPending = null;
+        this.pfpReclaimOffered = true;
+        await this.handlePfpMintNode(reclaimNode);
+      }
+      return;
+    }
+
     // Handle quiz mode
     if (this.quizState) {
       await this.handleQuizAnswer(trimmed);
@@ -687,6 +734,9 @@ export class GameEngine {
 
     // Minigame gate
     if (this.minigameGate) return true;
+
+    // PFP reclaim choice
+    if (this.pfpReclaimPending) return true;
 
     // Quiz mode
     if (this.quizState) return true;
@@ -1109,6 +1159,11 @@ export class GameEngine {
       this.currentNode = gameNodes['start'];
       this.quizState = null;
       this.minigameGate = null;
+      this.pfpReclaimPending = null;
+      this.pfpReclaimOffered = false;
+
+      window.dispatchEvent(new Event('clear-display'));
+
       this.outputFn('Game reset! Starting fresh. Your achievements and campaign wins are preserved.', 'text-green-400');
       this.outputFn('');
       this.displayCurrentNode();
