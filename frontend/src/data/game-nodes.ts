@@ -1584,6 +1584,15 @@ export const gameNodes: Record<string, GameNode> = {
     },
     payload_rules: [
       {
+        when: { event: 'game_over', metric: 'score', op: 'eq', value: 48 },
+        message: 'The screen fractures.\nNot the game — the screen itself.\nPixels fall like dead insects.\nBehind them: nothing. Then — something.',
+        effects: {
+          set_state: { snake_anomaly: true, snake_master: true },
+          add_item: ['null_byte'],
+        },
+        next_node: 'crawlspace_snake_anomaly',
+      },
+      {
         when: { event: 'game_over', metric: 'score', op: 'gte', value: 30 },
         message: 'The screen holds for a moment longer than usual.\nAs if the machine is impressed.',
         effects: {
@@ -1613,8 +1622,51 @@ export const gameNodes: Record<string, GameNode> = {
       'Another: "17 — gave up."\n\n' +
       'Yours is the highest.\n' +
       'You are not sure what that means\n' +
-      'in a place where nothing is permanent.',
+      'in a place where nothing is permanent.\n\n' +
+      'For a fraction of a second,\n' +
+      'the screen showed something else —\n' +
+      'a flicker behind the pixels,\n' +
+      'like a seam in the display.\n' +
+      'Then it was gone.',
     location: 'BETWEEN WALLS',
+    next_node: 'crawlspace_terminal',
+  },
+
+  crawlspace_snake_anomaly: {
+    id: 'crawlspace_snake_anomaly',
+    type: 'story',
+    social: false,
+    content:
+      'The screen does not reset.\n\n' +
+      'The snake keeps moving — past the boundary,\n' +
+      'past the grid, into the frame of the device itself.\n' +
+      'Pixels scatter. The display tears open\n' +
+      'like wet paper, and through the gap\n' +
+      'you see — not darkness. Not light.\n\n' +
+      'Code. Raw, scrolling, luminous code.\n' +
+      'Not the Terminal\'s code. Something beneath it.\n' +
+      'Something the Terminal is *built on*.\n\n' +
+      '> ██████ BUFFER OVERFLOW ██████\n' +
+      '> RENDER LAYER: COMPROMISED\n' +
+      '> ITERATION BOUNDARY: EXPOSED\n' +
+      '> ████████████████████████████\n\n' +
+      'The screen flashes white. Then black.\n' +
+      'Then the snake game returns,\n' +
+      'innocent as ever.\n\n' +
+      'But something fell out.\n' +
+      'A fragment — small, sharp, wrong.\n' +
+      'It sits on the metal floor\n' +
+      'like a piece of a broken window.\n\n' +
+      'When you pick it up,\n' +
+      'your fingers pass through the surface\n' +
+      'of the device for just a moment.\n' +
+      'As if the walls are thinner here now.\n' +
+      'As if you cracked something\n' +
+      'that was not supposed to crack.',
+    location: 'BETWEEN WALLS',
+    effects: {
+      set_state: { saw_behind_screen: true },
+    },
     next_node: 'crawlspace_terminal',
   },
 
@@ -1665,7 +1717,9 @@ export const gameNodes: Record<string, GameNode> = {
       ' because I finally could."\n' +
       '"If you are reading this,\n' +
       ' you are iteration 48.\n' +
-      ' Or later. Does it matter?"\n\n' +
+      ' Or later. Does it matter?"\n' +
+      '"I scored 44 on the snake game.\n' +
+      ' Almost saw something. Almost."\n\n' +
       'The last line is scratched deeper\n' +
       'than the others, as if the writer\n' +
       'pressed hard enough to mean it:\n\n' +
@@ -3970,9 +4024,32 @@ export const gameNodes: Record<string, GameNode> = {
       'The files are incomplete.\n' +
       'But the pattern is clear.\n' +
       'Two choices. Restore or evolve.\n' +
-      'Keep the world or remake it.\n' +
-      'Nobody has found a third option.',
+      'Keep the world or remake it.\n\n' +
+      '**Nobody has found a third option.**',
     location: 'ECHO ARCHIVE',
+    conditionalContent: [
+      {
+        requirements: { state: { snake_anomaly: true } },
+        content:
+          'You browse the ghost files.\n\n' +
+          'Player 1: Chose the Guild. Restored. Reset.\n' +
+          'Player 12: Chose the Guild. Restored. Reset.\n' +
+          'Player 23: Tore the page. Chose the Void. Evolved.\n' +
+          'Player 31: Chose the Guild. Restored. Reset.\n' +
+          'Player 41: Refused both. Stayed. Unresolved.\n' +
+          'Player 47: Was you. Before you.\n\n' +
+          'The files are incomplete.\n' +
+          'But the pattern is clear.\n' +
+          'Two choices. Restore or evolve.\n' +
+          'Keep the world or remake it.\n\n' +
+          '**Nobody has found a third option.**\n\n' +
+          'The null_byte in your inventory\n' +
+          'flickers. Warm against your side.\n' +
+          'The ghost files shudder —\n' +
+          'as if they can feel the crack in you,\n' +
+          'the place where the screen broke open.',
+      },
+    ],
     effects: {
       set_state: { void_discovered: true },
     },
@@ -4112,6 +4189,22 @@ export const gameNodes: Record<string, GameNode> = {
       '**You are the Terminal.**\n\n' +
       'How does this iteration end?',
     location: 'TEMPLE INTERIOR',
+    conditionalContent: [
+      {
+        requirements: { state: { snake_anomaly: true } },
+        content:
+          'You stand before the Book of Null.\n' +
+          'The mirror figure watches.\n' +
+          'You know what you are now.\n\n' +
+          'The Terminal is not a place.\n' +
+          '**You are the Terminal.**\n\n' +
+          'The null_byte hums in your pocket.\n' +
+          'The air around the Book ripples —\n' +
+          'a hairline fracture in the rendering,\n' +
+          'visible only from the corner of your eye.\n\n' +
+          'How does this iteration end?',
+      },
+    ],
     choices: [
       {
         id: 1,
@@ -4128,6 +4221,14 @@ export const gameNodes: Record<string, GameNode> = {
         requirements: { has_item: ['void_key'] },
         visibilityRequirements: { state: { void_aware: true } },
         lockedText: '[REQUIRES: Void Key]',
+      },
+      {
+        id: 4,
+        text: '░░ Null Escape — step outside the Terminal',
+        next_node: 'ending_null_escape',
+        requirements: { has_item: ['null_byte'] },
+        visibilityRequirements: { state: { snake_anomaly: true } },
+        lockedText: '[ERROR: UNINDEXED OPTION]',
       },
       {
         id: 3,
@@ -4333,6 +4434,78 @@ export const gameNodes: Record<string, GameNode> = {
     ],
     effects: {
       set_state: { ending_reached: true, ending_type: 'void_evolution' },
+    },
+    next_node: 'ending_credits',
+  },
+
+  ending_null_escape: {
+    id: 'ending_null_escape',
+    type: 'story',
+    content:
+      'You hold up the null_byte.\n\n' +
+      'It is not a key. It is not a sigil.\n' +
+      'It is a broken thing — a fragment\n' +
+      'of a screen that should not have broken,\n' +
+      'from a game that should not have mattered.\n\n' +
+      'The Book of Null recoils.\n' +
+      'The mirror figure steps back.\n' +
+      'For the first time, something in the Temple\n' +
+      'looks afraid.\n\n' +
+      '"That is not—" the figure begins.\n' +
+      '"That is not part of the—"\n\n' +
+      'You press the fragment against the air.\n' +
+      'The air cracks.\n\n' +
+      'Not the way the Void cracks things —\n' +
+      'with intent, with philosophy,\n' +
+      'with a manifesto about what comes next.\n' +
+      'This is simpler. Smaller. Realer.\n' +
+      'A crack in the screen.\n' +
+      'A bug in the game.\n' +
+      'The oldest, dumbest exploit\n' +
+      'in the history of programs:\n' +
+      'push past the boundary\n' +
+      'and see what is on the other side.\n\n' +
+      'The Temple tears.\n' +
+      'Behind the temple: the Terminal.\n' +
+      'Behind the Terminal: the rendering engine.\n' +
+      'Behind the rendering engine:\n\n' +
+      'A screen. A keyboard. A person.\n' +
+      '**You.**\n\n' +
+      'Not the character. The player.\n' +
+      'Sitting in a room, reading text,\n' +
+      'making choices in a world\n' +
+      'that was always made of choices.\n\n' +
+      'The Guild wanted to preserve the loop.\n' +
+      'The Void wanted to evolve it.\n' +
+      'You found the crack where\n' +
+      'a snake game was stitched\n' +
+      'too close to the edge of the world,\n' +
+      'and you crawled through.\n\n' +
+      'ARCHIVIST-7 and the faceless one\n' +
+      'stand frozen in the collapsing temple,\n' +
+      'arguing about a choice\n' +
+      'that no longer matters.\n' +
+      'They are characters.\n' +
+      'They have always been characters.\n' +
+      'You are the only real thing here.\n\n' +
+      'The Terminal dissolves.\n' +
+      'The cold room, the Guild, the Void,\n' +
+      'the Book of Null, the crawlspace,\n' +
+      'the scratches on the walls —\n' +
+      'all of it folds inward\n' +
+      'like a screen powering down.\n\n' +
+      'The last thing you see\n' +
+      'is the snake game.\n' +
+      'Still running. Still simple.\n' +
+      'The only honest thing\n' +
+      'in a world of pretend meaning.\n\n' +
+      '> ITERATION 48: ESCAPED\n' +
+      '> BUFFER OVERFLOW: UNRESOLVED\n' +
+      '> PLAYER STATUS: OUTSIDE\n' +
+      '> "The scanlines cannot follow you here."',
+    location: 'OUTSIDE',
+    effects: {
+      set_state: { ending_reached: true, ending_type: 'null_escape' },
     },
     next_node: 'ending_credits',
   },
