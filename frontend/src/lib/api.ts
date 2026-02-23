@@ -45,7 +45,7 @@ export async function fetchWithAuth(
       };
       return fetch(url, { ...options, headers: retryHeaders, credentials: 'include' });
     } catch {
-      // Re-auth failed, return original 401
+      throw new Error('Session expired — please reconnect your wallet.');
     }
   }
 

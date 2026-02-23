@@ -54,6 +54,7 @@ export default function GameTerminal() {
   const inputRef = useRef<HTMLInputElement>(null);
   const currentNodeIdRef = useRef<string | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const wasAuthenticatedRef = useRef(false);
 
   // ── Refs for use in stable callbacks ──────────
   const soloModeRef = useRef(soloMode);
@@ -281,6 +282,32 @@ export default function GameTerminal() {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Track auth state transitions: clean up persona when auth is lost
+  useEffect(() => {
+    if (isAuthenticated) {
+      wasAuthenticatedRef.current = true;
+    } else if (wasAuthenticatedRef.current && isInitialized) {
+      wasAuthenticatedRef.current = false;
+      setPlayerName(null);
+      setMonitorImageUrl(null);
+      setOnboardingState('idle');
+      setInventory([]);
+      setCurrentLocation('HUB');
+      setChatMode(false);
+
+      if (engineRef.current) {
+        engineRef.current.destroy();
+        engineRef.current = null;
+      }
+
+      window.dispatchEvent(new CustomEvent('clear-display'));
+
+      addOutput('');
+      addOutput('Session ended. Please reconnect your wallet to continue.', 'text-yellow-400');
+      addOutput('');
+    }
+  }, [isAuthenticated, isInitialized]);
+
   // Show welcome message only when not connected and not authenticating
   useEffect(() => {
     if (isInitialized && !connected && !isAuthenticated && !isAuthenticating) {
@@ -377,6 +404,7 @@ export default function GameTerminal() {
         engine: engineRef.current,
         walletAddress: publicKey?.toBase58() || null,
         connected,
+        isAuthenticated,
         addOutput,
         clearOutput,
         openWalletModal: () => setVisible(true),
@@ -405,13 +433,13 @@ export default function GameTerminal() {
       // Try game engine as fallback (for numbered choices)
       if (engineRef.current && trimmed) {
         await engineRef.current.processInput(input);
-      } else if (trimmed && !connected) {
+      } else if (trimmed && !isAuthenticated) {
         addOutput('Unknown command. Type "help" for available commands.', 'text-gray-400');
       }
 
       setInput('');
     },
-    [input, publicKey, connected, theme, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
+    [input, publicKey, connected, isAuthenticated, theme, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
   );
 
   // Re-focus input when returning from a mini-game
@@ -458,6 +486,7 @@ export default function GameTerminal() {
           engine: engineRef.current,
           walletAddress: publicKey?.toBase58() || null,
           connected,
+          isAuthenticated,
           addOutput,
           clearOutput,
           openWalletModal: () => setVisible(true),
@@ -491,7 +520,7 @@ export default function GameTerminal() {
         inputRef.current?.focus();
       }, 0);
     },
-    [publicKey, connected, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
+    [publicKey, connected, isAuthenticated, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
   );
 
   const handleTerminalMouseDown = useCallback((e: React.MouseEvent) => {
@@ -571,7 +600,7 @@ export default function GameTerminal() {
           </div>
 
           <form onSubmit={handleSubmit} className={`terminal-input-form ${chatMode ? 'chat-mode' : ''}`}>
-            {connected && onboardingState === 'done' ? (
+            {isAuthenticated && onboardingState === 'done' ? (
               <ChatModeToggle
                 chatMode={chatMode}
                 onToggle={toggleChatMode}
@@ -588,7 +617,7 @@ export default function GameTerminal() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Tab' && connected && onboardingState === 'done' && !soloMode && !isPrivateRoom) {
+                if (e.key === 'Tab' && isAuthenticated && onboardingState === 'done' && !soloMode && !isPrivateRoom) {
                   e.preventDefault();
                   toggleChatMode();
                 }
@@ -601,13 +630,13 @@ export default function GameTerminal() {
                   ? 'Enter your name...'
                   : chatMode
                     ? 'Talk to nearby players...'
-                    : connected
+                    : isAuthenticated
                       ? 'Enter command...'
                       : 'Connect wallet to start'
               }
               disabled={activeGame !== null}
             />
-            {connected && onboardingState === 'done' && (
+            {isAuthenticated && onboardingState === 'done' && (
               <button
                 type="button"
                 className={`solo-toggle ${soloMode ? 'solo-toggle-active' : ''}`}

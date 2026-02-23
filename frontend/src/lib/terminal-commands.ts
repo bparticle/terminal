@@ -7,6 +7,7 @@ export interface TerminalContext {
   engine: GameEngine | null;
   walletAddress: string | null;
   connected: boolean;
+  isAuthenticated: boolean;
   addOutput: (text: string, className?: string) => void;
   clearOutput: () => void;
   openWalletModal: () => void;
@@ -470,8 +471,8 @@ export function processCommand(input: string, ctx: TerminalContext): boolean {
   const command = commands[cmd];
   if (!command) return false;
 
-  if (command.requiresWallet && !ctx.connected) {
-    ctx.addOutput('Connect your wallet first. Type "connect".', 'text-yellow-400');
+  if (command.requiresWallet && !ctx.isAuthenticated) {
+    ctx.addOutput('You must be signed in to use this command. Type "connect" to link your wallet.', 'text-yellow-400');
     return true;
   }
 

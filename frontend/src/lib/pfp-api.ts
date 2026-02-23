@@ -36,6 +36,9 @@ export interface PfpMintResult {
 export async function checkPfpStatus(): Promise<PfpStatus> {
   const response = await fetchWithAuth('pfp/status');
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Authentication required — please reconnect your wallet.');
+    }
     throw new Error('Failed to check PFP status');
   }
   return response.json();

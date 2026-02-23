@@ -9,7 +9,12 @@ export async function checkWhitelistStatus(): Promise<{
   remaining?: number;
 }> {
   const response = await fetchWithAuth('mint/whitelist/check');
-  if (!response.ok) return { whitelisted: false };
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Authentication required — please reconnect your wallet.');
+    }
+    return { whitelisted: false };
+  }
   return response.json();
 }
 

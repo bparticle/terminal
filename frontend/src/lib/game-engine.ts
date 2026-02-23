@@ -411,7 +411,8 @@ export class GameEngine {
     } catch (error: any) {
       this.stopSpinner(mintId(), 'Error', false);
 
-      const msg = error.message || 'Unknown error';
+      const msg = this.extractErrorMessage(error);
+
       if (msg.includes('User rejected') || msg.includes('rejected the request')) {
         this.outputFn('Transaction cancelled.', 'text-yellow-400');
         this.outputFn('');
@@ -419,7 +420,12 @@ export class GameEngine {
         return;
       }
 
-      this.outputFn(`Minting failed: ${msg}`, 'text-red-400');
+      if (this.isAuthError(msg)) {
+        this.outputFn('Session expired — reconnect your wallet and try again.', 'text-red-400');
+      } else {
+        this.outputFn(`Minting failed: ${msg}`, 'text-red-400');
+      }
+
       if (node.mint_failure_node) {
         this.outputFn('');
         this.outputFn('Press ENTER to continue...', 'text-gray-400');
@@ -567,7 +573,8 @@ export class GameEngine {
     } catch (error: any) {
       this.stopSpinner(pfpId(), 'Error', false);
 
-      const msg = error.message || 'Unknown error';
+      const msg = this.extractErrorMessage(error);
+
       if (msg.includes('User rejected') || msg.includes('rejected the request')) {
         this.outputFn('Transaction cancelled.', 'text-yellow-400');
         this.outputFn('');
@@ -575,7 +582,12 @@ export class GameEngine {
         return;
       }
 
-      this.outputFn(`PFP mint failed: ${msg}`, 'text-red-400');
+      if (this.isAuthError(msg)) {
+        this.outputFn('Session expired — reconnect your wallet and try again.', 'text-red-400');
+      } else {
+        this.outputFn(`PFP mint failed: ${msg}`, 'text-red-400');
+      }
+
       if (node.pfp_mint_failure_node) {
         this.outputFn('');
         this.outputFn('Press ENTER to continue...', 'text-gray-400');
@@ -1133,6 +1145,27 @@ export class GameEngine {
       this.save.name = name;
       this.save.game_state.player_name = name;
     }
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message) return error.message;
+    if (typeof error === 'string' && error) return error;
+    if (error && typeof error === 'object' && 'message' in error) {
+      const msg = (error as any).message;
+      if (typeof msg === 'string' && msg) return msg;
+    }
+    return 'An unexpected error occurred';
+  }
+
+  private isAuthError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('session expired') ||
+      lower.includes('authentication required') ||
+      lower.includes('reconnect your wallet') ||
+      lower.includes('not authenticated') ||
+      lower.includes('wallet not connected')
+    );
   }
 
 }

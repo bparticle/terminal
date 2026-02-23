@@ -48,24 +48,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authAttemptRef = useRef(false);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load session from storage on mount
+  // Load session from storage on mount, then validate against backend
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(SESSION_KEY);
-      if (stored) {
-        const parsed: Session = JSON.parse(stored);
-        const fingerprint = getFingerprint();
+    let cancelled = false;
 
-        if (parsed.fingerprint === fingerprint && parsed.expiresAt > Date.now()) {
-          setSession(parsed);
-        } else {
-          sessionStorage.removeItem(SESSION_KEY);
+    const restoreSession = async () => {
+      let restoredSession: Session | null = null;
+
+      try {
+        const stored = sessionStorage.getItem(SESSION_KEY);
+        if (stored) {
+          const parsed: Session = JSON.parse(stored);
+          const fingerprint = getFingerprint();
+
+          if (parsed.fingerprint === fingerprint && parsed.expiresAt > Date.now()) {
+            restoredSession = parsed;
+          } else {
+            sessionStorage.removeItem(SESSION_KEY);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore session:', e);
+      }
+
+      if (restoredSession && !cancelled) {
+        try {
+          const res = await fetch('/api/proxy/users/profile', {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${restoredSession.token}`,
+            },
+          });
+          if (!cancelled) {
+            if (res.ok) {
+              setSession(restoredSession);
+            } else {
+              // Token rejected by backend — clear stale session
+              sessionStorage.removeItem(SESSION_KEY);
+            }
+          }
+        } catch {
+          // Backend unreachable — trust local session as fallback
+          if (!cancelled) {
+            setSession(restoredSession);
+          }
         }
       }
-    } catch (e) {
-      console.error('Failed to restore session:', e);
-    }
-    setIsInitialized(true);
+
+      if (!cancelled) {
+        setIsInitialized(true);
+      }
+    };
+
+    restoreSession();
+
+    return () => { cancelled = true; };
   }, []);
 
   // Detect wallet switch: if connected wallet doesn't match session wallet, clear session
