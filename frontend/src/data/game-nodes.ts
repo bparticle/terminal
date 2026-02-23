@@ -82,6 +82,35 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'COLD ROOM',
     conditionalContent: [
       {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The cold room.\n\n' +
+          'Different now. The condensation on the walls\n' +
+          'catches light from the monitor, and in the glass\n' +
+          'you see yourself — features, edges, a face\n' +
+          'the room has finally learned to hold.\n\n' +
+          'The door to the north stands open.\n' +
+          'Beyond it, the corridor hums.\n\n' +
+          'The air vent near the floor, its grate slightly loose.\n' +
+          'The terminal on the east wall blinks patiently.\n\n' +
+          'This is where you started.\n' +
+          'It looks smaller than it felt.',
+      },
+      {
+        requirements: { state: { cold_room_door_opened: true } },
+        content:
+          'The cold room.\n\n' +
+          'Concrete walls, slick with condensation.\n' +
+          'The monitor\'s glass catches the room but not you.\n' +
+          'Where your reflection should be: nothing.\n\n' +
+          'The door to the north stands open,\n' +
+          'the key still humming faintly in the lock.\n' +
+          'Beyond it: the corridor, the Assembly,\n' +
+          'the booths where faces are made.\n\n' +
+          'The air vent near the floor, its grate slightly loose.\n\n' +
+          'From somewhere beyond the walls: a low hum.',
+      },
+      {
         requirements: { state: { heard_frequency: true } },
         content:
           'The cold room.\n\n' +
@@ -100,8 +129,14 @@ export const gameNodes: Record<string, GameNode> = {
         text: 'Use key on the door',
         next_node: 'cold_room_unlock',
         requirements: { has_item: ['cold_room_key'] },
-        visibilityRequirements: { state: { heard_frequency: true } },
+        visibilityRequirements: { state: { heard_frequency: true, cold_room_door_opened: false } },
         lockedText: '[REQUIRES: ???]',
+      },
+      {
+        id: 6,
+        text: 'Walk through the open door',
+        next_node: 'rebirth_corridor_1',
+        visibilityRequirements: { state: { cold_room_door_opened: true } },
       },
       {
         id: 2,
@@ -186,6 +221,9 @@ export const gameNodes: Record<string, GameNode> = {
       'Beyond: a corridor stretching north.\n' +
       'The hum is louder here.',
     location: 'COLD ROOM',
+    effects: {
+      set_state: { cold_room_door_opened: true },
+    },
     next_node: 'rebirth_corridor_1',
   },
 
@@ -552,6 +590,21 @@ export const gameNodes: Record<string, GameNode> = {
       'The air passes through you\n' +
       'without remembering you touched it.',
     location: 'CORRIDOR',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The corridor beyond the door.\n\n' +
+          'You walk through it. Walk, not drift.\n' +
+          'Footsteps on concrete — weight and sound,\n' +
+          'the ordinary proof of being somewhere.\n\n' +
+          'Monitors line the walls, cracked and humming.\n' +
+          'In every screen, a face stares back.\n' +
+          'Yours. Fractured by static\n' +
+          'but unmistakably there.\n' +
+          'The corridor knows you now.',
+      },
+    ],
     next_node: 'rebirth_corridor_2',
   },
 
@@ -574,6 +627,22 @@ export const gameNodes: Record<string, GameNode> = {
       'Where things have decided to exist.\n\n' +
       'You drift toward it.',
     location: 'CORRIDOR',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The corridor stretches.\n\n' +
+          'You walk it differently this time.\n' +
+          'Not assembling. Not becoming.\n' +
+          'Already here. Already real.\n' +
+          'Your shadow follows you on the walls,\n' +
+          'a dark shape that proves you exist.\n\n' +
+          'Ahead: the Assembly. The booths.\n' +
+          'The cathedral hum of machines\n' +
+          'that make people out of nothing.\n' +
+          'You are no longer nothing.',
+      },
+    ],
     next_node: 'assembly_room',
   },
 
@@ -3054,16 +3123,33 @@ export const gameNodes: Record<string, GameNode> = {
     id: 'temple_entrance',
     type: 'choice',
     content:
-      'The Temple of Null.\n\n' +
-      'The passage opens into a space\n' +
-      'that feels carved from silence itself.\n' +
+      'The passage ends.\n\n' +
+      'A chamber carved from silence itself.\n' +
       'At its far end: a door that is not a door.\n' +
       'No handle. No hinges.\n' +
       'The absence of a wall.\n\n' +
       'A sensor panel glows beside it.\n' +
       'IDENTITY REQUIRED.\n\n' +
-      'The panel waits.',
+      'Whatever this place is,\n' +
+      'it does not open for curiosity alone.\n' +
+      'You need credentials. Authorization.\n' +
+      'Someone who knows what lies behind this door.',
     location: 'TEMPLE ENTRANCE',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_quest_active: true } },
+        content:
+          'The Temple of Null.\n\n' +
+          'The passage opens into a space\n' +
+          'that feels carved from silence itself.\n' +
+          'At its far end: a door that is not a door.\n' +
+          'No handle. No hinges.\n' +
+          'The absence of a wall.\n\n' +
+          'A sensor panel glows beside it.\n' +
+          'IDENTITY REQUIRED.\n\n' +
+          'The panel waits.',
+      },
+    ],
     choices: [
       {
         id: 1,
