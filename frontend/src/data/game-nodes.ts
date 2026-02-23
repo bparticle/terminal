@@ -105,10 +105,10 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 2,
-        text: 'Pull the loose grate and crawl through',
-        next_node: 'corridor_north_via_vent',
-        visibilityRequirements: { state: { has_pfp: true } },
-        requirements: { state: { has_pfp: true } },
+        text: 'Focus on the vent',
+        next_node: 'cold_room_vent_look',
+        visibilityRequirements: { state: { vent_noticed: true } },
+        requirements: { state: { vent_noticed: true } },
       },
       {
         id: 3,
@@ -122,41 +122,66 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 5,
-        text: 'Examine hidden panel',
+        text: 'Follow the frequency — south wall',
         next_node: 'cold_room_hidden_panel',
         requirements: { state: { heard_frequency: true } },
         visibilityRequirements: { state: { heard_frequency: true } },
-      },
-      {
-        id: 6,
-        text: 'Examine the vent',
-        next_node: 'cold_room_vent_look',
-        requirements: { state: { vent_noticed: true } },
-        visibilityRequirements: { state: { vent_noticed: true } },
       },
     ],
   },
 
   cold_room_vent_look: {
     id: 'cold_room_vent_look',
-    type: 'story',
+    type: 'choice',
     content:
       'The vent grate is loose. Beyond it, a narrow shaft\n' +
-      'leads north. You can feel air moving through it.\n' +
-      'The grate is stuck. Something slippery\n' +
-      'might loosen the mechanism.',
+      'leads north. You can feel air moving through it —\n' +
+      'warmer air, carrying the hum of distant machines.\n\n' +
+      'The grate shifts when the air pushes,\n' +
+      'but holds. Rusted screws in damp concrete.\n' +
+      'It would take real force to pull free.\n' +
+      'Real hands. Real weight.\n' +
+      'Things you do not have yet.',
     location: 'COLD ROOM',
+    conditionalContent: [
+      {
+        requirements: { state: { has_pfp: true } },
+        content:
+          'The vent grate. Loose, rusted, familiar.\n' +
+          'Warmer air pushes through from the north,\n' +
+          'carrying the hum of distant machines.\n\n' +
+          'You have hands now. Weight.\n' +
+          'The screws look old. The concrete is damp.\n' +
+          'You could pull this free.',
+      },
+    ],
     effects: { set_state: { vent_noticed: true } },
-    next_node: 'cold_room',
+    choices: [
+      {
+        id: 1,
+        text: 'Pull the vent open and crawl through',
+        next_node: 'vent_crawl',
+        requirements: { state: { has_pfp: true } },
+        visibilityRequirements: { state: { has_pfp: true } },
+      },
+      {
+        id: 2,
+        text: 'Back',
+        next_node: 'cold_room',
+      },
+    ],
   },
 
   cold_room_unlock: {
     id: 'cold_room_unlock',
     type: 'story',
     content:
-      'You kneel. The keyhole is at the base of the door —\n' +
-      'an odd place. The key slides in.\n' +
-      'The teeth of the key are shaped like a waveform.\n' +
+      'The keyhole is at the base of the door —\n' +
+      'an odd place. You will the key toward it\n' +
+      'and it finds the slot on its own,\n' +
+      'drawn by the same frequency\n' +
+      'that led you to it.\n\n' +
+      'The teeth are shaped like a waveform.\n' +
       'The door vibrates once. Then opens.\n\n' +
       'Beyond: a corridor stretching north.\n' +
       'The hum is louder here.',
@@ -169,12 +194,17 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'The frequency you heard... it came from here.\n' +
-      'You press your hand against the south wall.\n' +
-      'The wall vibrates in response.\n' +
-      'A panel slides open — a compartment hidden\n' +
+      'You stand close to the south wall.\n' +
+      'Close enough to feel it respond —\n' +
+      'not to touch, but to attention.\n' +
+      'The wall knows you are listening.\n\n' +
+      'A panel slides open. Not mechanically.\n' +
+      'Reluctantly. A compartment hidden\n' +
       'behind the concrete.\n\n' +
       'Inside: a strange key. It hums faintly.\n' +
-      'It feels old. Older than the room.',
+      'It drifts toward you the way things drift\n' +
+      'toward the only thing in the room\n' +
+      'that is paying attention.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['echo_key'],
@@ -244,11 +274,13 @@ export const gameNodes: Record<string, GameNode> = {
       'It opens — not mechanically. Reluctantly.\n' +
       'Like it was hoping you would not find it.\n\n' +
       'Inside: a physical key.\n' +
-      'Strange to find here. It feels wrong —\n' +
-      'too solid, too real for a place like this.\n' +
+      'Strange to find here. Too solid,\n' +
+      'too real for a place like this.\n' +
       'It has no manufacturer markings.\n' +
-      'The teeth are shaped like a waveform.\n' +
-      'It is warm. It should not be warm.',
+      'The teeth are shaped like a waveform.\n\n' +
+      'It slides toward you — drawn to your attention\n' +
+      'the way a compass needle finds north.\n' +
+      'You don\'t take it. It arrives.',
     location: 'COLD ROOM',
     effects: {
       add_item: ['cold_room_key'],
@@ -794,9 +826,10 @@ export const gameNodes: Record<string, GameNode> = {
     ],
   },
 
-  corridor_north_via_vent: {
-    id: 'corridor_north_via_vent',
+  vent_crawl: {
+    id: 'vent_crawl',
     type: 'story',
+    social: false,
     content:
       'You grip the grate with both hands.\n\n' +
       'Your hands. Solid now. Fingers that close\n' +
@@ -805,11 +838,152 @@ export const gameNodes: Record<string, GameNode> = {
       'screws shearing from damp concrete\n' +
       'with a sound like something tearing free.\n\n' +
       'You squeeze through the shaft.\n' +
-      'The metal groans around you.\n' +
-      'After what feels like too long, you emerge\n' +
-      'into a corridor lined with cracked monitors.',
-    location: 'CORRIDOR NORTH',
-    next_node: 'corridor_north',
+      'The metal groans around you,\n' +
+      'too narrow, too close.\n' +
+      'But the shaft doesn\'t lead out.\n' +
+      'It leads down. Then sideways.\n' +
+      'Then into a space that shouldn\'t exist.',
+    location: 'BETWEEN WALLS',
+    next_node: 'vent_crawlspace',
+  },
+
+  vent_crawlspace: {
+    id: 'vent_crawlspace',
+    type: 'choice',
+    social: false,
+    content:
+      'A crawlspace between the walls.\n\n' +
+      'Not a room. Not a corridor.\n' +
+      'A gap in the architecture — the negative space\n' +
+      'between where the cold room ends\n' +
+      'and where the next room begins.\n' +
+      'A place the builders left by accident,\n' +
+      'or on purpose, or because the facility\n' +
+      'grew around it the way a tree grows\n' +
+      'around a fence.\n\n' +
+      'It is small. Low ceiling. Warm pipes\n' +
+      'run along one wall, sweating condensation\n' +
+      'into a shallow puddle that has been here\n' +
+      'longer than you have been alive.\n\n' +
+      'And on every surface — the walls,\n' +
+      'the pipes, the underside of the ductwork —\n' +
+      'scratches. Marks. Writing.\n' +
+      'Hundreds of them. Maybe thousands.\n' +
+      'Layered on top of each other\n' +
+      'in different hands, different tools,\n' +
+      'different degrees of desperation.\n\n' +
+      'Someone was here before you.\n' +
+      'Many someones.',
+    location: 'BETWEEN WALLS',
+    choices: [
+      {
+        id: 1,
+        text: 'Read the oldest scratches',
+        next_node: 'vent_scratches_old',
+      },
+      {
+        id: 2,
+        text: 'Read the newest scratches',
+        next_node: 'vent_scratches_new',
+      },
+      {
+        id: 3,
+        text: 'Examine the tally marks',
+        next_node: 'vent_tally_marks',
+      },
+      {
+        id: 4,
+        text: 'Crawl back to the cold room',
+        next_node: 'cold_room',
+      },
+    ],
+  },
+
+  vent_scratches_old: {
+    id: 'vent_scratches_old',
+    type: 'story',
+    social: false,
+    content:
+      'The oldest scratches are near the floor,\n' +
+      'half-dissolved by condensation.\n' +
+      'You have to press your face close\n' +
+      'to the damp metal to read them.\n\n' +
+      '"I woke in the cold room. I was the first."\n' +
+      '"There is no outside. I have looked."\n' +
+      '"The terminal knows my name. I never told it."\n' +
+      '"The machines in the big room\n' +
+      ' are for becoming. I do not want to become."\n' +
+      '"Day 7. Or iteration 7. Same thing here."\n\n' +
+      'The handwriting changes near the end.\n' +
+      'Shakier. Smaller.\n\n' +
+      '"I think the building is dreaming\n' +
+      ' and we are what it dreams."\n\n' +
+      'After that: nothing. Whoever wrote this\n' +
+      'either left or became part of the dream.',
+    location: 'BETWEEN WALLS',
+    effects: {
+      set_state: { read_old_scratches: true },
+    },
+    next_node: 'vent_crawlspace',
+  },
+
+  vent_scratches_new: {
+    id: 'vent_scratches_new',
+    type: 'story',
+    social: false,
+    content:
+      'The newest scratches are sharp, clean.\n' +
+      'Recent. The metal filings still cling\n' +
+      'to the edges of the letters.\n\n' +
+      '"Iteration 47. They reset again."\n' +
+      '"The Guild says this is preservation.\n' +
+      ' The Void says this is evolution.\n' +
+      ' I say this is a loop."\n' +
+      '"I found the crawlspace the same way you did.\n' +
+      ' After the booth. After the face.\n' +
+      ' I came back to where I started\n' +
+      ' and pulled the grate open\n' +
+      ' because I finally could."\n' +
+      '"If you are reading this,\n' +
+      ' you are iteration 48.\n' +
+      ' Or later. Does it matter?"\n\n' +
+      'The last line is scratched deeper\n' +
+      'than the others, as if the writer\n' +
+      'pressed hard enough to mean it:\n\n' +
+      '"The cold room is not the beginning.\n' +
+      ' It is the seam."',
+    location: 'BETWEEN WALLS',
+    effects: {
+      set_state: { read_new_scratches: true },
+    },
+    next_node: 'vent_crawlspace',
+  },
+
+  vent_tally_marks: {
+    id: 'vent_tally_marks',
+    type: 'story',
+    social: false,
+    content:
+      'On the underside of a pipe,\n' +
+      'where you almost didn\'t look:\n' +
+      'tally marks.\n\n' +
+      'Groups of five, scratched in neat rows.\n' +
+      'You count them. Lose count. Start again.\n\n' +
+      'Forty-seven groups.\n' +
+      'One for each iteration.\n\n' +
+      'The forty-seventh group has only four marks.\n' +
+      'The fifth was never finished.\n' +
+      'Whoever was counting did not get to complete\n' +
+      'the set before everything reset.\n\n' +
+      'There is space on the pipe\n' +
+      'for a forty-eighth mark.\n' +
+      'The metal is clean there. Waiting.\n' +
+      'As if someone left room for you.',
+    location: 'BETWEEN WALLS',
+    effects: {
+      set_state: { saw_tally_marks: true },
+    },
+    next_node: 'vent_crawlspace',
   },
 
   corridor_north_monitor: {

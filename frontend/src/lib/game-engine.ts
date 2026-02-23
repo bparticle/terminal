@@ -103,6 +103,11 @@ export class GameEngine {
     // Fetch owned NFTs in background
     this.fetchNFTs(walletAddress);
 
+    // Push loaded inventory to UI so it renders after a refresh
+    if (this.save.inventory.length > 0) {
+      this.inventoryChangeFn?.(this.buildInventoryItems());
+    }
+
     // Only show PFP on the monitor if the current game state has earned it
     if (this.pfpImageUrl && this.save.game_state.has_pfp) {
       window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: this.pfpImageUrl } }));
