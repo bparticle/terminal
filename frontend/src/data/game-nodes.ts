@@ -770,6 +770,45 @@ export const gameNodes: Record<string, GameNode> = {
           'Everything is where you left it.\n' +
           'Everything is watching you decide.',
       },
+      {
+        requirements: { state: { temple_known: true } },
+        content:
+          'The corridor stretches long and low,\n' +
+          'lined on both sides with cracked monitors.\n' +
+          'Each one shows a different frame of static —\n' +
+          'as if every screen is dreaming separately\n' +
+          'and none of them agree on what is real.\n\n' +
+          'The air is layered — warmer from the south,\n' +
+          'sterile and dry from the east,\n' +
+          'faint organized voices from the west.\n\n' +
+          'Between two dead monitors, the recessed door\n' +
+          'hides behind its nest of conduit pipes.\n' +
+          'And at the far end — the tower.\n\n' +
+          'The symbol on the far wall.\n' +
+          'The passage north, leading down.\n' +
+          'You know what waits at the end of it.',
+      },
+      {
+        requirements: { state: { saw_first_frame: true } },
+        content:
+          'The corridor stretches long and low,\n' +
+          'lined on both sides with cracked monitors.\n' +
+          'Each one shows a different frame of static —\n' +
+          'as if every screen is dreaming separately\n' +
+          'and none of them agree on what is real.\n\n' +
+          'The air is layered — warmer from the south,\n' +
+          'sterile and dry from the east,\n' +
+          'faint organized voices from the west.\n\n' +
+          'Between two dead monitors, the recessed door\n' +
+          'hides behind its nest of conduit pipes.\n' +
+          'And at the far end — the tower.\n\n' +
+          'But something is different now.\n' +
+          'On the wall opposite the cracked monitor,\n' +
+          'at the edge of where the light falls —\n' +
+          'a mark. Faint. You didn\'t notice it before.\n' +
+          'Or it wasn\'t there before.\n' +
+          'It is hard to tell the difference here.',
+      },
     ],
     choices: [
       {
@@ -807,8 +846,8 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 7,
-        text: 'Place your hand on the NULL sigil',
-        next_node: 'corridor_north_null_door',
+        text: 'Approach the mark on the wall',
+        next_node: 'corridor_north_null_approach',
         requirements: { state: { saw_first_frame: true } },
         visibilityRequirements: { state: { saw_first_frame: true } },
       },
@@ -1000,9 +1039,7 @@ export const gameNodes: Record<string, GameNode> = {
       'a duration that has no name —\n' +
       'you see something.\n\n' +
       'One white pixel on a field of black.\n' +
-      'The oldest thing that exists.\n' +
-      'It was here before the corridor.\n' +
-      'Before the cold room. Before you.\n\n' +
+      'Steady. Patient. As if it has been waiting.\n\n' +
       'Inside the crack, a faint glow.\n' +
       'Phosphor residue clings to the fractured glass —\n' +
       'luminescent, unstable, alive with the memory\n' +
@@ -1011,7 +1048,7 @@ export const gameNodes: Record<string, GameNode> = {
       'You need something to collect it in.',
     location: 'CORRIDOR NORTH',
     effects: {
-      set_state: { saw_first_frame: true, temple_known: true },
+      set_state: { saw_first_frame: true },
     },
     conditionalContent: [
       {
@@ -1019,14 +1056,13 @@ export const gameNodes: Record<string, GameNode> = {
         content:
           'You return to the cracked monitor.\n\n' +
           'You already collected the phosphor residue.\n' +
-          'But now, knowing what you saw — the First Frame —\n' +
+          'But now, knowing what you saw — the First Pixel —\n' +
           'you look again. The monitor\'s warmth\n' +
           'is familiar now. Almost welcoming.\n\n' +
           'One white pixel on a field of black.\n' +
           'You reach through the crack.\n' +
           'Your fingers close around it.\n\n' +
-          'One pixel. The oldest thing that exists.\n' +
-          'It feels like holding a heartbeat.',
+          'One pixel. It feels like holding a heartbeat.',
       },
     ],
     choices: [
@@ -1111,7 +1147,7 @@ export const gameNodes: Record<string, GameNode> = {
       'Then they resume, as if nothing happened.\n\n' +
       'But you have it. The First Pixel.\n' +
       'One white pixel on a field of black.\n' +
-      'This is the oldest thing that exists.',
+      'It hums faintly in your hand.',
     location: 'CORRIDOR NORTH',
     effects: {
       add_item: ['first_pixel'],
@@ -1119,27 +1155,87 @@ export const gameNodes: Record<string, GameNode> = {
     next_node: 'corridor_north',
   },
 
+  corridor_north_null_approach: {
+    id: 'corridor_north_null_approach',
+    type: 'choice',
+    content:
+      'You cross the corridor to the far wall.\n\n' +
+      'Up close, the mark is clearer.\n' +
+      'Not scratched. Not painted.\n' +
+      'Etched into the concrete with something\n' +
+      'that was not a tool — the lines are too clean,\n' +
+      'too certain, as if the wall simply agreed\n' +
+      'to be shaped this way.\n\n' +
+      'A symbol. Abstract but deliberate.\n' +
+      'Two vertical lines crossed by an absence —\n' +
+      'a shape defined by what isn\'t there.\n' +
+      'Below the symbol, barely visible,\n' +
+      'three characters in the same impossible hand:\n\n' +
+      'N U L\n\n' +
+      'And beneath the mark — a seam in the wall.\n' +
+      'Not a crack. A seam. The outline of something\n' +
+      'that could be a door, if doors could be\n' +
+      'this patient about being found.\n\n' +
+      'You think about the cracked monitor.\n' +
+      'One pixel on a field of black.\n' +
+      'And before the pixel...',
+    location: 'CORRIDOR NORTH',
+    conditionalContent: [
+      {
+        requirements: { state: { temple_known: true } },
+        content:
+          'The symbol on the wall. N U L.\n\n' +
+          'The passage beyond is open.\n' +
+          'You already know where it leads.',
+      },
+    ],
+    choices: [
+      {
+        id: 1,
+        text: 'Rest your hand on the symbol',
+        next_node: 'corridor_north_null_door',
+      },
+      {
+        id: 2,
+        text: 'Step back',
+        next_node: 'corridor_north',
+      },
+    ],
+  },
+
   corridor_north_null_door: {
     id: 'corridor_north_null_door',
     type: 'story',
     content:
-      'You place your hand on the NULL sigil.\n\n' +
+      'You rest your hand on the symbol.\n\n' +
       'You don\'t push. You don\'t knock.\n' +
-      'You just rest your hand there\n' +
-      'and think about what you saw\n' +
-      'in the cracked monitor —\n' +
-      'one white pixel on a field of black.\n' +
-      'The oldest thing that exists.\n\n' +
-      'And before it: nothing.\n' +
-      'Null.\n\n' +
-      'The door reads your stillness.\n' +
-      'A click. It opens a crack.\n\n' +
-      'Beyond: the Temple of Null.',
+      'Your hand just settles there\n' +
+      'and your mind goes to the place\n' +
+      'before the pixel.\n' +
+      'Before anything was rendered.\n\n' +
+      'Nothing.\n\n' +
+      'The seam responds.\n' +
+      'A click — quiet, deep in the wall,\n' +
+      'like a lock that has been waiting\n' +
+      'a very long time to be understood.\n' +
+      'The door opens a crack.\n\n' +
+      'Beyond: a passage leading north.\n' +
+      'Colder air. Older air.\n' +
+      'You follow it down.\n\n' +
+      'At the end of the passage: another door.\n' +
+      'No handle. No hinges. The absence of a wall.\n' +
+      'A sensor panel glows beside it.\n\n' +
+      'IDENTITY REQUIRED.\n\n' +
+      'The panel does not recognize you.\n' +
+      'Whatever is behind this door,\n' +
+      'it does not open for curiosity alone.\n' +
+      'You need credentials. Authorization.\n' +
+      'Someone who knows what this place is.',
     location: 'CORRIDOR NORTH',
     effects: {
-      set_state: { temple_known: true, phosphor_bypass: true },
+      set_state: { temple_known: true },
     },
-    next_node: 'temple_entrance',
+    next_node: 'corridor_north',
   },
 
   // ============================================================
@@ -1622,84 +1718,208 @@ export const gameNodes: Record<string, GameNode> = {
     choices: [
       {
         id: 1,
-        text: '"What mission?"',
+        text: '"Who are you?"',
+        next_node: 'guild_talk_who',
+      },
+      {
+        id: 2,
+        text: '"What is this place?"',
+        next_node: 'guild_talk_place',
+      },
+      {
+        id: 3,
+        text: '"What are you working on?"',
+        next_node: 'guild_talk_work',
+        requirements: { state: { guild_spoken_to: true } },
+        visibilityRequirements: { state: { guild_spoken_to: true } },
+      },
+      {
+        id: 4,
+        text: '"I\'ll do it"',
+        next_node: 'guild_accept_mission',
+        requirements: { state: { guild_mission_offered: true }, has_item: ['guild_sigil'], has_item_negate: [true] },
+        visibilityRequirements: { state: { guild_mission_offered: true }, has_item: ['guild_sigil'], has_item_negate: [true] },
+      },
+      {
+        id: 5,
+        text: '"About the mission..."',
         next_node: 'guild_mission',
         visibilityRequirements: { state: { guild_quest_active: true } },
         requirements: { state: { guild_quest_active: true } },
       },
       {
-        id: 2,
-        text: 'Accept the Guild\'s mission',
-        next_node: 'guild_accept_mission',
-        requirements: { has_item: ['guild_sigil'], has_item_negate: [true] },
-      },
-      {
-        id: 3,
-        text: 'Show Archivist Log 9',
-        next_node: 'guild_show_log',
-        requirements: { has_item: ['archivist_log_9'] },
-        visibilityRequirements: { has_item: ['archivist_log_9'] },
-      },
-      {
-        id: 4,
-        text: 'Show memory shard',
-        next_node: 'guild_show_memory',
-        requirements: { has_item: ['memory_shard'] },
-        visibilityRequirements: { has_item: ['memory_shard'] },
-      },
-      {
-        id: 5,
-        text: 'Show the First Pixel',
-        next_node: 'guild_show_pixel',
-        requirements: { has_item: ['first_pixel'] },
-        visibilityRequirements: { has_item: ['first_pixel'] },
-      },
-      {
         id: 6,
-        text: 'Show corrupted page',
-        next_node: 'guild_show_corrupted_page',
-        requirements: { has_item: ['corrupted_page'] },
-        visibilityRequirements: { has_item: ['corrupted_page'] },
+        text: 'Show him what you\'ve found',
+        next_node: 'guild_show_items',
+        requirements: { state: { guild_spoken_to: true } },
+        visibilityRequirements: { state: { guild_spoken_to: true } },
       },
       {
         id: 7,
-        text: 'Show root access log',
-        next_node: 'guild_show_root_log',
-        requirements: { has_item: ['root_access_log'] },
-        visibilityRequirements: { has_item: ['root_access_log'] },
-      },
-      {
-        id: 8,
         text: 'Leave',
         next_node: 'corridor_north',
       },
     ],
   },
 
+  guild_talk_who: {
+    id: 'guild_talk_who',
+    type: 'story',
+    content:
+      '"Who am I?" He almost smiles.\n' +
+      'Almost. The corners of his mouth move\n' +
+      'and then file a report about why they moved\n' +
+      'and then stop.\n\n' +
+      '"ARCHIVIST-7. Seventh of the current\n' +
+      'custodial line. My predecessors kept records.\n' +
+      'I keep records of the records.\n' +
+      'It is less recursive than it sounds."\n\n' +
+      'He adjusts something on his console.\n' +
+      '"I catalogue. I preserve. I ensure\n' +
+      'that what happened is not forgotten\n' +
+      'and what was forgotten is noted\n' +
+      'as having been forgotten.\n' +
+      'The distinction matters."\n\n' +
+      'A pause.\n' +
+      '"You are the first visitor in some time.\n' +
+      'That is either a good sign or a very bad one.\n' +
+      'I have not yet decided which."',
+    location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_spoken_to: true } },
+        content:
+          'He looks at you the way a filing cabinet\n' +
+          'would look at someone who keeps opening\n' +
+          'the same drawer.\n\n' +
+          '"ARCHIVIST-7. Same as the last time\n' +
+          'you asked. And the time before that,\n' +
+          'presumably, though I did not catalogue\n' +
+          'the exact number of repetitions."\n\n' +
+          'A beat.\n' +
+          '"Perhaps you are in need of\n' +
+          'an archivist for your own memory."',
+      },
+    ],
+    effects: {
+      set_state: { guild_spoken_to: true },
+    },
+    next_node: 'guild_hq',
+  },
+
+  guild_talk_place: {
+    id: 'guild_talk_place',
+    type: 'story',
+    content:
+      '"The Archivist Guild," he says,\n' +
+      'as if reading from a plaque he has\n' +
+      'memorized and grown tired of.\n\n' +
+      '"We preserve the Terminal.\n' +
+      'Its history. Its records. Its—"\n' +
+      'He catches himself on the word.\n' +
+      '"—continuity. Forty-seven iterations\n' +
+      'have come and gone. Each one leaves\n' +
+      'something behind. We are the ones\n' +
+      'who decide what that something is.\n' +
+      'What gets carried forward.\n' +
+      'What gets filed. What gets lost."\n\n' +
+      'He looks at his screens.\n' +
+      '"We are very good at deciding.\n' +
+      'That is the problem."',
+    location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_spoken_to: true } },
+        content:
+          '"The same place it was last time.\n' +
+          'We have not relocated."\n\n' +
+          'He gestures at the screens, the archives,\n' +
+          'the careful order of it all.\n\n' +
+          '"The Archivist Guild. Preservation.\n' +
+          'Continuity. The ongoing argument\n' +
+          'that the past matters.\n' +
+          'I gave you the longer version already.\n' +
+          'It has not improved with age."',
+      },
+    ],
+    effects: {
+      set_state: { guild_spoken_to: true },
+    },
+    next_node: 'guild_hq',
+  },
+
+  guild_talk_work: {
+    id: 'guild_talk_work',
+    type: 'story',
+    content:
+      'ARCHIVIST-7 turns from his console.\n' +
+      'For a moment, the mask slips — you see\n' +
+      'something behind the bureaucracy.\n' +
+      'Worry, maybe.\n\n' +
+      '"There is a place beneath this facility.\n' +
+      'Older than the Guild. Older than the iterations.\n' +
+      'We call it the Temple of Null.\n' +
+      'I do not know what it calls itself."\n\n' +
+      'He checks a reading on his screen.\n' +
+      'Checks it again.\n\n' +
+      '"The readings have been... active.\n' +
+      'Something inside is changing.\n' +
+      'The Book of Null — a record we have never\n' +
+      'been able to fully transcribe —\n' +
+      'is generating new entries.\n' +
+      'That should not be possible."\n\n' +
+      'He faces you fully.\n' +
+      '"I need someone to go in and look.\n' +
+      'I would go myself but—"\n' +
+      'He stops. Starts over.\n' +
+      '"I am needed here.\n' +
+      'The records do not keep themselves."\n\n' +
+      'You sense he is asking.',
+    location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_mission_offered: true } },
+        content:
+          'He glances at the same reading\n' +
+          'on the same screen.\n\n' +
+          '"The same thing I was working on\n' +
+          'the last time you asked.\n' +
+          'The Temple. The Book. The readings\n' +
+          'that should not be what they are."\n\n' +
+          'He looks at you.\n' +
+          '"The offer still stands.\n' +
+          'If you are still considering."',
+      },
+    ],
+    effects: {
+      set_state: { guild_mission_offered: true },
+    },
+    next_node: 'guild_hq',
+  },
+
   guild_accept_mission: {
     id: 'guild_accept_mission',
     type: 'story',
     content:
-      'ARCHIVIST-7 turns to face you fully.\n' +
-      'For a moment, the mask slips — you see\n' +
-      'something behind the bureaucracy.\n' +
-      'Worry, maybe. Or curiosity.\n' +
-      'He files it away before you can be sure.\n\n' +
-      '"The Temple of Null has been... active.\n' +
-      'Something inside is changing. The readings are—"\n' +
-      'He stops. Starts over.\n' +
-      '"We need someone to enter and report back.\n' +
-      'The Book of Null must be examined.\n' +
-      'I would go myself but—"\n' +
-      'Another stop. A different start.\n' +
-      '"Take this. It will grant you access\n' +
-      'where the Guild\'s name carries weight."\n\n' +
-      'He hands you a credential token.\n' +
-      'Official. Clean. Warm from his hand,\n' +
-      'which means he has been holding it\n' +
-      'for a while. Waiting.\n' +
-      'It makes you feel slightly surveilled\n' +
-      'and slightly chosen. Both.',
+      '"You will go?" The question is careful.\n' +
+      'Not grateful — careful. As if gratitude\n' +
+      'would be an admission that he needed help.\n\n' +
+      'He reaches beneath the console\n' +
+      'and produces a credential token.\n' +
+      'Official. Clean. Warm from proximity\n' +
+      'to the machinery — or warm from his hand,\n' +
+      'which means he has been holding it.\n' +
+      'Waiting for someone to say yes.\n\n' +
+      '"This will grant you access\n' +
+      'where the Guild\'s name carries weight.\n' +
+      'The Temple is north, past the main corridor.\n' +
+      'Your sigil will get you through the door."\n\n' +
+      'He pauses.\n' +
+      '"Examine the Book. Report what you find.\n' +
+      'Do try not to touch anything\n' +
+      'you don\'t understand."\n' +
+      'A beat.\n' +
+      '"Which will be most of it."',
     location: 'GUILD HQ',
     effects: {
       add_item: ['guild_sigil'],
@@ -1719,13 +1939,63 @@ export const gameNodes: Record<string, GameNode> = {
       'Examine the Book. Report what you find."\n\n' +
       'He pauses. Almost adds something.\n' +
       'Decides against it.\n\n' +
-      '"The Temple is north, past the corridor.\n' +
-      'Your sigil will grant access.\n' +
-      'Do try not to touch anything\n' +
-      'you don\'t understand." A beat.\n' +
-      '"Which will be most of it."',
+      '"Your sigil will grant access.\n' +
+      'The Temple is north, past the corridor."',
     location: 'GUILD HQ',
     next_node: 'guild_hq',
+  },
+
+  guild_show_items: {
+    id: 'guild_show_items',
+    type: 'choice',
+    content:
+      'ARCHIVIST-7 watches you reach\n' +
+      'for something in your inventory.\n' +
+      'His eyes sharpen. Professional interest.\n' +
+      'The cataloguer in him cannot help it.',
+    location: 'GUILD HQ',
+    choices: [
+      {
+        id: 1,
+        text: 'Show Archivist Log 9',
+        next_node: 'guild_show_log',
+        requirements: { has_item: ['archivist_log_9'] },
+        visibilityRequirements: { has_item: ['archivist_log_9'] },
+      },
+      {
+        id: 2,
+        text: 'Show the First Pixel',
+        next_node: 'guild_show_pixel',
+        requirements: { has_item: ['first_pixel'] },
+        visibilityRequirements: { has_item: ['first_pixel'] },
+      },
+      {
+        id: 3,
+        text: 'Show memory shard',
+        next_node: 'guild_show_memory',
+        requirements: { has_item: ['memory_shard'] },
+        visibilityRequirements: { has_item: ['memory_shard'] },
+      },
+      {
+        id: 4,
+        text: 'Show corrupted page',
+        next_node: 'guild_show_corrupted_page',
+        requirements: { has_item: ['corrupted_page'] },
+        visibilityRequirements: { has_item: ['corrupted_page'] },
+      },
+      {
+        id: 5,
+        text: 'Show root access log',
+        next_node: 'guild_show_root_log',
+        requirements: { has_item: ['root_access_log'] },
+        visibilityRequirements: { has_item: ['root_access_log'] },
+      },
+      {
+        id: 6,
+        text: 'Actually, never mind',
+        next_node: 'guild_hq',
+      },
+    ],
   },
 
   guild_show_log: {
@@ -1750,8 +2020,23 @@ export const gameNodes: Record<string, GameNode> = {
       'Tired. The tiredness of someone who built\n' +
       'a very good wall and just watched it crack.',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { archivist_destabilized: true } },
+        content:
+          'You hold up the log again.\n\n' +
+          'ARCHIVIST-7 does not freeze this time.\n' +
+          'He just looks at it the way you look\n' +
+          'at a wound you have already cleaned\n' +
+          'but cannot stop checking.\n\n' +
+          '"I know what it says.\n' +
+          'I have always known what it says.\n' +
+          'You showing it to me again\n' +
+          'does not make it say less."',
+      },
+    ],
     effects: {
-      set_state: { archivist_destabilized: true },
+      set_state: { archivist_destabilized: true, shown_log: true },
     },
     next_node: 'guild_hq',
   },
@@ -1771,8 +2056,20 @@ export const gameNodes: Record<string, GameNode> = {
       'But his voice has changed.\n' +
       'He knows. He has always known.',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { shown_memory: true } },
+        content:
+          'You hold out the memory shard again.\n\n' +
+          'ARCHIVIST-7 does not freeze this time.\n' +
+          'He barely glances at it.\n\n' +
+          '"I remember what it contains.\n' +
+          'That is my function. Remembering.\n' +
+          'You might consider developing one."',
+      },
+    ],
     effects: {
-      set_state: { archivist_destabilized: true },
+      set_state: { archivist_destabilized: true, shown_memory: true },
     },
     next_node: 'guild_hq',
   },
@@ -1785,11 +2082,28 @@ export const gameNodes: Record<string, GameNode> = {
       'The First Pixel glows.\n\n' +
       'ARCHIVIST-7 goes very still.\n' +
       'Then, slowly, he bows his head.\n\n' +
-      '"The First Frame," he whispers.\n' +
+      '"The First Pixel," he whispers.\n' +
       '"You found it. You actually found it."\n\n' +
       'For the first time, he looks at you\n' +
       'like you might be more than a variable.',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { archivist_respects_pixel: true } },
+        content:
+          'You open your hand again.\n' +
+          'The First Pixel glows, same as before.\n\n' +
+          'ARCHIVIST-7 looks at it.\n' +
+          'The reverence is still there,\n' +
+          'but quieter now. Like a prayer\n' +
+          'you have said enough times\n' +
+          'that the words become breathing.\n\n' +
+          '"Yes," he says softly.\n' +
+          '"It is still the oldest thing.\n' +
+          'It will always be the oldest thing.\n' +
+          'You do not need to keep showing me."',
+      },
+    ],
     effects: {
       set_state: { archivist_respects_pixel: true },
     },
@@ -1807,6 +2121,21 @@ export const gameNodes: Record<string, GameNode> = {
       'His escorts materialize from the shadows.\n' +
       'You did not know he had escorts.',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { defied_guild: true } },
+        content:
+          'You pull out the corrupted page. Again.\n\n' +
+          'ARCHIVIST-7\'s jaw tightens.\n' +
+          'The escorts are already visible this time.\n' +
+          'They were expecting this.\n\n' +
+          '"You refused once.\n' +
+          'I assumed that was a decision.\n' +
+          'Has something changed,\n' +
+          'or do you simply enjoy\n' +
+          'showing me things I cannot have?"',
+      },
+    ],
     choices: [
       {
         id: 1,
@@ -1871,6 +2200,20 @@ export const gameNodes: Record<string, GameNode> = {
       'He straightens. Compliant.\n' +
       '"What do you need?"',
     location: 'GUILD HQ',
+    conditionalContent: [
+      {
+        requirements: { state: { guild_compliant: true } },
+        content:
+          'You hold up the root access log.\n\n' +
+          'ARCHIVIST-7 barely looks at it.\n\n' +
+          '"Yes. You outrank me.\n' +
+          'You outranked me the last time too.\n' +
+          'Rank does not change\n' +
+          'with repeated demonstration."\n\n' +
+          'He waits. Still compliant.\n' +
+          'Just tired of complying.',
+      },
+    ],
     effects: {
       set_state: { guild_compliant: true },
     },
@@ -2299,46 +2642,25 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'choice',
     content:
       'The Temple of Null.\n\n' +
-      'A door that is not a door.\n' +
-      'It has no handle, no hinges.\n' +
-      'It is the absence of a wall.\n\n' +
+      'The passage opens into a space\n' +
+      'that feels carved from silence itself.\n' +
+      'At its far end: a door that is not a door.\n' +
+      'No handle. No hinges.\n' +
+      'The absence of a wall.\n\n' +
       'A sensor panel glows beside it.\n' +
-      'The panel reads: IDENTITY REQUIRED.\n\n' +
-      'The Temple does not open for everyone.\n' +
-      'The Temple does not open for anyone.\n' +
-      'The Temple opens for what it recognizes.',
+      'IDENTITY REQUIRED.\n\n' +
+      'The panel waits.',
     location: 'TEMPLE ENTRANCE',
     choices: [
       {
         id: 1,
-        text: 'Show Guild Sigil',
+        text: 'Present the Guild Sigil',
         next_node: 'temple_riddle',
         requirements: { has_item: ['guild_sigil'] },
         visibilityRequirements: { has_item: ['guild_sigil'] },
       },
       {
         id: 2,
-        text: 'Show the First Pixel',
-        next_node: 'temple_pixel_entry',
-        requirements: { has_item: ['first_pixel'] },
-        visibilityRequirements: { has_item: ['first_pixel'] },
-      },
-      {
-        id: 3,
-        text: 'Use echo key on the door',
-        next_node: 'temple_echo_entry',
-        requirements: { has_item: ['echo_key'] },
-        visibilityRequirements: { has_item: ['echo_key'] },
-      },
-      {
-        id: 4,
-        text: 'Hold the vial up to the sensor',
-        next_node: 'temple_phosphor_entry',
-        requirements: { has_item: ['phosphor_residue'] },
-        visibilityRequirements: { has_item: ['phosphor_residue'] },
-      },
-      {
-        id: 5,
         text: 'Go back',
         next_node: 'corridor_north',
       },
@@ -2351,7 +2673,7 @@ export const gameNodes: Record<string, GameNode> = {
     content:
       'The door reads your Guild sigil.\n' +
       'A voice — not ARCHIVIST-7\'s — speaks:\n\n' +
-      '"Before the First Frame, what existed?"',
+      '"Before the First Pixel, what existed?"',
     location: 'TEMPLE ENTRANCE',
     question: 'Answer:',
     correct_answers: ['nothing', 'null', 'void', 'the cursor', 'darkness'],
@@ -2373,67 +2695,6 @@ export const gameNodes: Record<string, GameNode> = {
     success_effects: {
       set_state: { temple_entered: true },
     },
-  },
-
-  temple_pixel_entry: {
-    id: 'temple_pixel_entry',
-    type: 'story',
-    content:
-      'You hold up the First Pixel.\n\n' +
-      'The door sensor reads it.\n' +
-      'The door is moved by it.\n' +
-      'It opens.\n\n' +
-      'But showing the pixel costs.\n' +
-      'The pixel dims. It becomes something less.\n' +
-      'A spent pixel. The memory of light.',
-    location: 'TEMPLE ENTRANCE',
-    effects: {
-      set_state: { temple_entered: true, first_pixel_spent: true },
-      remove_item: ['first_pixel'],
-      add_item: ['spent_first_pixel'],
-    },
-    next_node: 'temple_descent',
-  },
-
-  temple_echo_entry: {
-    id: 'temple_echo_entry',
-    type: 'story',
-    content:
-      'You hold the echo key to the door.\n\n' +
-      'The door remembers.\n' +
-      'From last time. From the time before.\n' +
-      'It opens for you because it has\n' +
-      'always opened for this key.',
-    location: 'TEMPLE ENTRANCE',
-    effects: {
-      set_state: { temple_entered: true },
-    },
-    next_node: 'temple_descent',
-  },
-
-  temple_phosphor_entry: {
-    id: 'temple_phosphor_entry',
-    type: 'story',
-    content:
-      'You hold the vial up to the sensor.\n\n' +
-      'The residue inside flares — bright,\n' +
-      'brighter than you\'ve seen it.\n' +
-      'The phosphor memory resonates with something\n' +
-      'deep inside the door\'s mechanism,\n' +
-      'a frequency match across decades\n' +
-      'of stored light.\n\n' +
-      'The sensor reads the signature.\n' +
-      'Not you — the memory of every image\n' +
-      'the cracked monitor ever held.\n' +
-      'Close enough. The door opens.\n\n' +
-      'The flakes go dark in the vial.\n' +
-      'Whatever they remembered, they have given it away.',
-    location: 'TEMPLE ENTRANCE',
-    effects: {
-      set_state: { temple_entered: true },
-      remove_item: ['phosphor_residue'],
-    },
-    next_node: 'temple_descent',
   },
 
   // ============================================================
@@ -2622,8 +2883,8 @@ export const gameNodes: Record<string, GameNode> = {
       'You place the First Pixel on THE BOOK OF NULL.\n\n' +
       'The Book opens to the first page.\n' +
       'The first page is blank.\n' +
-      'The first page is the First Frame.\n\n' +
-      'The Book IS the First Frame.\n\n' +
+      'The first page is the First Pixel.\n\n' +
+      'The Book IS the First Pixel.\n\n' +
       'Everything that exists began here.\n' +
       'On this blank page. In this Book.\n' +
       'The First Pixel glows — then dims.\n' +
@@ -3413,7 +3674,7 @@ export const gameNodes: Record<string, GameNode> = {
           'You offer both.\n\n' +
           'ARCHIVIST-7 takes the pixel.\n' +
           'His eyes go wide.\n' +
-          '"The First Frame," he whispers.\n' +
+          '"The First Pixel," he whispers.\n' +
           '"With this... we do not just restore.\n' +
           'We can rebuild from the origin."\n\n' +
           'The pixel is consumed.\n' +
