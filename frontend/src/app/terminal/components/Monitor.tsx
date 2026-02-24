@@ -2,8 +2,19 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-const MAX_RETRIES = 4;
-const RETRY_DELAYS = [2000, 4000, 8000, 15000];
+/**
+ * Proxy Arweave/Irys image URLs through our Next.js server to avoid
+ * client-side SSL or network issues with gateway.irys.xyz.
+ */
+function proxyUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'gateway.irys.xyz' || parsed.hostname === 'arweave.net') {
+      return `/api/image?url=${encodeURIComponent(url)}`;
+    }
+  } catch { /* not a valid URL, return as-is */ }
+  return url;
+}
 
 interface MonitorProps {
   imageUrl?: string | null;
@@ -12,37 +23,14 @@ interface MonitorProps {
 export default function Monitor({ imageUrl }: MonitorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imgFailed, setImgFailed] = useState(false);
-  const retryCountRef = useRef(0);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const [retrySrc, setRetrySrc] = useState<string | null>(null);
 
-  // Reset state when imageUrl changes
+  // Reset failure state when imageUrl changes
   useEffect(() => {
     setImgFailed(false);
-    setRetrySrc(null);
-    retryCountRef.current = 0;
-    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
   }, [imageUrl]);
 
   const handleImgError = useCallback(() => {
-    if (retryCountRef.current < MAX_RETRIES && imageUrl) {
-      const delay = RETRY_DELAYS[retryCountRef.current] || 15000;
-      retryCountRef.current++;
-      retryTimerRef.current = setTimeout(() => {
-        // Append cache-buster to force a fresh request
-        const sep = imageUrl.includes('?') ? '&' : '?';
-        setRetrySrc(`${imageUrl}${sep}_r=${retryCountRef.current}`);
-      }, delay);
-    } else {
-      setImgFailed(true);
-    }
-  }, [imageUrl]);
-
-  // Cleanup retry timer on unmount
-  useEffect(() => {
-    return () => {
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-    };
+    setImgFailed(true);
   }, []);
 
   const showImage = !!imageUrl && !imgFailed;
@@ -97,7 +85,7 @@ export default function Monitor({ imageUrl }: MonitorProps) {
         )}
         {showImage && (
           <img
-            src={retrySrc || imageUrl!}
+            src={proxyUrl(imageUrl!)}
             alt="PFP Avatar"
             onError={handleImgError}
             style={{
