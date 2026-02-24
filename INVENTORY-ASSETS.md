@@ -35,10 +35,3 @@ Image resolution order in the inventory UI:
 | `signal_tower_code` | `frontend/public/items/signal_tower_code.png` | Activation code for the signal system. | Required for tower-related actions; consumed on activation path. |
 | `spent_first_pixel` | `frontend/public/items/spent_first_pixel.png` | Depleted version of the first pixel artifact. | Appears after `first_pixel` is spent/transformed. |
 | `void_key` | `frontend/public/items/void_key.png` | Key granted on Void route progression. | Gates Void-specific options and endings. |
-
-## Removed from This List
-
-The following were intentionally removed because they are not currently obtainable via `effects.add_item` and will not appear in inventory in the present game data:
-
-- `memory_shard`
-- `tape_reel_7`
