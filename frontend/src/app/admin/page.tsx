@@ -112,7 +112,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="admin-page min-h-screen overflow-y-auto">
+    <div className="admin-page h-screen overflow-y-auto">
       <div className="max-w-[1600px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 border-b border-green-900 pb-4">
