@@ -154,6 +154,13 @@ export const gameNodes: Record<string, GameNode> = {
         id: 4,
         text: 'Wait. Listen.',
         next_node: 'cold_room_wait_1',
+        visibilityRequirements: { state: { heard_frequency: false } },
+      },
+      {
+        id: 41,
+        text: 'Sit with the hum',
+        next_node: 'cold_room_wait_repeat',
+        visibilityRequirements: { state: { heard_frequency: true } },
       },
       {
         id: 5,
@@ -399,20 +406,22 @@ export const gameNodes: Record<string, GameNode> = {
       'the way a compass needle finds north.\n\n' +
       '**You don\'t take it. It arrives.**',
     location: 'COLD ROOM',
-    conditionalContent: [
-      {
-        requirements: { state: { heard_frequency: true } },
-        content:
-          'You stand. The cold room is the same.\n' +
-          'But you are slightly different.\n\n' +
-          'Clearer. Quieter.\n' +
-          'Ready for whatever comes next.',
-      },
-    ],
     effects: {
       add_item: ['cold_room_key'],
       set_state: { heard_frequency: true },
     },
+    next_node: 'cold_room',
+  },
+
+  cold_room_wait_repeat: {
+    id: 'cold_room_wait_repeat',
+    type: 'story',
+    content:
+      'You stand. The cold room is the same.\n' +
+      'But you are slightly different.\n\n' +
+      'Clearer. Quieter.\n' +
+      'Ready for whatever comes next.',
+    location: 'COLD ROOM',
     next_node: 'cold_room',
   },
 
@@ -814,6 +823,9 @@ export const gameNodes: Record<string, GameNode> = {
       'You can feel the edges of the world\n' +
       'getting soft, approximate, negotiable.',
     location: 'DEAD ZONE',
+    effects: {
+      set_state: { void_discovered: true },
+    },
     next_node: 'void_collective_base',
   },
 
@@ -963,6 +975,10 @@ export const gameNodes: Record<string, GameNode> = {
       'distant, dark, waiting.\n' +
       'Paths branch in every direction,\n' +
       'most of them unwalked.\n\n' +
+      'One branch looks wrong.\n' +
+      'Not blocked. Not broken.\n' +
+      'Just... missing around the edges,\n' +
+      'as if the map forgot to finish drawing it.\n\n' +
       '**You are looking at what you are made of.**\n' +
       'It is beautiful. And it is alive.',
     location: 'OBSERVATION PLATFORM',
@@ -987,6 +1003,10 @@ export const gameNodes: Record<string, GameNode> = {
           'And between them: every choice you have made,\n' +
           'visible as paths of light\n' +
           'through the architecture.\n\n' +
+          'One branch looks wrong.\n' +
+          'Not blocked. Not broken.\n' +
+          'Just... missing around the edges,\n' +
+          'as if the map forgot to finish drawing it.\n\n' +
           '**You are looking at what you are made of.**\n' +
           'It is beautiful. And it is alive.',
       },
@@ -1012,6 +1032,10 @@ export const gameNodes: Record<string, GameNode> = {
           'The place behind the sealed door.\n' +
           'The paths you have walked glow faintly,\n' +
           'tracing your choices through the architecture.\n\n' +
+          'And west of the known paths,\n' +
+          'a branch that goes thin, then thinner,\n' +
+          'until even the map seems uncertain\n' +
+          'what exists there.\n\n' +
           '**You are looking at what you are made of.**\n' +
           'It is beautiful. And it is alive.',
       },
@@ -1031,8 +1055,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 2,
         text: 'Focus on the gaps between the nodes',
         next_node: 'tower_view_void',
-        requirements: { has_item: ['void_key'] },
-        visibilityRequirements: { has_item: ['void_key'] },
+        requirements: { state: { void_discovered: true } },
+        visibilityRequirements: { state: { void_discovered: true } },
       },
       {
         id: 3,
@@ -1079,23 +1103,45 @@ export const gameNodes: Record<string, GameNode> = {
     type: 'story',
     content:
       'You focus on the spaces between.\n\n' +
-      'With the void key in your hand,\n' +
-      'you can see what others can\'t -\n' +
-      'the gaps. The absences.\n' +
-      'Places where the Terminal\'s architecture\n' +
-      'simply... stops rendering.\n\n' +
-      'They are not empty. They are full\n' +
-      'of everything the Guild decided\n' +
-      'didn\'t belong. Failed experiments.\n' +
-      'Discarded iterations. Ideas too dangerous\n' +
-      'to keep and too stubborn to die.\n\n' +
-      'The Void Collective lives in these gaps.\n' +
-      'Not because they chose exile.\n' +
-      'Because the gaps chose them.\n\n' +
-      'From up here, the gaps look like\n' +
-      'the spaces between heartbeats.\n' +
-      'Necessary. Inevitable.\n' +
-      'The silence that makes the rhythm possible.',
+      'From up here, the branch you noticed\n' +
+      'from the corridor becomes clearer.\n' +
+      'A seam in the map where geometry\n' +
+      'goes from precise to approximate.\n\n' +
+      'You can\'t resolve it completely.\n' +
+      'Not yet.\n' +
+      'But you can see the pattern:\n' +
+      'the Terminal is not continuous.\n' +
+      'It has intentional absences.\n' +
+      'Places the main architecture refuses\n' +
+      'to fully acknowledge.\n\n' +
+      'Something lives in those absences.\n' +
+      'Not a glitch. A culture.\n' +
+      'A branch of the world\n' +
+      'running on different assumptions.',
+    conditionalContent: [
+      {
+        requirements: { state: { void_initiation_complete: true } },
+        content:
+          'You focus on the spaces between.\n\n' +
+          'With the void key in your hand,\n' +
+          'you can see what others can\'t -\n' +
+          'the gaps. The absences.\n' +
+          'Places where the Terminal\'s architecture\n' +
+          'simply... stops rendering.\n\n' +
+          'They are not empty. They are full\n' +
+          'of everything the Guild decided\n' +
+          'didn\'t belong. Failed experiments.\n' +
+          'Discarded iterations. Ideas too dangerous\n' +
+          'to keep and too stubborn to die.\n\n' +
+          'The Void Collective lives in these gaps.\n' +
+          'Not because they chose exile.\n' +
+          'Because the gaps chose them.\n\n' +
+          'From up here, the gaps look like\n' +
+          'the spaces between heartbeats.\n' +
+          'Necessary. Inevitable.\n' +
+          'The silence that makes the rhythm possible.',
+      },
+    ],
     location: 'OBSERVATION PLATFORM',
     effects: {
       set_state: { understands_void: true },
@@ -1409,7 +1455,7 @@ export const gameNodes: Record<string, GameNode> = {
         text: 'Approach the mark on the wall',
         next_node: 'corridor_north_null_approach',
         requirements: { state: { saw_first_frame: true } },
-        visibilityRequirements: { state: { saw_first_frame: true } },
+        visibilityRequirements: { state: { saw_first_frame: true, temple_known: false } },
       },
       {
         id: 3,
@@ -1421,7 +1467,7 @@ export const gameNodes: Record<string, GameNode> = {
         id: 4,
         text: 'Take the unmarked fork into the dark',
         next_node: 'void_approach',
-        visibilityRequirements: { state: { void_discovered: true, void_initiation_complete: false } },
+        visibilityRequirements: { state: { void_initiation_complete: false } },
       },
       {
         id: 40,
@@ -1540,7 +1586,9 @@ export const gameNodes: Record<string, GameNode> = {
       'Scratched into the metal beside it,\n' +
       'in the same hand as the newest wall writing:\n' +
       '"Iteration 44. This is the only thing\n' +
-      ' in here that doesn\'t pretend to mean something."',
+      ' in here that doesn\'t pretend to mean something."\n\n' +
+      'Underneath, carved deeper:\n' +
+      '"If the score ever lands on **48 exactly** the third option appears."',
     location: 'BETWEEN WALLS',
     choices: [
       {
@@ -1564,6 +1612,9 @@ export const gameNodes: Record<string, GameNode> = {
       'The screen flickers to life.\n' +
       'Simple rules. Eat. Grow. Don\'t hit the walls.\n' +
       'Don\'t hit yourself.\n\n' +
+      'A tiny line in the lower corner blinks once,\n' +
+      'then vanishes before you can fully read it:\n' +
+      '> ITERATION TARGET: 48\n\n' +
       'For a moment, the hum of the pipes fades.\n' +
       'The scratches on the walls stop watching.\n' +
       'There is only the game.',
@@ -1786,6 +1837,18 @@ export const gameNodes: Record<string, GameNode> = {
     },
     conditionalContent: [
       {
+        requirements: { state: { first_pixel_taken: true } },
+        content:
+          'The cracked monitor.\n\n' +
+          'The fracture is still there,\n' +
+          'but the moment is gone.\n' +
+          'No white pixel. No waiting signal.\n\n' +
+          'Only static crawling under broken glass,\n' +
+          'and the faint warmth of a screen\n' +
+          'that has already given you\n' +
+          'what it had to give.',
+      },
+      {
         requirements: { has_item: ['phosphor_residue'] },
         content:
           'You return to the cracked monitor.\n\n' +
@@ -1813,7 +1876,7 @@ export const gameNodes: Record<string, GameNode> = {
         text: 'Take the First Pixel',
         next_node: 'corridor_north_take_pixel',
         requirements: { has_item: ['phosphor_residue'] },
-        visibilityRequirements: { has_item: ['phosphor_residue'] },
+        visibilityRequirements: { has_item: ['phosphor_residue'], state: { first_pixel_taken: false } },
       },
       {
         id: 3,
@@ -1885,6 +1948,7 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'CORRIDOR NORTH',
     effects: {
       add_item: ['first_pixel'],
+      set_state: { first_pixel_taken: true },
     },
     next_node: 'corridor_north',
   },
@@ -2526,8 +2590,15 @@ export const gameNodes: Record<string, GameNode> = {
         id: 3,
         text: '"What are you working on?"',
         next_node: 'guild_talk_work',
-        requirements: { state: { guild_spoken_to: true } },
-        visibilityRequirements: { state: { guild_spoken_to: true } },
+        requirements: { state: { guild_spoken_to: true, guild_mission_offered: false } },
+        visibilityRequirements: { state: { guild_spoken_to: true, guild_mission_offered: false } },
+      },
+      {
+        id: 31,
+        text: '"What are you working on?"',
+        next_node: 'guild_talk_work_repeat',
+        requirements: { state: { guild_spoken_to: true, guild_mission_offered: true } },
+        visibilityRequirements: { state: { guild_spoken_to: true, guild_mission_offered: true } },
       },
       {
         id: 4,
@@ -2547,8 +2618,22 @@ export const gameNodes: Record<string, GameNode> = {
         id: 50,
         text: '"I found something in the Book of Null."',
         next_node: 'guild_mission_torn_report',
-        visibilityRequirements: { state: { book_torn_noticed: true, guild_quest_active: false } },
-        requirements: { state: { book_torn_noticed: true } },
+        visibilityRequirements: { state: { book_torn_noticed: true, guild_quest_active: false, void_discovered: false } },
+        requirements: { state: { book_torn_noticed: true, void_discovered: false } },
+      },
+      {
+        id: 501,
+        text: '"I found something in the Book of Null."',
+        next_node: 'guild_mission_torn_report_void_known',
+        visibilityRequirements: { state: { book_torn_noticed: true, guild_quest_active: false, void_discovered: true, void_initiation_complete: false } },
+        requirements: { state: { book_torn_noticed: true, void_discovered: true, void_initiation_complete: false } },
+      },
+      {
+        id: 502,
+        text: '"I found something in the Book of Null."',
+        next_node: 'guild_mission_torn_report_void_complete',
+        visibilityRequirements: { state: { book_torn_noticed: true, guild_quest_active: false, void_initiation_complete: true } },
+        requirements: { state: { book_torn_noticed: true, void_initiation_complete: true } },
       },
       {
         id: 51,
@@ -2638,22 +2723,6 @@ export const gameNodes: Record<string, GameNode> = {
       'That is either a good sign or a very bad one.\n' +
       'I have not yet decided which."',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { guild_spoken_to: true } },
-        content:
-          'He looks at you the way a filing cabinet\n' +
-          'would look at someone who keeps opening\n' +
-          'the same drawer.\n\n' +
-          '"ARCHIVIST-7. Same as the last time\n' +
-          'you asked. And the time before that,\n' +
-          'presumably, though I did not catalogue\n' +
-          'the exact number of repetitions."\n\n' +
-          'He pauses.\n' +
-          '"Perhaps you are in need of\n' +
-          'an archivist for your own memory."',
-      },
-    ],
     effects: {
       set_state: { guild_spoken_to: true },
     },
@@ -2680,21 +2749,6 @@ export const gameNodes: Record<string, GameNode> = {
       '"We are very good at deciding.\n' +
       'That is the problem."',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { guild_spoken_to: true } },
-        content:
-          '"The same place it was last time.\n' +
-          'We have not relocated."\n\n' +
-          'He gestures at the screens, the archives,\n' +
-          'the careful order of it all.\n\n' +
-          '"The Archivist Guild. Preservation.\n' +
-          'Continuity. The ongoing argument\n' +
-          'that the past matters.\n' +
-          'I gave you the longer version already.\n' +
-          'It has not improved with age."',
-      },
-    ],
     effects: {
       set_state: { guild_spoken_to: true },
     },
@@ -2729,24 +2783,26 @@ export const gameNodes: Record<string, GameNode> = {
       'The records do not keep themselves."\n\n' +
       'You sense he is asking.',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { guild_mission_offered: true } },
-        content:
-          'He glances at the same reading\n' +
-          'on the same screen.\n\n' +
-          '"The same thing I was working on\n' +
-          'the last time you asked.\n' +
-          'The Temple. The Book. The readings\n' +
-          'that should not be what they are."\n\n' +
-          'He looks at you.\n' +
-          '"The offer still stands.\n' +
-          'If you are still considering."',
-      },
-    ],
     effects: {
       set_state: { guild_mission_offered: true },
     },
+    next_node: 'guild_hq',
+  },
+
+  guild_talk_work_repeat: {
+    id: 'guild_talk_work_repeat',
+    type: 'story',
+    content:
+      'He glances at the same reading\n' +
+      'on the same screen.\n\n' +
+      '"The same thing I was working on\n' +
+      'the last time you asked.\n' +
+      'The Temple. The Book. The readings\n' +
+      'that should not be what they are."\n\n' +
+      'He looks at you.\n' +
+      '"The offer still stands.\n' +
+      'If you are still considering."',
+    location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
 
@@ -2895,44 +2951,56 @@ export const gameNodes: Record<string, GameNode> = {
       'He pauses.\n' +
       '"They call themselves the Void."',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { void_initiation_complete: true } },
-        content:
-          'He turns from the console. Fully.\n\n' +
-          '"So you have seen it yourself.\n' +
-          'The torn page. The wound in the Book."\n\n' +
-          'He nods slowly.\n' +
-          '"That page contained instructions.\n' +
-          'A record of what happens when the cycle ends.\n' +
-          'Without it, the Book is incomplete.\n' +
-          'And an incomplete Book means\n' +
-          'an incomplete restoration."\n\n' +
-          '"You have been to the Void.\n' +
-          'You know what they want.\n' +
-          'The question is whether you will\n' +
-          'help them end it - or help me\n' +
-          'put it back together."\n\n' +
-          '"Find that page. Bring it to me.\n' +
-          'That is all I ask."',
-      },
-      {
-        requirements: { state: { void_discovered: true } },
-        content:
-          'He turns from the console. Fully.\n\n' +
-          '"The torn page. Yes.\n' +
-          'You have confirmed what I feared."\n\n' +
-          '"That page contained instructions.\n' +
-          'A record of what happens when the cycle ends.\n' +
-          'Without it, the Book is incomplete.\n' +
-          'And an incomplete Book means\n' +
-          'an incomplete restoration."\n\n' +
-          '"You already know about the Void.\n' +
-          'If the page is anywhere,\n' +
-          'it is with them.\n' +
-          'Find it. Bring it back."',
-      },
-    ],
+    effects: {
+      set_state: { guild_page_hunt: true, void_discovered: true, guild_quest_active: true },
+    },
+    next_node: 'guild_hq',
+  },
+
+  guild_mission_torn_report_void_complete: {
+    id: 'guild_mission_torn_report_void_complete',
+    type: 'story',
+    content:
+      'He turns from the console. Fully.\n\n' +
+      '"So you have seen it yourself.\n' +
+      'The torn page. The wound in the Book."\n\n' +
+      'He nods slowly.\n' +
+      '"That page contained instructions.\n' +
+      'A record of what happens when the cycle ends.\n' +
+      'Without it, the Book is incomplete.\n' +
+      'And an incomplete Book means\n' +
+      'an incomplete restoration."\n\n' +
+      '"You have been to the Void.\n' +
+      'You know what they want.\n' +
+      'The question is whether you will\n' +
+      'help them end it - or help me\n' +
+      'put it back together."\n\n' +
+      '"Find that page. Bring it to me.\n' +
+      'That is all I ask."',
+    location: 'GUILD HQ',
+    effects: {
+      set_state: { guild_page_hunt: true, void_discovered: true, guild_quest_active: true },
+    },
+    next_node: 'guild_hq',
+  },
+
+  guild_mission_torn_report_void_known: {
+    id: 'guild_mission_torn_report_void_known',
+    type: 'story',
+    content:
+      'He turns from the console. Fully.\n\n' +
+      '"The torn page. Yes.\n' +
+      'You have confirmed what I feared."\n\n' +
+      '"That page contained instructions.\n' +
+      'A record of what happens when the cycle ends.\n' +
+      'Without it, the Book is incomplete.\n' +
+      'And an incomplete Book means\n' +
+      'an incomplete restoration."\n\n' +
+      '"You already know about the Void.\n' +
+      'If the page is anywhere,\n' +
+      'it is with them.\n' +
+      'Find it. Bring it back."',
+    location: 'GUILD HQ',
     effects: {
       set_state: { guild_page_hunt: true, void_discovered: true, guild_quest_active: true },
     },
@@ -3013,7 +3081,7 @@ export const gameNodes: Record<string, GameNode> = {
       },
       {
         id: 3,
-        text: 'Show Archivist Log 9 again',
+        text: 'Present Archivist Log 9',
         next_node: 'guild_show_log_repeat',
         requirements: { has_item: ['archivist_log_9'], state: { shown_log: true } },
         visibilityRequirements: { has_item: ['archivist_log_9'], state: { shown_log: true } },
@@ -3022,8 +3090,15 @@ export const gameNodes: Record<string, GameNode> = {
         id: 2,
         text: 'Show the First Pixel',
         next_node: 'guild_show_pixel',
-        requirements: { has_item: ['first_pixel'] },
-        visibilityRequirements: { has_item: ['first_pixel'] },
+        requirements: { has_item: ['first_pixel'], state: { archivist_respects_pixel: false } },
+        visibilityRequirements: { has_item: ['first_pixel'], state: { archivist_respects_pixel: false } },
+      },
+      {
+        id: 22,
+        text: 'Open your hand (First Pixel)',
+        next_node: 'guild_show_pixel_repeat',
+        requirements: { has_item: ['first_pixel'], state: { archivist_respects_pixel: true } },
+        visibilityRequirements: { has_item: ['first_pixel'], state: { archivist_respects_pixel: true } },
       },
       {
         id: 4,
@@ -3036,8 +3111,15 @@ export const gameNodes: Record<string, GameNode> = {
         id: 5,
         text: 'Show root access log',
         next_node: 'guild_show_root_log',
-        requirements: { has_item: ['root_access_log'] },
-        visibilityRequirements: { has_item: ['root_access_log'] },
+        requirements: { has_item: ['root_access_log'], state: { guild_compliant: false } },
+        visibilityRequirements: { has_item: ['root_access_log'], state: { guild_compliant: false } },
+      },
+      {
+        id: 55,
+        text: 'Present root access log',
+        next_node: 'guild_show_root_log_repeat',
+        requirements: { has_item: ['root_access_log'], state: { guild_compliant: true } },
+        visibilityRequirements: { has_item: ['root_access_log'], state: { guild_compliant: true } },
       },
       {
         id: 6,
@@ -3105,26 +3187,28 @@ export const gameNodes: Record<string, GameNode> = {
       'For the first time, he looks at you\n' +
       'like you might be more than a variable.',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { archivist_respects_pixel: true } },
-        content:
-          'You open your hand again.\n' +
-          'The First Pixel glows, same as before.\n\n' +
-          'ARCHIVIST-7 looks at it.\n' +
-          'The reverence is still there,\n' +
-          'but quieter now. Like a prayer\n' +
-          'you have said enough times\n' +
-          'that the words become breathing.\n\n' +
-          '"Yes," he says softly.\n' +
-          '"It is still the oldest thing.\n' +
-          'It will always be the oldest thing.\n' +
-          'You do not need to keep showing me."',
-      },
-    ],
     effects: {
       set_state: { archivist_respects_pixel: true },
     },
+    next_node: 'guild_hq',
+  },
+
+  guild_show_pixel_repeat: {
+    id: 'guild_show_pixel_repeat',
+    type: 'story',
+    content:
+      'You open your hand again.\n' +
+      'The First Pixel glows, same as before.\n\n' +
+      'ARCHIVIST-7 looks at it.\n' +
+      'The reverence is still there,\n' +
+      'but quieter now. Like a prayer\n' +
+      'you have said enough times\n' +
+      'that the words become breathing.\n\n' +
+      '"Yes," he says softly.\n' +
+      '"It is still the oldest thing.\n' +
+      'It will always be the oldest thing.\n' +
+      'You do not need to keep showing me."',
+    location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
 
@@ -3250,23 +3334,25 @@ export const gameNodes: Record<string, GameNode> = {
       'He straightens. Compliant.\n' +
       '"What do you need?"',
     location: 'GUILD HQ',
-    conditionalContent: [
-      {
-        requirements: { state: { guild_compliant: true } },
-        content:
-          'You hold up the root access log.\n\n' +
-          'ARCHIVIST-7 barely looks at it.\n\n' +
-          '"Yes. You outrank me.\n' +
-          'You outranked me the last time too.\n' +
-          'Rank does not change\n' +
-          'with repeated demonstration."\n\n' +
-          'He waits. Still compliant.\n' +
-          'Just tired of complying.',
-      },
-    ],
     effects: {
       set_state: { guild_compliant: true },
     },
+    next_node: 'guild_hq',
+  },
+
+  guild_show_root_log_repeat: {
+    id: 'guild_show_root_log_repeat',
+    type: 'story',
+    content:
+      'You hold up the root access log.\n\n' +
+      'ARCHIVIST-7 barely looks at it.\n\n' +
+      '"Yes. You outrank me.\n' +
+      'You outranked me the last time too.\n' +
+      'Rank does not change\n' +
+      'with repeated demonstration."\n\n' +
+      'He waits. Still compliant.\n' +
+      'Just tired of complying.',
+    location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
 

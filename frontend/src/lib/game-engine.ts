@@ -155,6 +155,21 @@ export class GameEngine {
       this.soulboundItemsMap = new Map(
         items.map((i) => [i.item_name, { assetId: i.asset_id, isFrozen: i.is_frozen }])
       );
+
+      // Reconcile inventory after refresh:
+      // if a non-consumable item exists in save data but has no soulbound record,
+      // mark it as pending and re-queue background minting.
+      if (this.save?.inventory?.length) {
+        for (const item of this.save.inventory) {
+          if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
+            this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
+            mintSoulboundBackground(item, INVENTORY_ITEM_URI);
+          }
+        }
+
+        // Refresh sidebar inventory once soulbound data is available.
+        this.inventoryChangeFn?.(this.buildInventoryItems());
+      }
     } catch (error) {
       console.error('Failed to fetch soulbound items:', error);
     }
@@ -1353,10 +1368,13 @@ export class GameEngine {
       this.minigameGate = null;
       this.pfpReclaimPending = null;
       this.pfpReclaimOffered = false;
+      this.pfpImageUrl = null;
+      this.inventoryChangeFn?.([]);
 
       window.dispatchEvent(new Event('clear-display'));
+      window.dispatchEvent(new CustomEvent('game-progress-updated'));
 
-      this.outputFn('Game reset! Starting fresh. Your achievements and campaign wins are preserved.', 'text-green-400');
+      this.outputFn('Game reset! Starting fresh from a clean profile.', 'text-green-400');
       this.outputFn('');
       this.displayCurrentNode();
     } catch (error) {

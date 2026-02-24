@@ -1,4 +1,4 @@
-import { query } from '../config/database';
+import { query, transaction } from '../config/database';
 import { GameSave, CreateGameSaveInput } from '../types';
 
 /**
@@ -98,35 +98,71 @@ export async function updateGameSaveState(
 }
 
 /**
- * Reset a single player's game save (node, state, inventory).
- * Achievements and campaign wins are preserved as immutable records.
+ * Reset a single player's game data:
+ * - game save (node, state, inventory)
+ * - achievements
+ * - campaign wins
+ * - active profile PFP selection
  */
 export async function resetPlayerData(walletAddress: string): Promise<void> {
-  await query(
-    `UPDATE game_saves SET
-      current_node_id = 'start',
-      location = 'HUB',
-      game_state = '{}'::jsonb,
-      inventory = '[]'::jsonb,
-      save_version = save_version + 1
-     WHERE wallet_address = $1`,
-    [walletAddress]
-  );
+  await transaction(async (client) => {
+    await client.query(
+      `UPDATE game_saves SET
+        current_node_id = 'start',
+        location = 'HUB',
+        game_state = '{}'::jsonb,
+        inventory = '[]'::jsonb,
+        save_version = save_version + 1
+       WHERE wallet_address = $1`,
+      [walletAddress]
+    );
+
+    await client.query(
+      'DELETE FROM achievements WHERE wallet_address = $1',
+      [walletAddress]
+    );
+
+    await client.query(
+      'DELETE FROM campaign_winners WHERE wallet_address = $1',
+      [walletAddress]
+    );
+
+    await client.query(
+      `UPDATE users
+       SET pfp_image_url = NULL,
+           pfp_nft_id = NULL
+       WHERE wallet_address = $1`,
+      [walletAddress]
+    );
+  });
 }
 
 /**
- * Reset all players' game saves (node, state, inventory).
- * Achievements and campaign wins are preserved as immutable records.
- * Used when deploying a new story/world.
+ * Reset all player game data:
+ * - game saves (node, state, inventory)
+ * - achievements
+ * - campaign wins
+ * - active profile PFP selections
  */
 export async function resetAllPlayerData(): Promise<{ playersReset: number }> {
-  const result = await query(
-    `UPDATE game_saves SET
-      current_node_id = 'start',
-      location = 'HUB',
-      game_state = '{}'::jsonb,
-      inventory = '[]'::jsonb,
-      save_version = save_version + 1`
-  );
-  return { playersReset: result.rowCount || 0 };
+  return transaction(async (client) => {
+    const result = await client.query(
+      `UPDATE game_saves SET
+        current_node_id = 'start',
+        location = 'HUB',
+        game_state = '{}'::jsonb,
+        inventory = '[]'::jsonb,
+        save_version = save_version + 1`
+    );
+
+    await client.query('DELETE FROM achievements');
+    await client.query('DELETE FROM campaign_winners');
+    await client.query(
+      `UPDATE users
+       SET pfp_image_url = NULL,
+           pfp_nft_id = NULL`
+    );
+
+    return { playersReset: result.rowCount || 0 };
+  });
 }

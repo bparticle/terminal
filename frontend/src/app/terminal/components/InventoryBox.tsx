@@ -101,23 +101,21 @@ function SoulboundTooltipContent({ item }: { item: InventoryItem }) {
   );
 }
 
-function ItemSlot({ item, isHighlight }: { item: InventoryItem; isHighlight: boolean }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const openTooltip = useCallback(() => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    setShowTooltip(true);
-  }, []);
-
-  const scheduleClose = useCallback(() => {
-    closeTimerRef.current = setTimeout(() => setShowTooltip(false), 200);
-  }, []);
-
-  useEffect(() => {
-    return () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); };
-  }, []);
-
+function ItemSlot({
+  item,
+  isHighlight,
+  slotKey,
+  isTooltipOpen,
+  onOpenTooltip,
+  onScheduleCloseTooltip,
+}: {
+  item: InventoryItem;
+  isHighlight: boolean;
+  slotKey: string;
+  isTooltipOpen: boolean;
+  onOpenTooltip: (slotKey: string) => void;
+  onScheduleCloseTooltip: (slotKey: string) => void;
+}) {
   if (!item.name) {
     return (
       <div className="inventory-slot empty">
@@ -129,17 +127,17 @@ function ItemSlot({ item, isHighlight }: { item: InventoryItem; isHighlight: boo
   return (
     <div
       className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-      onMouseEnter={item.soulbound ? openTooltip : undefined}
-      onMouseLeave={item.soulbound ? scheduleClose : undefined}
+      onMouseEnter={item.soulbound ? () => onOpenTooltip(slotKey) : undefined}
+      onMouseLeave={item.soulbound ? () => onScheduleCloseTooltip(slotKey) : undefined}
       title={!item.soulbound ? item.name.replace(/_/g, ' ') : undefined}
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
-      {showTooltip && (
+      {isTooltipOpen && (
         <div
           className="soulbound-tooltip"
-          onMouseEnter={openTooltip}
-          onMouseLeave={scheduleClose}
+          onMouseEnter={() => onOpenTooltip(slotKey)}
+          onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
         >
           <SoulboundTooltipContent item={item} />
         </div>
@@ -151,7 +149,21 @@ function ItemSlot({ item, isHighlight }: { item: InventoryItem; isHighlight: boo
 export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps) {
   const [page, setPage] = useState(0);
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
+  const [activeTooltipKey, setActiveTooltipKey] = useState<string | null>(null);
   const prevItemsRef = useRef<string[]>([]);
+  const closeTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openTooltip = useCallback((slotKey: string) => {
+    if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
+    setActiveTooltipKey(slotKey);
+  }, []);
+
+  const scheduleCloseTooltip = useCallback((slotKey: string) => {
+    if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
+    closeTooltipTimerRef.current = setTimeout(() => {
+      setActiveTooltipKey((current) => (current === slotKey ? null : current));
+    }, 200);
+  }, []);
 
   useEffect(() => {
     const prevNames = prevItemsRef.current;
@@ -165,6 +177,12 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
     prevItemsRef.current = currentNames;
   }, [items]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
+    };
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
   const startIdx = page * ITEMS_PER_PAGE;
@@ -194,11 +212,20 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
         <div className="inventory-slots">
           {slots.map((item, i) => (
+            (() => {
+              const slotKey = `${startIdx + i}-${item.name}`;
+              return (
             <ItemSlot
-              key={`${startIdx + i}-${item.name}`}
+              key={slotKey}
               item={item}
               isHighlight={item.name === highlightItem}
+              slotKey={slotKey}
+              isTooltipOpen={activeTooltipKey === slotKey}
+              onOpenTooltip={openTooltip}
+              onScheduleCloseTooltip={scheduleCloseTooltip}
             />
+              );
+            })()
           ))}
         </div>
 
