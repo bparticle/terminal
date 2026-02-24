@@ -710,6 +710,8 @@
   height: 80%;
   object-fit: contain;
   image-rendering: pixelated;
+  /* Browser-only monochrome tint so assets stay unchanged on disk */
+  filter: brightness(0) saturate(100%) invert(68%) sepia(95%) saturate(1922%) hue-rotate(77deg) brightness(105%) contrast(103%);
 }
 
 .inventory-slot.soulbound {
