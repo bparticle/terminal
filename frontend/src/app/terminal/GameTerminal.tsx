@@ -53,7 +53,7 @@ export default function GameTerminal() {
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [input, setInput] = useState('');
   const [currentLocation, setCurrentLocation] = useState('HUB');
-  const [inventory, setInventory] = useState<Array<{ name: string }>>([]);
+  const [inventory, setInventory] = useState<Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }>>([]);
   const [theme, setThemeState] = useState('1');
   const [pendingRestart, setPendingRestart] = useState(false);
   const [activeGame, setActiveGame] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export default function GameTerminal() {
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
+  const terminalOutputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentNodeIdRef = useRef<string | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -210,6 +211,24 @@ export default function GameTerminal() {
     setOutput([]);
   }, []);
 
+  // Estimate how many terminal lines fit in the output viewport.
+  const getStoryPageSize = useCallback((): number => {
+    const outputEl = terminalOutputRef.current;
+    if (!outputEl) return 14;
+
+    const styles = window.getComputedStyle(outputEl);
+    const lineHeightRaw = parseFloat(styles.lineHeight);
+    const fontSizeRaw = parseFloat(styles.fontSize);
+    const lineHeight = Number.isFinite(lineHeightRaw) ? lineHeightRaw : (Number.isFinite(fontSizeRaw) ? fontSizeRaw * 1.4 : 30);
+
+    const paddingTop = parseFloat(styles.paddingTop) || 0;
+    const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+    const availableHeight = Math.max(0, outputEl.clientHeight - paddingTop - paddingBottom);
+    const visibleLines = Math.floor(availableHeight / Math.max(1, lineHeight));
+
+    return Math.max(4, visibleLines);
+  }, []);
+
   // Auto-scroll to bottom
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -277,7 +296,8 @@ export default function GameTerminal() {
           addOutput('Press ENTER to continue...', 'text-gray-400');
         }
       },
-      signAndSubmit
+      signAndSubmit,
+      getStoryPageSize,
     );
 
     engineRef.current = engine;
@@ -290,7 +310,7 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [onboardingState, publicKey, playerName, handleLocationChange, signAndSubmit]);
+  }, [onboardingState, publicKey, playerName, handleLocationChange, signAndSubmit, getStoryPageSize]);
 
   // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {
@@ -605,7 +625,12 @@ export default function GameTerminal() {
             </button>
           </div>
 
-          <div className="terminal-output" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={terminalOutputRef}
+            className="terminal-output"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             {isAuthenticating && (
               <div className="terminal-line text-yellow-400">
                 Authenticating wallet...

@@ -3,32 +3,148 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
+interface InventoryItem {
+  name: string;
+  soulbound?: boolean;
+  assetId?: string;
+  isFrozen?: boolean;
+}
+
 interface InventoryBoxProps {
-  items: Array<{ name: string; soulbound?: boolean }>;
+  items: InventoryItem[];
   maxItems?: number;
 }
 
 const ITEMS_PER_PAGE = 2;
 
+// Two-step fallback: item-specific PNG → _generic.png → emoji
 function ItemIcon({ name }: { name: string }) {
-  const [imgFailed, setImgFailed] = useState(false);
+  const [imgState, setImgState] = useState<'specific' | 'generic' | 'emoji'>('specific');
+  const handleSpecificError = useCallback(() => setImgState('generic'), []);
+  const handleGenericError = useCallback(() => setImgState('emoji'), []);
 
-  const handleError = useCallback(() => setImgFailed(true), []);
+  if (imgState === 'specific') {
+    return (
+      <Image
+        src={`/items/${name}.png`}
+        alt={name.replace(/_/g, ' ')}
+        width={48}
+        height={48}
+        className="item-icon-img"
+        onError={handleSpecificError}
+        draggable={false}
+      />
+    );
+  }
 
-  if (imgFailed) {
-    return <span className="item-icon">{getItemEmoji(name)}</span>;
+  if (imgState === 'generic') {
+    return (
+      <Image
+        src="/items/_generic.png"
+        alt={name.replace(/_/g, ' ')}
+        width={48}
+        height={48}
+        className="item-icon-img"
+        onError={handleGenericError}
+        draggable={false}
+      />
+    );
+  }
+
+  return <span className="item-icon">{getItemEmoji(name)}</span>;
+}
+
+function SoulboundBadge() {
+  return <span className="soulbound-badge" aria-hidden="true">⛓</span>;
+}
+
+function SoulboundTooltipContent({ item }: { item: InventoryItem }) {
+  const shortAsset = item.assetId
+    ? `${item.assetId.slice(0, 6)}…${item.assetId.slice(-4)}`
+    : null;
+  const explorerUrl = item.assetId
+    ? `https://xray.helius.xyz/token/${item.assetId}`
+    : null;
+
+  return (
+    <>
+      <div className="soulbound-tooltip-title">{item.name.replace(/_/g, ' ')}</div>
+      <div className="soulbound-tooltip-tag">⛓ SOULBOUND NFT</div>
+      {item.assetId ? (
+        <>
+          <div className="soulbound-tooltip-row">
+            <span className="soulbound-tooltip-label">Asset</span>
+            <span className="soulbound-tooltip-value">{shortAsset}</span>
+          </div>
+          <div className="soulbound-tooltip-row">
+            <span className="soulbound-tooltip-label">Status</span>
+            <span className={item.isFrozen ? 'soulbound-status-frozen' : 'soulbound-status-pending'}>
+              {item.isFrozen ? '● Frozen' : '◌ Pending'}
+            </span>
+          </div>
+          <a
+            href={explorerUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="soulbound-tooltip-link"
+          >
+            View on-chain ↗
+          </a>
+        </>
+      ) : (
+        <div className="soulbound-tooltip-row">
+          <span className="soulbound-tooltip-label">Status</span>
+          <span className="soulbound-status-pending">◌ Minting…</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ItemSlot({ item, isHighlight }: { item: InventoryItem; isHighlight: boolean }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openTooltip = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setShowTooltip(true);
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    closeTimerRef.current = setTimeout(() => setShowTooltip(false), 200);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); };
+  }, []);
+
+  if (!item.name) {
+    return (
+      <div className="inventory-slot empty">
+        <span className="empty-slot">-</span>
+      </div>
+    );
   }
 
   return (
-    <Image
-      src={`/items/${name}.png`}
-      alt={name.replace(/_/g, ' ')}
-      width={48}
-      height={48}
-      className="item-icon-img"
-      onError={handleError}
-      draggable={false}
-    />
+    <div
+      className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
+      onMouseEnter={item.soulbound ? openTooltip : undefined}
+      onMouseLeave={item.soulbound ? scheduleClose : undefined}
+      title={!item.soulbound ? item.name.replace(/_/g, ' ') : undefined}
+    >
+      <ItemIcon name={item.name} />
+      {item.soulbound && <SoulboundBadge />}
+      {showTooltip && (
+        <div
+          className="soulbound-tooltip"
+          onMouseEnter={openTooltip}
+          onMouseLeave={scheduleClose}
+        >
+          <SoulboundTooltipContent item={item} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -54,7 +170,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const startIdx = page * ITEMS_PER_PAGE;
   const pageItems = items.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-  const slots: Array<{ name: string; soulbound?: boolean }> = [...pageItems];
+  const slots: InventoryItem[] = [...pageItems];
   while (slots.length < ITEMS_PER_PAGE) {
     slots.push({ name: '' });
   }
@@ -78,21 +194,11 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
         <div className="inventory-slots">
           {slots.map((item, i) => (
-            <div
+            <ItemSlot
               key={`${startIdx + i}-${item.name}`}
-              className={`inventory-slot ${item.name ? 'has-item' : 'empty'} ${item.name === highlightItem ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-              title={item.name ? `${item.name.replace(/_/g, ' ')}${item.soulbound ? ' (Soulbound)' : ''}` : 'Empty'}
-            >
-              {item.name ? (
-                item.soulbound ? (
-                  <span className="item-icon">🔗</span>
-                ) : (
-                  <ItemIcon name={item.name} />
-                )
-              ) : (
-                <span className="empty-slot">-</span>
-              )}
-            </div>
+              item={item}
+              isHighlight={item.name === highlightItem}
+            />
           ))}
         </div>
 

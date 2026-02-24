@@ -4,6 +4,7 @@ import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
 import { checkWhitelistStatus, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems, prepareMint, confirmMint } from './mint-api';
 import { checkPfpStatus, mintPfp, preparePfpMint, confirmPfpMint } from './pfp-api';
+import { updateProfilePfp } from './api';
 
 // Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
 const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1';
@@ -14,14 +15,15 @@ const CONSUMABLE_ITEMS = new Set([
   'phosphor_residue',
   'corrupted_page',
   'first_pixel',
-  'observation_code',
+  'signal_tower_code',
 ]);
 
 type OutputFn = (text: string, className?: string, id?: string) => void;
 type LocationChangeFn = (location: string, nodeId?: string) => void;
-type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean }>) => void;
+type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }>) => void;
 type MiniGameStartFn = (gameId: string) => void;
 export type SignAndSubmitFn = (transactionBase64: string) => Promise<string>;
+type StoryPageSizeFn = () => number;
 
 interface MinigameGate {
   status: 'ready' | 'running' | 'complete';
@@ -36,7 +38,7 @@ export class GameEngine {
   private save: GameSave | null = null;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private ownedNFTs: OwnedNFT[] = [];
-  private soulboundItemNames: Set<string> = new Set();
+  private soulboundItemsMap: Map<string, { assetId: string; isFrozen: boolean }> = new Map();
   private minigameGate: MinigameGate | null = null;
   private quizState: {
     nodeId: string;
@@ -48,14 +50,25 @@ export class GameEngine {
   private static readonly SPINNER_FRAMES = ['|', '/', '-', '\\'];
   private pfpImageUrl: string | null = null;
   private pfpReclaimPending: { node: GameNode } | null = null;
+  private pfpSelectionPending: {
+    pfps: Array<{ assetId: string; imageUri: string; name: string }>;
+    nextNode: string;
+  } | null = null;
   private pfpReclaimOffered = false;
+  private storyPager: {
+    lines: string[];
+    cursor: number;
+    className: string;
+    node: GameNode;
+  } | null = null;
 
   constructor(
     private outputFn: OutputFn,
     private locationChangeFn?: LocationChangeFn,
     private inventoryChangeFn?: InventoryChangeFn,
     private miniGameStartFn?: MiniGameStartFn,
-    private signAndSubmitFn?: SignAndSubmitFn
+    private signAndSubmitFn?: SignAndSubmitFn,
+    private storyPageSizeFn?: StoryPageSizeFn,
   ) {}
 
   // ==========================================
@@ -113,6 +126,10 @@ export class GameEngine {
       window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: this.pfpImageUrl } }));
     }
 
+    // Track whether a prior on-chain identity exists, even in fresh playthroughs.
+    // This allows booth UI to offer "reuse existing PFP" before mint flow starts.
+    this.save.game_state.has_existing_pfp = Boolean(this.pfpImageUrl || this.save.game_state.has_pfp);
+
     // Display current node
     this.outputFn('');
     this.displayCurrentNode();
@@ -135,7 +152,9 @@ export class GameEngine {
     // Fetch soulbound items in parallel
     try {
       const { items } = await fetchSoulboundItems();
-      this.soulboundItemNames = new Set(items.map((i) => i.item_name));
+      this.soulboundItemsMap = new Map(
+        items.map((i) => [i.item_name, { assetId: i.asset_id, isFrozen: i.is_frozen }])
+      );
     } catch (error) {
       console.error('Failed to fetch soulbound items:', error);
     }
@@ -149,6 +168,9 @@ export class GameEngine {
     if (!this.currentNode || !this.save) return;
 
     const node = this.currentNode;
+
+    // Keep this flag in sync in case profile PFP arrives after initial load.
+    this.save.game_state.has_existing_pfp = Boolean(this.pfpImageUrl || this.save.game_state.has_pfp);
 
     // Apply effects on arrival
     if (node.effects) {
@@ -189,10 +211,65 @@ export class GameEngine {
 
     const content = this.renderTemplate(resolvedContent);
     const lines = content.split('\n');
-    for (const line of lines) {
-      this.outputFn(line, 'text-white');
+    this.startStoryPager(node, lines, 'text-white');
+
+    // Update location
+    if (node.location) {
+      this.save.location = node.location;
+      this.locationChangeFn?.(node.location, this.save.current_node_id);
+    }
+  }
+
+  private getStoryPageSize(): number {
+    const value = this.storyPageSizeFn?.();
+    if (!value || !isFinite(value)) return Number.POSITIVE_INFINITY;
+    return Math.max(4, Math.floor(value));
+  }
+
+  private startStoryPager(node: GameNode, lines: string[], className: string): void {
+    const pageSize = this.getStoryPageSize();
+    if (!isFinite(pageSize) || lines.length <= pageSize) {
+      for (const line of lines) {
+        this.outputFn(line, className);
+      }
+      this.renderNodePrompt(node);
+      return;
     }
 
+    this.storyPager = {
+      lines,
+      cursor: 0,
+      className,
+      node,
+    };
+    this.renderNextStoryPage();
+  }
+
+  private renderNextStoryPage(): void {
+    if (!this.storyPager) return;
+
+    const linesPerPage = Math.max(2, this.getStoryPageSize() - 2);
+    const start = this.storyPager.cursor;
+    const end = Math.min(start + linesPerPage, this.storyPager.lines.length);
+
+    for (let i = start; i < end; i++) {
+      this.outputFn(this.storyPager.lines[i], this.storyPager.className);
+    }
+
+    this.storyPager.cursor = end;
+
+    if (this.storyPager.cursor < this.storyPager.lines.length) {
+      this.outputFn('');
+      this.outputFn('-- MORE -- Press ENTER to continue...', 'story-more-prompt');
+      return;
+    }
+
+    const completedNode = this.storyPager.node;
+    this.storyPager = null;
+    this.renderNodePrompt(completedNode);
+  }
+
+  private renderNodePrompt(node: GameNode): void {
     // Show choices with 3-tier visibility: hidden / locked / enabled
     // Display numbers are sequential (1, 2, 3...) regardless of internal choice IDs
     if (node.choices && node.choices.length > 0) {
@@ -225,12 +302,6 @@ export class GameEngine {
     } else if (node.next_node) {
       this.outputFn('');
       this.outputFn('Press ENTER to continue...', 'text-gray-400');
-    }
-
-    // Update location
-    if (node.location) {
-      this.save.location = node.location;
-      this.locationChangeFn?.(node.location, this.save.current_node_id);
     }
   }
 
@@ -388,7 +459,10 @@ export class GameEngine {
         this.startSpinner('Minting soulbound token', mintId(), 'text-yellow-400');
         result = await mintSoulbound(mintConfig);
         this.stopSpinner(mintId(), 'Soulbound token minted');
-        this.soulboundItemNames.add(mintConfig.itemName || mintConfig.name);
+        this.soulboundItemsMap.set(mintConfig.itemName || mintConfig.name, {
+          assetId: result?.assetId || '',
+          isFrozen: true,
+        });
         mintStep++;
       } else if (this.signAndSubmitFn) {
         this.startSpinner('Preparing transaction', mintId());
@@ -641,15 +715,51 @@ export class GameEngine {
     }
   }
 
+  private async openPfpSelectionMenu(nextNode: string): Promise<void> {
+    if (!this.save) return;
+
+    this.outputFn('Fetching your existing identities...', 'text-gray-400');
+    try {
+      const status = await checkPfpStatus();
+      if (status.pfps.length === 0) {
+        this.outputFn('No existing PFPs were found.', 'text-yellow-400');
+        this.outputFn('Returning to the booth options.', 'text-gray-400');
+        await this.moveToNode('pfp_booth_seated');
+        return;
+      }
+
+      this.outputFn('');
+      this.outputFn('> SELECT EXISTING IDENTITY', 'text-yellow-400');
+      status.pfps.forEach((pfp, idx) => {
+        const active = this.pfpImageUrl === pfp.imageUri ? ' (current avatar)' : '';
+        this.outputFn(`[${idx + 1}] ${pfp.name}${active}`, 'text-cyan-400');
+      });
+      this.outputFn('[0] Cancel', 'text-gray-400');
+      this.outputFn('');
+      this.outputFn('Choose a number to set your active PFP:', 'text-yellow-400');
+
+      this.pfpSelectionPending = { pfps: status.pfps, nextNode };
+    } catch {
+      this.outputFn('Failed to load your PFP list.', 'text-red-400');
+      this.outputFn('Returning to the booth options.', 'text-gray-400');
+      await this.moveToNode('pfp_booth_seated');
+    }
+  }
+
   /**
    * Build inventory items with soulbound annotation
    */
-  private buildInventoryItems(): Array<{ name: string; soulbound?: boolean }> {
+  private buildInventoryItems(): Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }> {
     if (!this.save) return [];
-    return this.save.inventory.map((name) => ({
-      name,
-      soulbound: this.soulboundItemNames.has(name) || undefined,
-    }));
+    return this.save.inventory.map((name) => {
+      const sbData = this.soulboundItemsMap.get(name);
+      return {
+        name,
+        soulbound: sbData ? true : undefined,
+        assetId: sbData?.assetId || undefined,
+        isFrozen: sbData?.isFrozen || undefined,
+      };
+    });
   }
 
   // ==========================================
@@ -660,6 +770,17 @@ export class GameEngine {
     if (!this.save || !this.currentNode) return;
 
     const trimmed = input.trim();
+
+    // Handle paged story output before accepting choices/commands.
+    if (this.storyPager) {
+      if (trimmed === '') {
+        this.outputFn('');
+        this.renderNextStoryPage();
+      } else {
+        this.outputFn('Press ENTER to continue reading...', 'text-yellow-400');
+      }
+      return;
+    }
 
     // Handle minigame gate
     if (this.minigameGate) {
@@ -687,16 +808,47 @@ export class GameEngine {
       const reclaimNode = this.pfpReclaimPending.node;
       if (trimmed === '1') {
         this.pfpReclaimPending = null;
-        this.save.game_state.has_pfp = true;
-        if (this.pfpImageUrl) {
-          window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: this.pfpImageUrl } }));
-        }
-        await this.autoSave();
-        await this.moveToNode('pfp_booth_reclaim_success');
+        await this.openPfpSelectionMenu('pfp_booth_reclaim_success');
       } else if (trimmed === '2') {
         this.pfpReclaimPending = null;
         this.pfpReclaimOffered = true;
         await this.handlePfpMintNode(reclaimNode);
+      }
+      return;
+    }
+
+    // Handle PFP selection menu (reclaim flow)
+    if (this.pfpSelectionPending) {
+      if (trimmed === '0') {
+        this.pfpSelectionPending = null;
+        await this.moveToNode('pfp_booth_seated');
+        return;
+      }
+
+      const selectedNum = parseInt(trimmed, 10);
+      if (isNaN(selectedNum) || selectedNum < 1 || selectedNum > this.pfpSelectionPending.pfps.length) {
+        this.outputFn(`Pick a number from 1-${this.pfpSelectionPending.pfps.length}, or 0 to cancel.`, 'text-yellow-400');
+        return;
+      }
+
+      const selected = this.pfpSelectionPending.pfps[selectedNum - 1];
+      const nextNode = this.pfpSelectionPending.nextNode;
+      this.pfpSelectionPending = null;
+
+      this.outputFn(`Setting ${selected.name} as your avatar...`, 'text-gray-400');
+      try {
+        await updateProfilePfp(selected.imageUri, selected.assetId);
+        this.pfpImageUrl = selected.imageUri;
+        this.save.game_state.has_pfp = true;
+        this.save.game_state.has_existing_pfp = true;
+
+        window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: selected.imageUri } }));
+
+        await this.autoSave();
+        await this.moveToNode(nextNode);
+      } catch {
+        this.outputFn('Failed to set selected PFP. Please try again.', 'text-red-400');
+        await this.moveToNode('pfp_booth_seated');
       }
       return;
     }
@@ -714,6 +866,10 @@ export class GameEngine {
       if (mapped) {
         const choice = this.currentNode.choices.find((c) => c.id === mapped.id);
         if (choice && this.checkRequirements(choice.requirements)) {
+          if (choice.next_node === 'pfp_booth_reclaim_success') {
+            await this.openPfpSelectionMenu('pfp_booth_reclaim_success');
+            return;
+          }
           await this.moveToNode(choice.next_node);
           return;
         } else if (choice) {
@@ -740,11 +896,17 @@ export class GameEngine {
   canHandleInput(input: string): boolean {
     const trimmed = input.trim();
 
+    // Story pager has priority until all pages are shown.
+    if (this.storyPager) return true;
+
     // Minigame gate
     if (this.minigameGate) return true;
 
     // PFP reclaim choice
     if (this.pfpReclaimPending) return true;
+
+    // PFP selection menu
+    if (this.pfpSelectionPending) return true;
 
     // Quiz mode
     if (this.quizState) return true;
@@ -1047,8 +1209,8 @@ export class GameEngine {
 
           // Background soulbound mint — fire-and-forget, one per user per item
           // Skip consumable/transient items that will be removed or transformed
-          if (!this.soulboundItemNames.has(item) && !CONSUMABLE_ITEMS.has(item)) {
-            this.soulboundItemNames.add(item);
+          if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
+            this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
             mintSoulboundBackground(item, INVENTORY_ITEM_URI);
           }
         }
@@ -1223,7 +1385,7 @@ export class GameEngine {
     return this.save?.location || 'HUB';
   }
 
-  getInventoryItems(): Array<{ name: string; soulbound?: boolean }> {
+  getInventoryItems(): Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }> {
     return this.buildInventoryItems();
   }
 
