@@ -185,6 +185,8 @@
   },
   "active": "99b320bab24cea14",
   "lastOpenFiles": [
+    "frontend/src/app/api/image/route.ts",
+    "frontend/src/app/api/image",
     "frontend/public/items/guild_access_files.png",
     "frontend/public/items/phosphor_residue.png",
     "frontend/public/items/phosphor_resid_ue.png",
@@ -202,9 +204,7 @@
     "frontend/public/items/ps239A.tmp",
     "frontend/public/items/cold_room_key.png",
     "frontend/public/items/spent_first_p__ixel.png",
-    "frontend/public/items/ps6B79.tmp",
     "frontend/public/items/void_key.png",
-    "frontend/public/items/glass_vial.png",
-    "frontend/public/items/null_fragment.png"
+    "frontend/public/items/glass_vial.png"
   ]
 }

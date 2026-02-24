@@ -55,6 +55,7 @@ export default function MintWhitelist() {
 
   // Log filters
   const [logFilter, setLogFilter] = useState({ status: '', mintType: '', wallet: '' });
+  const [whitelistSearch, setWhitelistSearch] = useState('');
 
   useEffect(() => {
     loadWhitelist();
@@ -202,6 +203,10 @@ export default function MintWhitelist() {
   };
 
   const shortAddr = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const normalizedWhitelistSearch = whitelistSearch.trim().toLowerCase();
+  const filteredEntries = entries.filter((entry) =>
+    entry.wallet_address.toLowerCase().includes(normalizedWhitelistSearch)
+  );
 
   return (
     <div>
@@ -244,7 +249,7 @@ export default function MintWhitelist() {
       {viewTab === 'whitelist' && (
         <div>
           {/* Actions */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap items-center">
             <button
               onClick={() => { setAddForm({ wallet: '', maxMints: 1, notes: '' }); setActiveModal('add'); }}
               className="px-3 py-1.5 text-sm bg-green-900/50 text-green-400 border border-green-700 hover:bg-green-800/50"
@@ -263,6 +268,13 @@ export default function MintWhitelist() {
             >
               Export CSV
             </button>
+            <input
+              type="text"
+              placeholder="Search wallet..."
+              value={whitelistSearch}
+              onChange={(e) => setWhitelistSearch(e.target.value)}
+              className="px-2 py-1.5 text-sm bg-gray-800 text-gray-300 border border-gray-600 w-52 font-mono"
+            />
           </div>
 
           {/* Table */}
@@ -270,6 +282,8 @@ export default function MintWhitelist() {
             <p className="text-gray-400 animate-pulse">Loading whitelist...</p>
           ) : entries.length === 0 ? (
             <p className="text-gray-500">No wallets whitelisted yet.</p>
+          ) : filteredEntries.length === 0 ? (
+            <p className="text-gray-500">No wallets found for that search.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
@@ -285,7 +299,7 @@ export default function MintWhitelist() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry) => (
+                  {filteredEntries.map((entry) => (
                     <tr key={entry.id} className="border-b border-gray-800 hover:bg-gray-800/50">
                       <td className="py-2 px-3 font-mono text-green-400" title={entry.wallet_address}>
                         {shortAddr(entry.wallet_address)}
