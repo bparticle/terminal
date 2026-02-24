@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+const MAX_RETRIES = 4;
+const RETRY_DELAYS = [2000, 4000, 8000, 15000];
 
 interface MonitorProps {
   imageUrl?: string | null;
@@ -8,7 +11,41 @@ interface MonitorProps {
 
 export default function Monitor({ imageUrl }: MonitorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const showImage = !!imageUrl;
+  const [imgFailed, setImgFailed] = useState(false);
+  const retryCountRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [retrySrc, setRetrySrc] = useState<string | null>(null);
+
+  // Reset state when imageUrl changes
+  useEffect(() => {
+    setImgFailed(false);
+    setRetrySrc(null);
+    retryCountRef.current = 0;
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+  }, [imageUrl]);
+
+  const handleImgError = useCallback(() => {
+    if (retryCountRef.current < MAX_RETRIES && imageUrl) {
+      const delay = RETRY_DELAYS[retryCountRef.current] || 15000;
+      retryCountRef.current++;
+      retryTimerRef.current = setTimeout(() => {
+        // Append cache-buster to force a fresh request
+        const sep = imageUrl.includes('?') ? '&' : '?';
+        setRetrySrc(`${imageUrl}${sep}_r=${retryCountRef.current}`);
+      }, delay);
+    } else {
+      setImgFailed(true);
+    }
+  }, [imageUrl]);
+
+  // Cleanup retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
+  const showImage = !!imageUrl && !imgFailed;
 
   useEffect(() => {
     if (showImage || !canvasRef.current) return;
@@ -60,8 +97,9 @@ export default function Monitor({ imageUrl }: MonitorProps) {
         )}
         {showImage && (
           <img
-            src={imageUrl!}
+            src={retrySrc || imageUrl!}
             alt="PFP Avatar"
+            onError={handleImgError}
             style={{
               width: '100%',
               height: '100%',

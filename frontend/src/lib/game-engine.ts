@@ -688,8 +688,9 @@ export class GameEngine {
       this.outputFn('');
       this.outputFn(`Asset: ${result.assetId.slice(0, 20)}...`, 'text-gray-400');
 
-      // Show the PFP in the Monitor
+      // Show the PFP in the Monitor and update engine state
       if (result.imageUri) {
+        this.pfpImageUrl = result.imageUri;
         window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: result.imageUri } }));
       }
 
