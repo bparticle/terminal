@@ -19,7 +19,7 @@ const CONSUMABLE_ITEMS = new Set([
 ]);
 
 type OutputFn = (text: string, className?: string, id?: string) => void;
-type LocationChangeFn = (location: string, nodeId?: string) => void;
+type LocationChangeFn = (location: string, nodeId?: string, roomId?: string) => void;
 type InventoryChangeFn = (items: Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }>) => void;
 type MiniGameStartFn = (gameId: string) => void;
 export type SignAndSubmitFn = (transactionBase64: string) => Promise<string>;
@@ -239,7 +239,8 @@ export class GameEngine {
     // Update location
     if (node.location) {
       this.save.location = node.location;
-      this.locationChangeFn?.(node.location, this.save.current_node_id);
+      const roomId = node.chat_room ?? this.save.current_node_id;
+      this.locationChangeFn?.(node.location, this.save.current_node_id, roomId);
     }
   }
 

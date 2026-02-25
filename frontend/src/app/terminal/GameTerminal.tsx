@@ -132,8 +132,9 @@ export default function GameTerminal() {
     onSystemEvent: handleSystemEvent,
   });
 
-  // Wraps setCurrentLocation to also join/leave the Socket.IO room
-  const handleLocationChange = useCallback((location: string, nodeId?: string) => {
+  // Wraps setCurrentLocation to also join/leave the Socket.IO room.
+  // roomId is the chat cluster identifier (chat_room field on the node, or nodeId if unset).
+  const handleLocationChange = useCallback((location: string, nodeId?: string, roomId?: string) => {
     setCurrentLocation(location);
     if (nodeId) {
       currentNodeIdRef.current = nodeId;
@@ -143,7 +144,8 @@ export default function GameTerminal() {
       setIsPrivateRoom(!isSocial);
 
       if (isSocial) {
-        joinRoom(nodeId);
+        // Use the cluster room ID when provided; fall back to the node ID.
+        joinRoom(roomId ?? nodeId);
       } else {
         // Leave room so other players can't see or message you here
         leaveRoom();

@@ -174,6 +174,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_vent_look: {
     id: 'cold_room_vent_look',
+    chat_room: 'area_cold_room',
     type: 'choice',
     content:
       'The vent grate is loose. Beyond it, a narrow shaft\n' +
@@ -216,6 +217,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_unlock: {
     id: 'cold_room_unlock',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'The keyhole is at the base of the door -\n' +
@@ -236,6 +238,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_hidden_panel: {
     id: 'cold_room_hidden_panel',
+    chat_room: 'area_cold_room',
     type: 'quiz',
     content:
       'The frequency you heard... it came from here.\n' +
@@ -280,6 +283,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_panel_unlock: {
     id: 'cold_room_panel_unlock',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'The barrier cancels. The key drops.\n\n' +
@@ -298,6 +302,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_1: {
     id: 'cold_room_wait_1',
+    chat_room: 'area_cold_room',
     type: 'story',
     content: 'You sit. You wait.\n\nSilence.',
     location: 'COLD ROOM',
@@ -313,6 +318,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_2: {
     id: 'cold_room_wait_2',
+    chat_room: 'area_cold_room',
     type: 'story',
     content: 'More silence.',
     location: 'COLD ROOM',
@@ -327,6 +333,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_3: {
     id: 'cold_room_wait_3',
+    chat_room: 'area_cold_room',
     type: 'choice',
     content: 'The silence has a texture now. Almost a shape.',
     location: 'COLD ROOM',
@@ -357,6 +364,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_4: {
     id: 'cold_room_wait_4',
+    chat_room: 'area_cold_room',
     type: 'story',
     content: '...',
     location: 'COLD ROOM',
@@ -371,6 +379,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_5: {
     id: 'cold_room_wait_5',
+    chat_room: 'area_cold_room',
     type: 'story',
     content: 'There.\n\nA frequency. Low. Beneath the floor.\nBeneath the concrete. Beneath everything.\nIt has been here the whole time.\n\n**You just had to be quiet enough to deserve it.**',
     location: 'COLD ROOM',
@@ -392,6 +401,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_6: {
     id: 'cold_room_wait_6',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'The wall panel near the door vibrates.\n' +
@@ -415,6 +425,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_wait_repeat: {
     id: 'cold_room_wait_repeat',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'You stand. The cold room is the same.\n' +
@@ -429,6 +440,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal: {
     id: 'cold_room_terminal',
+    chat_room: 'area_cold_room',
     type: 'choice',
     content:
       'The terminal hums softly.\n' +
@@ -483,6 +495,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal_logs: {
     id: 'cold_room_terminal_logs',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       '> /logs\n\n' +
@@ -497,6 +510,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal_waveform: {
     id: 'cold_room_terminal_waveform',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'You hold the key near the terminal.\n' +
@@ -514,6 +528,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal_system: {
     id: 'cold_room_terminal_system',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       '> /system\n' +
@@ -538,6 +553,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal_null: {
     id: 'cold_room_terminal_null',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       '> /null\n\n' +
@@ -568,6 +584,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_terminal_log_insert: {
     id: 'cold_room_terminal_log_insert',
+    chat_room: 'area_cold_room',
     type: 'story',
     content:
       'You insert the archivist log into the terminal reader.\n\n' +
@@ -661,6 +678,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   assembly_room: {
     id: 'assembly_room',
+    chat_room: 'area_assembly',
     type: 'choice',
     content:
       'The Assembly.\n\n' +
@@ -762,6 +780,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   cold_room_return: {
     id: 'cold_room_return',
+    chat_room: 'area_corridor_north',
     type: 'story',
     content:
       'You walk south. The corridor narrows.\n' +
@@ -786,6 +805,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_to_archives: {
     id: 'corridor_to_archives',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'You walk east. The corridor quiets.\n' +
@@ -811,6 +831,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   void_approach: {
     id: 'void_approach',
+    chat_room: 'area_void',
     type: 'story',
     content:
       'You take the fork nobody marked.\n\n' +
@@ -835,6 +856,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_approach: {
     id: 'tower_approach',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'The corridor dead-ends at something impossible.\n\n' +
@@ -932,6 +954,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_activate: {
     id: 'tower_activate',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'You enter the code: 473291.\n\n' +
@@ -1073,6 +1096,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_view_guild: {
     id: 'tower_view_guild',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'You focus on the Guild\'s work.\n\n' +
@@ -1100,6 +1124,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_view_void: {
     id: 'tower_view_void',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'You focus on the spaces between.\n\n' +
@@ -1151,6 +1176,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_iteration_puzzle: {
     id: 'tower_iteration_puzzle',
+    chat_room: 'area_tower_district',
     type: 'quiz',
     content:
       'The observation platform has a secondary display.\n' +
@@ -1199,6 +1225,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   tower_archive_reveal: {
     id: 'tower_archive_reveal',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'The archive opens.\n\n' +
@@ -1232,6 +1259,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_archive_entry: {
     id: 'echo_archive_entry',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'The unlabeled door. You almost missed it.\n\n' +
@@ -1249,6 +1277,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_descent: {
     id: 'temple_descent',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'A staircase spirals down.\n\n' +
@@ -1284,6 +1313,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north: {
     id: 'corridor_north',
+    chat_room: 'area_corridor_north',
     type: 'choice',
     content:
       'The corridor stretches long and low,\n' +
@@ -1382,6 +1412,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_deep: {
     id: 'corridor_north_deep',
+    chat_room: 'area_tower_district',
     type: 'choice',
     content:
       'The monitors thin out here.\n' +
@@ -1812,6 +1843,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_monitor: {
     id: 'corridor_north_monitor',
+    chat_room: 'area_corridor_north',
     type: 'choice',
     content:
       'The cracked monitor.\n\n' +
@@ -1888,6 +1920,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_monitor_pixel: {
     id: 'corridor_north_monitor_pixel',
+    chat_room: 'area_corridor_north',
     type: 'choice',
     content:
       'The pixel rests in your hand.\n' +
@@ -1910,6 +1943,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_monitor_scrape: {
     id: 'corridor_north_monitor_scrape',
+    chat_room: 'area_corridor_north',
     type: 'story',
     content:
       'You uncork the glass vial and hold it\n' +
@@ -1936,6 +1970,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_take_pixel: {
     id: 'corridor_north_take_pixel',
+    chat_room: 'area_corridor_north',
     type: 'story',
     content:
       'You close your hand.\n' +
@@ -1955,6 +1990,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_null_approach: {
     id: 'corridor_north_null_approach',
+    chat_room: 'area_tower_district',
     type: 'choice',
     content:
       'You cross the corridor to the far wall.\n\n' +
@@ -2011,6 +2047,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_north_null_door: {
     id: 'corridor_north_null_door',
+    chat_room: 'area_tower_district',
     type: 'story',
     content:
       'You rest your hand on the symbol.\n\n' +
@@ -2050,6 +2087,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_door: {
     id: 'lab_door',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'You push aside the conduit pipes.\n' +
@@ -2077,6 +2115,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_interior: {
     id: 'lab_interior',
+    chat_room: 'area_southern_district',
     type: 'choice',
     content:
       'The phosphor calibration lab.\n\n' +
@@ -2130,6 +2169,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_equipment: {
     id: 'lab_equipment',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'You approach the calibration rigs.\n\n' +
@@ -2161,6 +2201,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_records: {
     id: 'lab_records',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'The clipboard. Maintenance log.\n' +
@@ -2192,6 +2233,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_workbench: {
     id: 'lab_workbench',
+    chat_room: 'area_southern_district',
     type: 'choice',
     content:
       'You lean over the workbench.\n\n' +
@@ -2230,6 +2272,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   lab_take_vial: {
     id: 'lab_take_vial',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'You select a vial from the rack.\n\n' +
@@ -2255,6 +2298,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   corridor_south: {
     id: 'corridor_south',
+    chat_room: 'area_southern_district',
     type: 'choice',
     content:
       'The corridor bends east and the noise falls away.\n' +
@@ -2317,6 +2361,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_office: {
     id: 'registry_office',
+    chat_room: 'area_southern_district',
     type: 'choice',
     content:
       'The Registry Office.\n\n' +
@@ -2384,6 +2429,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_drawer_auth: {
     id: 'registry_drawer_auth',
+    chat_room: 'area_southern_district',
     type: 'quiz',
     content:
       'The desk terminal wakes at your touch.\n\n' +
@@ -2417,6 +2463,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_drawer: {
     id: 'registry_drawer',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'A soft click travels through the desk frame.\n' +
@@ -2439,6 +2486,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_drawer_empty: {
     id: 'registry_drawer_empty',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'The drawer slides open on familiar rails.\n\n' +
@@ -2451,6 +2499,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_player_file: {
     id: 'registry_player_file',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'You search the filing cabinets for your own entry.\n\n' +
@@ -2473,6 +2522,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   registry_restricted: {
     id: 'registry_restricted',
+    chat_room: 'area_southern_district',
     type: 'story',
     content:
       'The Guild sigil unlocks the glass case.\n\n' +
@@ -2495,6 +2545,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_approach: {
     id: 'guild_approach',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'The western corridor narrows.\n' +
@@ -2517,6 +2568,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_hq: {
     id: 'guild_hq',
+    chat_room: 'area_guild',
     type: 'choice',
     content:
       'The Guild Headquarters.\n\n' +
@@ -2666,6 +2718,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_tower_insight: {
     id: 'guild_tower_insight',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       '"You climbed the tower," ARCHIVIST-7 says.\n' +
@@ -2702,6 +2755,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_talk_who: {
     id: 'guild_talk_who',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       '"Who am I?" He almost smiles.\n' +
@@ -2731,6 +2785,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_talk_place: {
     id: 'guild_talk_place',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       '"The Archivist Guild," he says,\n' +
@@ -2757,6 +2812,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_talk_work: {
     id: 'guild_talk_work',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'ARCHIVIST-7 turns from his console.\n' +
@@ -2791,6 +2847,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_talk_work_repeat: {
     id: 'guild_talk_work_repeat',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'He glances at the same reading\n' +
@@ -2808,6 +2865,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_accept_mission: {
     id: 'guild_accept_mission',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       '"You will go?" The question is careful.\n' +
@@ -2839,6 +2897,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission: {
     id: 'guild_mission',
+    chat_room: 'area_guild',
     type: 'choice',
     content:
       'ARCHIVIST-7 checks his console.\n' +
@@ -2911,6 +2970,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission_no_page: {
     id: 'guild_mission_no_page',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'ARCHIVIST-7 nods. Once.\n\n' +
@@ -2926,6 +2986,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission_torn_report: {
     id: 'guild_mission_torn_report',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'He turns from the console. Fully.\n' +
@@ -2959,6 +3020,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission_torn_report_void_complete: {
     id: 'guild_mission_torn_report_void_complete',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'He turns from the console. Fully.\n\n' +
@@ -2986,6 +3048,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission_torn_report_void_known: {
     id: 'guild_mission_torn_report_void_known',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'He turns from the console. Fully.\n\n' +
@@ -3009,6 +3072,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_mission_incomplete_report: {
     id: 'guild_mission_incomplete_report',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'ARCHIVIST-7 frowns.\n\n' +
@@ -3027,6 +3091,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_void_report: {
     id: 'guild_void_report',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'ARCHIVIST-7 goes very still.\n\n' +
@@ -3064,6 +3129,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_items: {
     id: 'guild_show_items',
+    chat_room: 'area_guild',
     type: 'choice',
     content:
       'ARCHIVIST-7 watches you reach\n' +
@@ -3131,6 +3197,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_log: {
     id: 'guild_show_log',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You hold up Archivist Log 9.\n\n' +
@@ -3159,6 +3226,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_log_repeat: {
     id: 'guild_show_log_repeat',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You hold up the log again.\n\n' +
@@ -3176,6 +3244,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_pixel: {
     id: 'guild_show_pixel',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You open your hand.\n' +
@@ -3195,6 +3264,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_pixel_repeat: {
     id: 'guild_show_pixel_repeat',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You open your hand again.\n' +
@@ -3214,6 +3284,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_corrupted_page: {
     id: 'guild_show_corrupted_page',
+    chat_room: 'area_guild',
     type: 'choice',
     content:
       'You pull out the corrupted page.\n\n' +
@@ -3254,6 +3325,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_page_surrender: {
     id: 'guild_page_surrender',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You hand over the corrupted page.\n\n' +
@@ -3291,6 +3363,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_page_refuse: {
     id: 'guild_page_refuse',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You pull the page back.\n\n' +
@@ -3323,6 +3396,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_root_log: {
     id: 'guild_show_root_log',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You present the root access log.\n\n' +
@@ -3342,6 +3416,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_show_root_log_repeat: {
     id: 'guild_show_root_log_repeat',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You hold up the root access log.\n\n' +
@@ -3411,6 +3486,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   server_room_log: {
     id: 'server_room_log',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You insert the archivist log into the server reader.\n\n' +
@@ -3432,6 +3508,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   server_room_void: {
     id: 'server_room_void',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You use the void key on the central server.\n\n' +
@@ -3451,6 +3528,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   server_room_root: {
     id: 'server_room_root',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You present the root access log.\n\n' +
@@ -3470,6 +3548,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_server_logic_puzzle: {
     id: 'guild_server_logic_puzzle',
+    chat_room: 'area_guild',
     type: 'quiz',
     content:
       'The central terminal displays a logic gate diagram:\n\n' +
@@ -3512,6 +3591,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   guild_server_logic_success: {
     id: 'guild_server_logic_success',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'The hidden partition contains a single file:\n\n' +
@@ -3539,6 +3619,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   broadcast_room: {
     id: 'broadcast_room',
+    chat_room: 'area_guild',
     type: 'choice',
     content:
       'The Broadcast Room.\n\n' +
@@ -3579,6 +3660,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   broadcast_log_insert: {
     id: 'broadcast_log_insert',
+    chat_room: 'area_guild',
     type: 'story',
     content:
       'You insert the archivist log into the broadcast console.\n\n' +
@@ -3602,6 +3684,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_entrance: {
     id: 'temple_entrance',
+    chat_room: 'area_temple',
     type: 'choice',
     content:
       'The passage ends.\n\n' +
@@ -3649,6 +3732,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_riddle: {
     id: 'temple_riddle',
+    chat_room: 'area_temple',
     type: 'quiz',
     content:
       'The door reads your Guild sigil.\n' +
@@ -3683,6 +3767,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_interior: {
     id: 'temple_interior',
+    chat_room: 'area_temple',
     type: 'choice',
     content:
       'The Temple of Null.\n\n' +
@@ -3772,6 +3857,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_read_book: {
     id: 'temple_read_book',
+    chat_room: 'area_temple',
     type: 'choice',
     content:
       'You open THE BOOK OF NULL.\n\n' +
@@ -3811,6 +3897,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_book_torn: {
     id: 'temple_book_torn',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'The torn page left something behind.\n' +
@@ -3836,6 +3923,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_pixel_book: {
     id: 'temple_pixel_book',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'You place the First Pixel on THE BOOK OF NULL.\n\n' +
@@ -3859,6 +3947,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_void_book: {
     id: 'temple_void_book',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'You use the void key on the Book.\n\n' +
@@ -3878,6 +3967,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_tear_page: {
     id: 'temple_tear_page',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'You reach for the Book.\n' +
@@ -3898,6 +3988,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_root_figure: {
     id: 'temple_root_figure',
+    chat_room: 'area_temple',
     type: 'story',
     content:
       'You present the root access log to the figure.\n\n' +
@@ -3929,6 +4020,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   void_collective_base: {
     id: 'void_collective_base',
+    chat_room: 'area_void',
     type: 'choice',
     content:
       'They have set up in what looks like a dead zone -\n' +
@@ -4032,6 +4124,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   void_initiation: {
     id: 'void_initiation',
+    chat_room: 'area_void',
     type: 'choice',
     content:
       'The faceless one leads you to a low alcove\n' +
@@ -4075,6 +4168,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   void_initiation_release: {
     id: 'void_initiation_release',
+    chat_room: 'area_void',
     type: 'story',
     content:
       'You open Cell A.\n\n' +
@@ -4106,6 +4200,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   void_initiation_witness: {
     id: 'void_initiation_witness',
+    chat_room: 'area_void',
     type: 'story',
     content:
       'You open Cell B.\n\n' +
@@ -4213,6 +4308,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_tower_records: {
     id: 'echo_tower_records',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'The observer records.\n\n' +
@@ -4252,6 +4348,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_archive_vault: {
     id: 'echo_archive_vault',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'The echo key opens the inner vault.\n\n' +
@@ -4283,6 +4380,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_archive_browse: {
     id: 'echo_archive_browse',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'You browse the ghost files.\n\n' +
@@ -4329,6 +4427,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_archive_riddle: {
     id: 'echo_archive_riddle',
+    chat_room: 'area_echo_archive',
     type: 'quiz',
     content:
       'You touch one of the ghost files.\n' +
@@ -4369,6 +4468,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   echo_archive_riddle_success: {
     id: 'echo_archive_riddle_success',
+    chat_room: 'area_echo_archive',
     type: 'story',
     content:
       'The new file opens.\n\n' +
@@ -4392,6 +4492,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_mirror_challenge: {
     id: 'temple_mirror_challenge',
+    chat_room: 'area_temple',
     type: 'quiz',
     content:
       'You step toward the mirror figure.\n\n' +
@@ -4451,6 +4552,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   temple_endings_hub: {
     id: 'temple_endings_hub',
+    chat_room: 'area_temple',
     type: 'choice',
     content:
       'You stand before the Book of Null.\n' +
@@ -4515,6 +4617,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   ending_guild_restoration: {
     id: 'ending_guild_restoration',
+    chat_room: 'area_ending',
     type: 'story',
     content:
       'You choose restoration.\n\n' +
@@ -4609,6 +4712,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   ending_void_evolution: {
     id: 'ending_void_evolution',
+    chat_room: 'area_ending',
     type: 'story',
     content:
       'You choose evolution.\n\n' +
@@ -4711,6 +4815,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   ending_null_escape: {
     id: 'ending_null_escape',
+    chat_room: 'area_ending',
     type: 'story',
     content:
       'You hold up the null_fragment.\n\n' +
@@ -4787,6 +4892,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   ending_credits: {
     id: 'ending_credits',
+    chat_room: 'area_ending',
     type: 'story',
     content:
       '\n\n' +
@@ -4831,6 +4937,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_approach: {
     id: 'pfp_booth_approach',
+    chat_room: 'area_assembly',
     type: 'choice',
     content:
       'Up close, the booth is larger than it looked.\n\n' +
@@ -4882,6 +4989,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_seated: {
     id: 'pfp_booth_seated',
+    chat_room: 'area_assembly',
     type: 'choice',
     content:
       'You sit down. The shell closes around you.\n\n' +
@@ -4952,6 +5060,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_mint: {
     id: 'pfp_booth_mint',
+    chat_room: 'area_assembly',
     type: 'pfp_mint',
     content:
       'You press your hand to the screen.\n\n' +
@@ -4972,6 +5081,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_success: {
     id: 'pfp_booth_success',
+    chat_room: 'area_assembly',
     type: 'story',
     content:
       'The machine prints. The image burns onto the chain.\n' +
@@ -5005,6 +5115,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_reclaim_success: {
     id: 'pfp_booth_reclaim_success',
+    chat_room: 'area_assembly',
     type: 'story',
     content:
       'The booth hums once - not processing,\n' +
@@ -5029,6 +5140,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_failure: {
     id: 'pfp_booth_failure',
+    chat_room: 'area_assembly',
     type: 'story',
     content:
       'The booth shudders. Static fills the screen.\n' +
@@ -5046,6 +5158,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_not_eligible: {
     id: 'pfp_booth_not_eligible',
+    chat_room: 'area_assembly',
     type: 'story',
     content:
       'The shell closes. The scanner passes over you\n' +
@@ -5064,6 +5177,7 @@ export const gameNodes: Record<string, GameNode> = {
 
   pfp_booth_limit: {
     id: 'pfp_booth_limit',
+    chat_room: 'area_assembly',
     type: 'story',
     content:
       'The shell closes. The scanner recognizes you\n' +

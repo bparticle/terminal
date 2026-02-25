@@ -88,6 +88,11 @@ export interface GameNode {
   // Defaults to true (social). Set to false for isolated/private rooms.
   social?: boolean;
 
+  // Chat cluster: nodes sharing the same chat_room string form one chat environment.
+  // Players in any node of the cluster see each other and can talk.
+  // Omit to use this node's own ID as its room (default, per-node behaviour).
+  chat_room?: string;
+
   // Godot/mini-game fields
   game_id?: string;
   start_prompt?: string;
