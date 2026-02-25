@@ -39,6 +39,8 @@ export class GameEngine {
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private ownedNFTs: OwnedNFT[] = [];
   private soulboundItemsMap: Map<string, { assetId: string; isFrozen: boolean }> = new Map();
+  private soulboundPollTimer: ReturnType<typeof setInterval> | null = null;
+  private soulboundPendingItems: Set<string> = new Set();
   private minigameGate: MinigameGate | null = null;
   private quizState: {
     nodeId: string;
@@ -140,6 +142,11 @@ export class GameEngine {
       clearInterval(this.autoSaveTimer);
       this.autoSaveTimer = null;
     }
+    if (this.soulboundPollTimer) {
+      clearInterval(this.soulboundPollTimer);
+      this.soulboundPollTimer = null;
+    }
+    this.soulboundPendingItems.clear();
   }
 
   private async fetchNFTs(walletAddress: string): Promise<void> {
@@ -164,6 +171,7 @@ export class GameEngine {
           if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
             this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
             mintSoulboundBackground(item, INVENTORY_ITEM_URI);
+            this.pollSoulboundStatus(item);
           }
         }
 
@@ -763,6 +771,45 @@ export class GameEngine {
   }
 
   /**
+   * Start polling for a pending soulbound item. Uses a single shared timer
+   * so multiple items don't each fire independent API calls.
+   * Polls every 10s for up to ~2 minutes.
+   */
+  private pollSoulboundStatus(itemName: string): void {
+    this.soulboundPendingItems.add(itemName);
+    if (this.soulboundPollTimer) return; // already polling
+
+    let polls = 0;
+    const MAX_POLLS = 12;
+    const POLL_INTERVAL_MS = 10_000;
+
+    this.soulboundPollTimer = setInterval(async () => {
+      polls++;
+      try {
+        const { items } = await fetchSoulboundItems();
+        let updated = false;
+        for (const item of items) {
+          if (this.soulboundPendingItems.has(item.item_name) && item.asset_id) {
+            this.soulboundItemsMap.set(item.item_name, { assetId: item.asset_id, isFrozen: item.is_frozen });
+            this.soulboundPendingItems.delete(item.item_name);
+            updated = true;
+          }
+        }
+        if (updated) {
+          this.inventoryChangeFn?.(this.buildInventoryItems());
+        }
+      } catch {
+        // Silently continue polling
+      }
+      if (this.soulboundPendingItems.size === 0 || polls >= MAX_POLLS) {
+        clearInterval(this.soulboundPollTimer!);
+        this.soulboundPollTimer = null;
+        this.soulboundPendingItems.clear();
+      }
+    }, POLL_INTERVAL_MS);
+  }
+
+  /**
    * Build inventory items with soulbound annotation
    */
   private buildInventoryItems(): Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }> {
@@ -1228,6 +1275,7 @@ export class GameEngine {
           if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
             this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
             mintSoulboundBackground(item, INVENTORY_ITEM_URI);
+            this.pollSoulboundStatus(item);
           }
         }
       }
