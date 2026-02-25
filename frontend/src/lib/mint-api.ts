@@ -225,7 +225,7 @@ export async function addToWhitelist(
 export async function bulkAddToWhitelist(
   wallets: string[],
   maxMints: number
-): Promise<{ added: number; skipped: number }> {
+): Promise<{ added: number; updated: number; skipped: number }> {
   const response = await fetchWithAuth('mint/admin/whitelist/bulk', {
     method: 'POST',
     body: JSON.stringify({ wallets, max_mints: maxMints }),

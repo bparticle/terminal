@@ -76,25 +76,34 @@ export async function getAllWhitelist(): Promise<WhitelistEntry[]> {
 export async function bulkAddToWhitelist(
   entries: Array<{ wallet: string; maxMints: number; notes?: string }>,
   addedBy: string
-): Promise<{ added: number; skipped: number }> {
+): Promise<{ added: number; updated: number; skipped: number }> {
   let added = 0;
+  let updated = 0;
   let skipped = 0;
 
   for (const entry of entries) {
     try {
-      await query(
+      const result = await query(
         `INSERT INTO mint_whitelist (wallet_address, max_mints, added_by, notes)
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (wallet_address) DO NOTHING`,
+         ON CONFLICT (wallet_address) DO UPDATE
+           SET max_mints = EXCLUDED.max_mints,
+               updated_at = NOW()
+         RETURNING (xmax = 0) AS inserted`,
         [entry.wallet, entry.maxMints, addedBy, entry.notes || null]
       );
-      added++;
+
+      if (result.rows[0]?.inserted) {
+        added++;
+      } else {
+        updated++;
+      }
     } catch {
       skipped++;
     }
   }
 
-  return { added, skipped };
+  return { added, updated, skipped };
 }
 
 // ── Minting ────────────────────────────────────

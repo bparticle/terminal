@@ -128,7 +128,7 @@ export default function MintWhitelist() {
     setSaving(true);
     try {
       const result = await bulkAddToWhitelist(wallets, bulkForm.maxMints);
-      showStatus('success', `Added ${result.added} wallets (${result.skipped} skipped)`);
+      showStatus('success', `Added ${result.added}, updated ${result.updated} wallets (${result.skipped} skipped)`);
       setActiveModal(null);
       setBulkForm({ wallets: '', maxMints: 1 });
       loadWhitelist();
