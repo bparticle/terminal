@@ -10,6 +10,7 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+.obsidian/
 
 # Test scripts
 backend/scripts/test-prepare-tx.ts
