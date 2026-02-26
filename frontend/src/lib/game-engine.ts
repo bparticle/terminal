@@ -1404,6 +1404,13 @@ export class GameEngine {
         this.save.save_version = result.save.save_version;
       }
 
+      // Merge any server-side state changes back into memory (e.g. sets_state
+      // flags written by campaign evaluation). Without this, the next auto-save
+      // would overwrite the DB back to the pre-campaign version.
+      if (result.save.game_state) {
+        this.save.game_state = { ...this.save.game_state, ...result.save.game_state };
+      }
+
       // Notify UI components (e.g. StatsBox) that progress may have changed
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('game-progress-updated'));

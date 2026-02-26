@@ -112,10 +112,15 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
       await processAchievements(req.user!.userId, wallet_address, game_state);
     }
 
-    // 3. Evaluate campaigns
+    // 3. Evaluate campaigns (may call updateGameSaveState to set campaign flags)
     await evaluateCampaigns(req.user!.userId, wallet_address);
 
-    res.json({ save });
+    // 4. Re-fetch so the response includes any server-side state changes
+    //    (e.g. sets_state flags written by campaign evaluation). The client
+    //    merges this back into its in-memory game_state so subsequent
+    //    auto-saves don't overwrite the campaign flags.
+    const finalSave = await findGameSave(wallet_address);
+    res.json({ save: finalSave ?? save });
   } catch (error) {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({ error: error.message });
