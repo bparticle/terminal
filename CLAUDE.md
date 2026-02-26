@@ -364,6 +364,8 @@ Collections must be created with the `BubblegumV2` plugin (create-only, cannot b
 - **Frontend RPC proxy unreliable for tx submission**: Transactions submitted through the Next.js `/api/rpc` proxy simulate successfully but never land on-chain. Always submit transactions from the backend directly to Helius via `submitSignedTransaction()`. The frontend should only sign, not submit.
 - **Arweave uploads take ~30-35s**: Image and metadata uploads are sequential (metadata needs the imageUri). Account for this in UX — show processing steps to the user.
 - **`COLLECTION_AUTHORITY_KEYPAIR` must be in `backend/.env`**: Not in the project root `.env`. The backend reads it from its own `.env` file.
+- **`transferV2` always needs explicit `payer` in user-signed flows**: The generated `transferV2` instruction defaults `payer` to `context.payer` (the server's Umi identity keypair). If you don't pass `payer` explicitly, the transaction message includes the server's pubkey as a required signer. The user's wallet provides one signature, but the server's slot is zero-filled — the transaction submits successfully (RPC accepts it) but never confirms on-chain. Always pass `payer: userSigner` explicitly whenever building a user-signed transaction.
+- **Use `truncateCanopy: true` in `getAssetWithProof` for transfers**: Without it, proof arrays for deep trees can exceed the 1232-byte transaction size limit. Pass `{ truncateCanopy: true }` as the third argument to trim canopy-covered nodes from the proof.
 
 ### PFP Mint Pipeline
 

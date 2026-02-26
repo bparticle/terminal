@@ -14,4 +14,4 @@
  *   2. Root package.json, frontend/package.json, backend/package.json
  *   3. CHANGELOG.md (add a new entry at the top of the Unreleased section → move to versioned heading)
  */
-export const APP_VERSION = '0.5.0-beta';
+export const APP_VERSION = '0.9.0-beta';

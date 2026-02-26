@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0-beta] - 2026-02-26
+
+### Added
+- cNFT minting in the terminal CLI, including transaction status/confirmation flow and collection management
+- Broader content and polish pass, including expanded story nodes, mobile improvements, and performance optimizations
+- Pre-release readiness work: end-to-end testing coverage, documentation/onboarding updates, and general stability fixes
+
+### Notes
+- Soulbound inventory NFT work remains in-progress and blocked pending reliability fixes and full end-to-end validation
+
 ## [0.5.0-beta] - 2026-02-20
 
 ### Added

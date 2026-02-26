@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env from project root (three levels up from backend/src/config/)
-dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env') });
-// Also try backend/.env as fallback
-dotenv.config();
+// Backend must read only backend/.env to avoid mixed root/backend configuration.
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';

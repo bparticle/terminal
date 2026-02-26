@@ -6,11 +6,11 @@ const path = require('path');
 
 const backendModules = path.join(__dirname, '..', 'backend', 'node_modules');
 const { Pool } = require(path.join(backendModules, 'pg'));
-require(path.join(backendModules, 'dotenv')).config({ path: path.join(__dirname, '..', '.env') });
+require(path.join(backendModules, 'dotenv')).config({ path: path.join(__dirname, '..', 'backend', '.env') });
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  console.error('ERROR: DATABASE_URL not set in .env');
+  console.error('ERROR: DATABASE_URL not set in backend/.env');
   process.exit(1);
 }
 

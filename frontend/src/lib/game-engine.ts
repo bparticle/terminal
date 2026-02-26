@@ -169,9 +169,7 @@ export class GameEngine {
       if (this.save?.inventory?.length) {
         for (const item of this.save.inventory) {
           if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
-            this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
-            mintSoulboundBackground(item, INVENTORY_ITEM_URI);
-            this.pollSoulboundStatus(item);
+            this.queueSoulboundBackgroundMint(item);
           }
         }
 
@@ -803,11 +801,50 @@ export class GameEngine {
         // Silently continue polling
       }
       if (this.soulboundPendingItems.size === 0 || polls >= MAX_POLLS) {
+        let removedStalePlaceholder = false;
+        for (const pendingItem of this.soulboundPendingItems) {
+          const pending = this.soulboundItemsMap.get(pendingItem);
+          if (pending && !pending.assetId) {
+            this.soulboundItemsMap.delete(pendingItem);
+            removedStalePlaceholder = true;
+          }
+        }
         clearInterval(this.soulboundPollTimer!);
         this.soulboundPollTimer = null;
         this.soulboundPendingItems.clear();
+        if (removedStalePlaceholder) {
+          this.inventoryChangeFn?.(this.buildInventoryItems());
+        }
       }
     }, POLL_INTERVAL_MS);
+  }
+
+  private stopSoulboundPollingIfIdle(): void {
+    if (this.soulboundPendingItems.size !== 0 || !this.soulboundPollTimer) return;
+    clearInterval(this.soulboundPollTimer);
+    this.soulboundPollTimer = null;
+  }
+
+  private queueSoulboundBackgroundMint(itemName: string): void {
+    this.soulboundItemsMap.set(itemName, { assetId: '', isFrozen: false });
+    this.pollSoulboundStatus(itemName);
+
+    void mintSoulboundBackground(itemName, INVENTORY_ITEM_URI).then((result) => {
+      if (result.alreadyMinted && result.assetId) {
+        this.soulboundItemsMap.set(itemName, { assetId: result.assetId, isFrozen: true });
+        this.soulboundPendingItems.delete(itemName);
+        this.stopSoulboundPollingIfIdle();
+        this.inventoryChangeFn?.(this.buildInventoryItems());
+        return;
+      }
+
+      if (!result.queued) {
+        this.soulboundItemsMap.delete(itemName);
+        this.soulboundPendingItems.delete(itemName);
+        this.stopSoulboundPollingIfIdle();
+        this.inventoryChangeFn?.(this.buildInventoryItems());
+      }
+    });
   }
 
   /**
@@ -1274,9 +1311,7 @@ export class GameEngine {
           // Background soulbound mint — fire-and-forget, one per user per item
           // Skip consumable/transient items that will be removed or transformed
           if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
-            this.soulboundItemsMap.set(item, { assetId: '', isFrozen: false });
-            mintSoulboundBackground(item, INVENTORY_ITEM_URI);
-            this.pollSoulboundStatus(item);
+            this.queueSoulboundBackgroundMint(item);
           }
         }
       }

@@ -144,17 +144,40 @@ export async function mintSoulbound(config: {
 }
 
 /**
- * Fire-and-forget background soulbound mint.
- * Does not throw — errors are silently logged.
+ * Background soulbound mint for inventory items.
+ * Returns queue/dedup status so callers can reconcile UI state.
  */
-export async function mintSoulboundBackground(itemName: string, uri: string): Promise<void> {
+export async function mintSoulboundBackground(itemName: string, uri: string): Promise<{
+  queued: boolean;
+  alreadyMinted?: boolean;
+  assetId?: string;
+  error?: string;
+}> {
   try {
-    await fetchWithAuth('soulbound/mint-background', {
+    const response = await fetchWithAuth('soulbound/mint-background', {
       method: 'POST',
       body: JSON.stringify({ itemName, uri, name: itemName }),
     });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const message = err.error || 'Background soulbound mint request failed';
+      console.error(`Background soulbound mint failed for ${itemName}: ${message}`);
+      return { queued: false, error: message };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    return {
+      queued: Boolean(data.queued),
+      alreadyMinted: Boolean(data.alreadyMinted),
+      assetId: typeof data.assetId === 'string' ? data.assetId : undefined,
+    };
   } catch (error) {
     console.error(`Background soulbound mint failed for ${itemName}:`, error);
+    return {
+      queued: false,
+      error: error instanceof Error ? error.message : 'Unknown background mint error',
+    };
   }
 }
 
