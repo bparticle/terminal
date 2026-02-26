@@ -94,6 +94,12 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
     [collections, activeCollectionId],
   );
 
+  const isSoulboundCollection = useMemo(() => {
+    if (!activeCollection) return false;
+    if (activeCollection.type === 'items') return true;
+    return activeCollection.nfts.some((nft) => nft.isSoulbound);
+  }, [activeCollection]);
+
   const selectedNft = useMemo(() => {
     if (!activeCollection || !selectedAssetId) return null;
     return activeCollection.nfts.find((nft) => nft.assetId === selectedAssetId) || null;
@@ -213,11 +219,34 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                       ))}
                     </div>
 
-                    <div className="gallery-section-label">Assets</div>
-                    <div className="gallery-assets-grid">
+                    <div className="gallery-section-label">{isSoulboundCollection ? 'Soulbound Items' : 'Assets'}</div>
+                    <div className={isSoulboundCollection ? 'gallery-assets-list' : 'gallery-assets-grid'}>
                       {(activeCollection?.nfts || []).map((nft) => {
                         const selected = selectedAssetId === nft.assetId;
                         const isCurrentPfp = currentPfpAssetId === nft.assetId;
+
+                        if (isSoulboundCollection) {
+                          return (
+                            <button
+                              key={nft.assetId}
+                              type="button"
+                              className={`gallery-asset-row ${selected ? 'selected' : ''}`}
+                              onClick={() => setSelectedAssetId(nft.assetId)}
+                            >
+                              <div className="gallery-asset-row-main">
+                                <div className="gallery-asset-name">{nft.name || 'Unnamed item'}</div>
+                                <div className="gallery-asset-row-id">
+                                  {nft.assetId.slice(0, 10)}...{nft.assetId.slice(-10)}
+                                </div>
+                              </div>
+                              <div className="gallery-asset-row-tags">
+                                <span className="gallery-soulbound-chip">SOULBOUND</span>
+                                {isCurrentPfp && <span className="gallery-badge">ACTIVE PFP</span>}
+                              </div>
+                            </button>
+                          );
+                        }
+
                         return (
                           <button
                             key={nft.assetId}
@@ -250,13 +279,18 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                     </div>
                     {selectedNft ? (
                       <>
-                        <div className="gallery-detail-top">
-                          <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
+                        <div className={`gallery-detail-top ${isSoulboundCollection ? 'gallery-detail-top-list' : ''}`}>
+                          {!isSoulboundCollection && (
+                            <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
+                          )}
                           <div className="gallery-detail-meta">
                             <div className="gallery-detail-name">{selectedNft.name}</div>
                             <div className="gallery-detail-assetid">
                               {selectedNft.assetId.slice(0, 12)}...{selectedNft.assetId.slice(-12)}
                             </div>
+                            {isSoulboundCollection && (
+                              <div className="gallery-state-line text-gray-400">Image preview unavailable for this soulbound item.</div>
+                            )}
                             {currentPfpAssetId === selectedNft.assetId ? (
                               <div className="gallery-state-line text-green-400">This NFT is your active PFP.</div>
                             ) : (
@@ -264,7 +298,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                                 type="button"
                                 className="gallery-action-btn"
                                 onClick={() => void handleSetAsPfp()}
-                                disabled={isSettingPfp}
+                                disabled={isSettingPfp || isSoulboundCollection}
                               >
                                 {isSettingPfp ? 'SETTING PFP...' : 'SET AS PFP'}
                               </button>
