@@ -101,8 +101,11 @@ export async function updateGameSaveState(
  * Reset a single player's game data:
  * - game save (node, state, inventory)
  * - achievements
- * - campaign wins
  * - active profile PFP selection
+ *
+ * Campaign wins are intentionally NOT cleared — they are permanent
+ * leaderboard records. A player who earned a campaign win and resets
+ * to replay the game should not lose their historical position.
  */
 export async function resetPlayerData(walletAddress: string): Promise<void> {
   await transaction(async (client) => {
@@ -119,11 +122,6 @@ export async function resetPlayerData(walletAddress: string): Promise<void> {
 
     await client.query(
       'DELETE FROM achievements WHERE wallet_address = $1',
-      [walletAddress]
-    );
-
-    await client.query(
-      'DELETE FROM campaign_winners WHERE wallet_address = $1',
       [walletAddress]
     );
 

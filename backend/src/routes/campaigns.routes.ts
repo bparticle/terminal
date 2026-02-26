@@ -255,9 +255,9 @@ router.post('/:id/evaluate', requireAuth, requireAdmin, async (req: Authenticate
       throw new AppError('Campaign not found', 404);
     }
 
-    const winnersAwarded = await evaluateCampaignForAllUsers(campaign);
+    const result = await evaluateCampaignForAllUsers(campaign);
 
-    res.json({ success: true, winners_awarded: winnersAwarded });
+    res.json({ success: true, ...result });
   } catch (error) {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({ error: error.message });

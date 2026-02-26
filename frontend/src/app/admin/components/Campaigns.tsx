@@ -13,7 +13,7 @@ import {
   type CreateCampaignInput,
   type CampaignLeaderboardEntry,
 } from '@/lib/campaign-api';
-import { getGameMetadata } from '@/lib/admin-api';
+import { getGameMetadata, resyncAchievements } from '@/lib/admin-api';
 
 type ModalType = 'create' | 'edit' | 'leaderboard' | 'simulate' | null;
 
@@ -50,6 +50,7 @@ export default function Campaigns() {
   const [gameStates, setGameStates] = useState<string[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
 
   useEffect(() => {
     loadCampaigns();
@@ -58,7 +59,7 @@ export default function Campaigns() {
 
   useEffect(() => {
     if (statusMessage) {
-      const timer = setTimeout(() => setStatusMessage(null), 5000);
+      const timer = setTimeout(() => setStatusMessage(null), 10000);
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
@@ -177,14 +178,28 @@ export default function Campaigns() {
 
     try {
       const result = await evaluateCampaign(campaign.id);
-      if (result.winners_awarded > 0) {
-        showStatus('success', `${result.winners_awarded} user(s) awarded wins!`);
-      } else {
-        showStatus('success', 'No new winners found.');
-      }
+      const msg = `Scanned ${result.users_scanned} user(s) — ${result.users_qualified} qualified — ${result.winners_awarded} new win(s) awarded.`;
+      showStatus(result.winners_awarded > 0 ? 'success' : 'success', msg);
       loadCampaigns();
     } catch (error) {
       showStatus('error', error instanceof Error ? error.message : 'Failed to evaluate campaign');
+    }
+  };
+
+  // --- Resync achievements ---
+
+  const handleResync = async () => {
+    if (!confirm('Re-scan all game saves and backfill missing achievement records?\n\nThis is read-safe and idempotent — existing data is never modified.')) return;
+
+    setResyncing(true);
+    try {
+      const result = await resyncAchievements();
+      showStatus('success', `Resync complete — ${result.users_processed} save(s) scanned, ${result.achievements_added} new achievement row(s) written.`);
+      loadCampaigns();
+    } catch (error) {
+      showStatus('error', error instanceof Error ? error.message : 'Failed to resync achievements');
+    } finally {
+      setResyncing(false);
     }
   };
 
@@ -307,6 +322,14 @@ export default function Campaigns() {
           className="px-4 py-2 text-sm bg-blue-800 text-blue-100 border border-blue-600 hover:bg-blue-700 transition-colors"
         >
           SIMULATE ACHIEVEMENT
+        </button>
+        <button
+          onClick={handleResync}
+          disabled={resyncing}
+          className="px-4 py-2 text-sm bg-yellow-900/60 text-yellow-300 border border-yellow-700 hover:bg-yellow-800/60 disabled:opacity-50 transition-colors"
+          title="Re-scan all game saves and backfill missing achievement records. Safe to run multiple times."
+        >
+          {resyncing ? 'RESYNCING...' : 'RESYNC ACHIEVEMENTS'}
         </button>
         <button
           onClick={loadCampaigns}

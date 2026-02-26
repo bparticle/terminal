@@ -85,6 +85,19 @@ export async function resetPlayer(walletAddress: string): Promise<void> {
 }
 
 /**
+ * Admin: re-scan all game saves and backfill missing achievement records.
+ * Idempotent — safe to run multiple times.
+ */
+export async function resyncAchievements(): Promise<{ users_processed: number; achievements_added: number }> {
+  const response = await fetchWithAuth('game/admin/resync-achievements', { method: 'POST' });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to resync achievements');
+  }
+  return response.json();
+}
+
+/**
  * Get site maintenance status (public, no auth required)
  */
 export async function getSiteStatus(): Promise<{ maintenance: boolean; message: string }> {

@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import { findGameSave, createGameSave, updateGameSave, resetPlayerData, resetAllPlayerData } from '../services/game.service';
-import { processAchievements, evaluateCampaigns } from '../services/campaign.service';
+import { processAchievements, evaluateCampaigns, resyncAchievementsFromGameSaves } from '../services/campaign.service';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { validateString, validateJsonObject, validateJsonArray } from '../middleware/validate';
@@ -263,6 +263,21 @@ router.post('/admin/reset-player/:wallet_address', requireAuth, requireAdmin, as
   } catch (error) {
     console.error('Admin reset-player error:', error);
     res.status(500).json({ error: 'Failed to reset player data' });
+  }
+});
+
+/**
+ * POST /api/v1/game/admin/resync-achievements
+ * Admin: re-scan all game saves and backfill missing achievement records.
+ * Idempotent — safe to run multiple times.
+ */
+router.post('/admin/resync-achievements', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await resyncAchievementsFromGameSaves();
+    res.json(result);
+  } catch (error) {
+    console.error('Resync achievements error:', error);
+    res.status(500).json({ error: 'Failed to resync achievements' });
   }
 });
 

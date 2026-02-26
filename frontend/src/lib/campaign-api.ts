@@ -166,7 +166,7 @@ export async function deleteCampaign(id: string): Promise<void> {
 /**
  * Retroactively evaluate a campaign against all users - admin only
  */
-export async function evaluateCampaign(id: string): Promise<{ winners_awarded: number }> {
+export async function evaluateCampaign(id: string): Promise<{ winners_awarded: number; users_scanned: number; users_qualified: number }> {
   const response = await fetchWithAuth(`campaigns/${id}/evaluate`, {
     method: 'POST',
   });

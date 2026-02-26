@@ -286,28 +286,46 @@ export async function deleteCampaign(id: string): Promise<void> {
 
 /**
  * Retroactively evaluate a specific campaign against ALL users.
+ * Queries from game_saves (not achievements) so players who never had
+ * their achievements recorded are still covered. Backfills any missing
+ * achievement rows for each user before checking requirements.
  * Returns the number of new winners awarded.
  */
-export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<number> {
-  // Get all users who have achievements
+export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
+  winners_awarded: number;
+  users_scanned: number;
+  users_qualified: number;
+}> {
+  // Use game_saves as the user source so players whose achievements were
+  // never written (played before the pipeline was working) are included.
   const usersResult = await query(
-    `SELECT DISTINCT u.id, u.wallet_address
+    `SELECT u.id, u.wallet_address, gs.game_state
      FROM users u
-     JOIN achievements a ON a.user_id = u.id`
+     JOIN game_saves gs ON gs.user_id = u.id`
   );
 
   let winnersAwarded = 0;
+  let usersQualified = 0;
 
   for (const user of usersResult.rows) {
     // Skip if already won
     const alreadyWon = await hasWonCampaign(campaign.id, user.wallet_address);
     if (alreadyWon) continue;
 
-    // Get user's achievements and check requirements
+    // Backfill any missing achievement rows from this user's current game_state
+    // before checking requirements. Uses ON CONFLICT DO NOTHING so existing
+    // records are untouched.
+    if (user.game_state) {
+      await processAchievements(user.id, user.wallet_address, user.game_state);
+    }
+
+    // Get user's achievements (now backfilled) and check requirements
     const userAchievements = await getUserAchievements(user.wallet_address);
     const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
 
     if (meetsRequirements) {
+      usersQualified++;
+
       // Atomically award (enforces max_winners)
       const awarded = await recordCampaignWin(campaign.id, user.id, user.wallet_address);
       if (!awarded) break; // campaign is full
@@ -322,5 +340,44 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<n
     }
   }
 
-  return winnersAwarded;
+  return {
+    winners_awarded: winnersAwarded,
+    users_scanned: usersResult.rows.length,
+    users_qualified: usersQualified,
+  };
+}
+
+/**
+ * Re-scan all game saves and backfill any missing achievement records.
+ * Safe to run multiple times — uses INSERT ... ON CONFLICT DO NOTHING,
+ * so existing achievements are never modified or deleted.
+ * Returns the number of users processed and net new achievements written.
+ */
+export async function resyncAchievementsFromGameSaves(): Promise<{
+  users_processed: number;
+  achievements_added: number;
+}> {
+  const usersResult = await query(
+    `SELECT u.id, u.wallet_address, gs.game_state
+     FROM users u
+     JOIN game_saves gs ON gs.user_id = u.id
+     WHERE gs.game_state != '{}'::jsonb`
+  );
+
+  const before = await query('SELECT COUNT(*) as count FROM achievements');
+  const beforeCount = parseInt(before.rows[0].count, 10);
+
+  for (const user of usersResult.rows) {
+    if (user.game_state) {
+      await processAchievements(user.id, user.wallet_address, user.game_state);
+    }
+  }
+
+  const after = await query('SELECT COUNT(*) as count FROM achievements');
+  const afterCount = parseInt(after.rows[0].count, 10);
+
+  return {
+    users_processed: usersResult.rows.length,
+    achievements_added: afterCount - beforeCount,
+  };
 }
