@@ -1,120 +1,206 @@
-# Terminal Text Adventure Game
+# Scanlines: A Solana-Native Text Adventure
 
-A retro CRT terminal-themed text adventure game that runs in the browser. Gated by Solana compressed NFT (cNFT) ownership, with persistent cloud saves, achievement tracking, and embedded mini-games.
+```text
+   _____  _________    _   __    __    ____   _   ________  _____
+  / ___/ / ____/   |  / | / /   / /   /  _/  / | / / ____/ / ___/
+  \__ \ / /   / /| | /  |/ /   / /    / /   /  |/ / __/    \__ \
+ ___/ // /___/ ___ |/ /|  /   / /____/ /   / /|  / /___   ___/ /
+/____/ \____/_/  |_/_/ |_/   /_____/___/  /_/ |_/_____/  /____/
+```
+
+> **Solana Hackathon submission**  
+> A text-first multiplayer game platform where ownership, identity, and progression live on-chain via compressed NFTs.
+>
+> Out of touch retro CLI adventure straight from the `@solana` graveyard.  
+> Feels like the 80's // NFT utility like it's still 2022.
+
+Scanlines combines interactive fiction with crypto-native mechanics: wallet sign-in, cNFT-gated gameplay, persistent cloud saves, campaign achievements, and real-time social presence.
+
+## Why We Built This
+
+Most Web3 games still feel like "wallet wrappers" around a traditional app.  
+Scanlines explores a different direction: **an immersive game loop where blockchain primitives unlock narrative, progression, and identity without interrupting the player experience**.
+
+### Vision
+
+- Make on-chain ownership feel meaningful in moment-to-moment gameplay
+- Merge text-first storytelling with modern multiplayer web architecture
+- Prove that Solana cNFTs can power scalable, low-friction game systems
+- Build a foundation for community-authored campaigns and collectible-driven worlds
+- Treat blockchain as infrastructure, not as friction in the player journey
+- Evolve from a single retro skin into a creator-friendly platform for many visual styles
+
+### Core Thesis
+
+- **Text-first play is intimate**: command and narrative interaction creates focus, imagination, and presence
+- **Social is the heartbeat**: real-time explorer chat turns solo adventure into a living world
+
+## Highlights
+
+- **Text-first UI** with command-driven interaction and theme support
+- **Solana wallet authentication** (signed nonce + JWT session)
+- **cNFT-gated nodes and mint actions** integrated into story progression
+- **Persistent game saves** in PostgreSQL (state, inventory, node position)
+- **Campaign and achievement system** with winner tracking and leaderboards
+- **Real-time room chat** powered by Socket.IO
+- **Admin panel** for campaign operations and game telemetry
+- **Embedded mini-games** (e.g. Snake) connected to game state (using Godot as embedded game engine)
+
+## Solana Integration
+
+This project is built around Solana as a first-class game backend:
+
+- Compressed NFTs (Bubblegum V2) for scalable minting
+- Helius DAS/RPC for asset indexing and transaction flow
+- Wallet-native auth flow with Ed25519 signature verification
+- User-paid and server-paid mint pipelines
+- Optional soulbound item minting + freeze flows for inventory permanence
 
 ## Architecture
 
-```
-terminal/
-├── database/               # PostgreSQL schema & migrations
-│   ├── schema.sql          # Full schema definition
-│   ├── migrations/         # Versioned migration files
-│   └── seed.sql            # Sample data (campaign)
-├── backend/                # Node.js/Express API server
-│   └── src/
-│       ├── config/         # Database pool, constants
-│       ├── middleware/      # Auth JWT, error handler
-│       ├── routes/         # Auth, users, game, campaigns, wallet
-│       ├── services/       # Auth, game, campaign, Helius
-│       └── types/          # TypeScript interfaces
-├── frontend/               # Next.js 14 (App Router)
-│   └── src/
-│       ├── app/terminal/   # Main terminal page + components
-│       ├── app/api/        # Proxy routes (backend + RPC)
-│       ├── context/        # AuthProvider (wallet sign-in)
-│       ├── components/     # SnakeGame, IframeGame
-│       ├── data/           # Game nodes (story content)
-│       ├── lib/            # Game engine, API clients, types
-│       └── styles/         # Theme CSS variables
-└── docs/
-    ├── prompt.md
-    └── terminal-game-full-architecture.md
+### System Overview
+
+```text
+Frontend (Next.js App Router)
+  -> API Proxy (/api/proxy/*, /api/rpc)
+  -> Backend (Express + Socket.IO)
+      -> PostgreSQL (game saves, campaigns, winners, mint logs)
+      -> Solana + Helius (cNFT minting, proofs, wallet assets)
 ```
 
-## Quick Start
+### Repository Layout
+
+```text
+terminal/
+|- frontend/                 # Next.js 14 app (terminal UI + admin)
+|  |- src/app/terminal/      # Main gameplay experience
+|  |- src/app/admin/         # Admin dashboard
+|  |- src/lib/               # Game engine, API clients, socket hooks
+|  |- src/data/              # Story graph and game nodes
+|  `- src/styles/            # Themes + terminal styling
+|- backend/                  # Express API + Socket.IO server
+|  |- src/routes/            # Auth, game, campaigns, mint, wallet, pfp
+|  |- src/services/          # Core business logic and Solana integrations
+|  |- src/middleware/        # Auth, validation, rate limiting, errors
+|  `- scripts/               # On-chain setup/testing utilities
+|- database/                 # SQL schema, migrations, and seed data
+`- docs/                     # Extended architecture and project docs
+```
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Backend**: Express.js, Socket.IO, TypeScript, PostgreSQL
+- **Blockchain**: Solana, `@solana/web3.js`, Bubblegum V2, Helius DAS/RPC
+- **Auth**: Wallet signature verification + JWT
+- **Storage**: JSONB-backed game state and inventory persistence
+
+## Quick Start (Local Development)
 
 ### Prerequisites
 
 - Node.js 18+
 - PostgreSQL 14+
-- A Solana wallet (Solflare recommended)
-- Helius API key (for NFT features)
+- Solana wallet
+- Helius API key
 
-### 1. Database Setup
+### 1) Clone and install
+
+```bash
+git clone <your-repo-url>
+cd terminal
+```
+
+```bash
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+### 2) Initialize database
 
 ```bash
 createdb terminal_game_db
 psql terminal_game_db < database/migrations/001_initial_schema.sql
-psql terminal_game_db < database/seed.sql  # Optional: sample campaign
+psql terminal_game_db < database/migrations/002_add_last_active.sql
+psql terminal_game_db < database/migrations/003_mint_whitelist_and_log.sql
+psql terminal_game_db < database/migrations/004_soulbound_items.sql
+psql terminal_game_db < database/migrations/005_pfp_mint_tracking.sql
+psql terminal_game_db < database/seed.sql
 ```
 
-### 2. Backend
+### 3) Configure environment variables
+
+Create:
+
+- `backend/.env`
+- `frontend/.env.local`
+
+Minimum values to run locally:
+
+| File | Variable | Description |
+|---|---|---|
+| `backend/.env` | `DATABASE_URL` | PostgreSQL connection string |
+| `backend/.env` | `JWT_SECRET` | JWT signing secret (32+ chars) |
+| `backend/.env` | `API_KEY` | Shared internal API key |
+| `backend/.env` | `HELIUS_API_KEY` | Helius key for Solana integration |
+| `frontend/.env.local` | `API_BASE_URL` | Usually `http://localhost:3001/api/v1` |
+| `frontend/.env.local` | `API_KEY` | Must match backend `API_KEY` |
+| `frontend/.env.local` | `NEXT_PUBLIC_SOCKET_URL` | Usually `http://localhost:3001` |
+
+### 4) Run the app
 
 ```bash
-cd backend
-cp .env.example .env   # Edit with your values
-npm install
-npm run dev            # Starts on port 3001
+cd backend && npm run dev
 ```
-
-### 3. Frontend
 
 ```bash
-cd frontend
-# Edit .env.local with your values
-npm install
-npm run dev            # Starts on port 3000
+cd frontend && npm run dev
 ```
 
-### 4. Play
+Open `http://localhost:3000/terminal`.
 
-Open http://localhost:3000/terminal in your browser.
+## Game Content and Customization
 
-## Configuration
+### Add or edit story nodes
 
-### Backend `.env`
+Update `frontend/src/data/game-nodes.ts`:
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Secret key for JWT signing |
-| `API_KEY` | Internal API key for proxy auth |
-| `HELIUS_API_KEY` | Helius RPC API key |
-| `COLLECTION_MINT_ADDRESS` | Your cNFT collection mint |
-| `PORT` | Server port (default: 3001) |
+- `story` nodes for narrative flow
+- `choice` nodes for branching paths
+- `quiz`, `nft_check`, `mint_action`, `pfp_mint`, and mini-game nodes
+- Effects for inventory/state mutations
 
-### Frontend `.env.local`
+### Tune themes and future skins
 
-| Variable | Description |
-|----------|-------------|
-| `API_BASE_URL` | Backend URL (e.g., http://localhost:3001/api/v1) |
-| `API_KEY` | Must match backend API_KEY |
-| `NEXT_PUBLIC_RPC_URL` | Solana RPC proxy path |
-| `NEXT_PUBLIC_HELIUS_RPC_URL` | Helius RPC URL |
-| `NEXT_PUBLIC_COLLECTION_MINT` | Your cNFT collection mint |
+Edit `frontend/src/styles/terminal-themes.css` to adjust the current theme system.  
+The current CRT style is the default presentation, with broader skin support planned.
 
-## Customization
+### Manage campaigns
 
-### Adding Game Content
+Use SQL seed data as a template or manage campaigns from admin/API routes.
 
-Edit `frontend/src/data/game-nodes.ts` to add your story. Each node has:
-- `id` - Unique string identifier
-- `type` - story, choice, quiz, nft_check, godot_game
-- `content` - Narrative text (supports `{{state.key}}` templates)
-- `choices` - Branching options with requirements
-- `effects` - Items and state changes
+## Deployment and Infrastructure
 
-### Changing Themes
+- **Production targets**: frontend (Next.js), backend (Node/Express), PostgreSQL
+- **Platform examples**: Railway, Render, Vercel, Dockerized VPS
+- **Environment hardening**: production `JWT_SECRET`, restricted CORS, secure key management, rate-limits enabled
 
-Edit `frontend/src/styles/terminal-themes.css` to customize the three color themes. All colors derive from CSS custom properties.
+## Security Notes
 
-### Campaign Setup
+- Nonce-based wallet auth with short-lived challenge messages
+- JWT-protected API and Socket.IO handshake validation
+- Parameterized SQL queries across backend data access
+- Route-level rate limiting for auth, write, and API surfaces
 
-Use the seed.sql as a template, or create campaigns via the admin API endpoints with an admin user.
+## Roadmap
 
-## Tech Stack
+- Community-authored campaigns and narrative packs
+- Deeper on-chain progression and collectible utility
+- Expanded mini-game ecosystem and seasonal events
+- Richer creator/admin tooling for campaign operations
+- Creator-made visual skins and presentation layers beyond CRT/Retro
+- AI-assisted worldbuilding and campaign authoring tools
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express, TypeScript, PostgreSQL
-- **Blockchain**: Solana, @solana/web3.js, Helius DAS API
-- **Auth**: Wallet signature verification, JWT sessions
+## License
+
+Private project for hackathon evaluation unless otherwise specified by repository owner.

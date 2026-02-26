@@ -434,12 +434,13 @@ export default function GameTerminal() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      const trimmed = input.trim();
+      const rawInput = input;
+      const trimmed = rawInput.trim();
 
       // During onboarding, route all input to the onboarding handler
       if (onboardingState === 'ask_name') {
         if (trimmed) addUserOutput(trimmed);
-        await handleOnboardingInput(input);
+        await handleOnboardingInput(rawInput);
         setInput('');
         return;
       }
@@ -474,8 +475,10 @@ export default function GameTerminal() {
 
       // Try game engine first
       if (engineRef.current) {
-        if (engineRef.current.canHandleInput(input)) {
-          await engineRef.current.processInput(input);
+        if (engineRef.current.canHandleInput(rawInput)) {
+          // Clear immediately so choice digits don't linger during async node transitions.
+          setInput('');
+          await engineRef.current.processInput(rawInput);
           setInput('');
           return;
         }
@@ -489,7 +492,8 @@ export default function GameTerminal() {
 
       // Try game engine as fallback (for numbered choices)
       if (engineRef.current && trimmed) {
-        await engineRef.current.processInput(input);
+        setInput('');
+        await engineRef.current.processInput(rawInput);
       } else if (trimmed && !isAuthenticated) {
         addOutput('Unknown command. Type "help" for available commands.', 'text-gray-400');
       }
@@ -559,8 +563,8 @@ export default function GameTerminal() {
   // Handle clicking a choice or "press ENTER to continue"
   const handleChoiceClick = useCallback(
     (value: string) => {
-      // Set input and submit programmatically
-      setInput(value);
+      // Clear immediately so clicked choice values don't appear in the input field.
+      setInput('');
       // We need to submit after the state update, so use a microtask
       setTimeout(async () => {
         if (value) {
