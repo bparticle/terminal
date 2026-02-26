@@ -4,6 +4,7 @@ import { query } from '../config/database';
 import { AuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { validateString, validateUrl } from '../middleware/validate';
+import { getGlobalPfpOwners } from '../services/pfp.service';
 
 const router = Router();
 
@@ -113,6 +114,21 @@ router.get('/online', requireAuth, async (_req: Request, res: Response) => {
     res.json({ players });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch online players' });
+  }
+});
+
+/**
+ * GET /api/v1/users/pfp-owners
+ * List confirmed PFP mints across users with owner metadata.
+ */
+router.get('/pfp-owners', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const limitRaw = req.query.limit;
+    const parsedLimit = typeof limitRaw === 'string' ? Number(limitRaw) : undefined;
+    const owners = await getGlobalPfpOwners(parsedLimit);
+    res.json({ owners });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch global PFP owners' });
   }
 });
 

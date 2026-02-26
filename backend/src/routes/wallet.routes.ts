@@ -60,7 +60,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
     const collectionConfigs = [
       activePfpCollection ? { collectionId: activePfpCollection, label: 'Scanlines PFPs', type: 'pfp' as const } : null,
       activeItemsCollection ? { collectionId: activeItemsCollection, label: 'Terminal Items', type: 'items' as const } : null,
-    ].filter((entry): entry is { collectionId: string; label: string; type: 'pfp' | 'items' | 'core' } => Boolean(entry));
+    ].filter((entry): entry is { collectionId: string; label: string; type: 'pfp' | 'items' } => entry !== null);
 
     const collections = await fetchOwnedAssetsByCollections(address, collectionConfigs);
 

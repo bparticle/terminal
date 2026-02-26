@@ -39,6 +39,16 @@ export interface WalletGalleryResponse {
   collections: GalleryCollection[];
 }
 
+export interface GlobalPfpOwner {
+  assetId: string;
+  image: string;
+  pfpName: string;
+  mintedAt: string;
+  ownerName: string | null;
+  ownerWallet: string;
+  ownerUserId: string;
+}
+
 export async function getWalletGallery(walletAddress: string): Promise<WalletGalleryResponse> {
   const response = await fetchWithAuth(`wallet/${walletAddress}/gallery`);
   if (!response.ok) {
@@ -48,6 +58,18 @@ export async function getWalletGallery(walletAddress: string): Promise<WalletGal
     throw new Error('Failed to load NFT gallery');
   }
   return response.json();
+}
+
+export async function getGlobalPfpOwners(limit = 200): Promise<GlobalPfpOwner[]> {
+  const response = await fetchWithAuth(`users/pfp-owners?limit=${limit}`);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Authentication required — please reconnect your wallet.');
+    }
+    throw new Error('Failed to load global PFP owners');
+  }
+  const data = await response.json();
+  return Array.isArray(data?.owners) ? data.owners : [];
 }
 
 export async function prepareNftTransfer(assetId: string, toWallet: string): Promise<{

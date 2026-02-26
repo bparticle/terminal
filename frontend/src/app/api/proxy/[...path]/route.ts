@@ -10,6 +10,7 @@ const ALLOWED_PATHS = [
   'users/profile',
   'users/online',
   'users/heartbeat',
+  'users/pfp-owners',
   'game/new',
   'game/load',
   'game/save',

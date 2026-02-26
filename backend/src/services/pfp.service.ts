@@ -34,6 +34,16 @@ export interface PfpStatus {
   pfps: Array<{ assetId: string; imageUri: string; name: string }>;
 }
 
+export interface GlobalPfpOwner {
+  assetId: string;
+  image: string;
+  pfpName: string;
+  mintedAt: string;
+  ownerName: string | null;
+  ownerWallet: string;
+  ownerUserId: string;
+}
+
 /**
  * Check PFP mint status for a wallet.
  */
@@ -77,6 +87,43 @@ export async function getPfpStatus(userId: string, wallet: string): Promise<PfpS
     mintsRemaining: entry.max_mints > 0 ? mintsRemaining : -1,
     pfps,
   };
+}
+
+/**
+ * Get confirmed PFP mints across all users with owner identity.
+ * Authenticated-only read model for the global gallery tab.
+ */
+export async function getGlobalPfpOwners(limit = 200): Promise<GlobalPfpOwner[]> {
+  const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(Math.floor(limit), 1), 500) : 200;
+
+  const result = await query(
+    `SELECT
+       ml.asset_id,
+       ml.nft_name,
+       ml.nft_metadata,
+       ml.created_at,
+       u.id AS owner_user_id,
+       u.wallet_address AS owner_wallet,
+       u.name AS owner_name
+     FROM mint_log ml
+     INNER JOIN users u ON u.id = ml.user_id
+     WHERE ml.mint_type = 'pfp'
+       AND ml.status = 'confirmed'
+       AND ml.asset_id IS NOT NULL
+     ORDER BY ml.created_at DESC
+     LIMIT $1`,
+    [safeLimit],
+  );
+
+  return result.rows.map((row: any) => ({
+    assetId: row.asset_id,
+    image: row.nft_metadata?.imageUri || '',
+    pfpName: row.nft_metadata?.name || row.nft_name || 'Scanlines PFP',
+    mintedAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    ownerName: row.owner_name || null,
+    ownerWallet: row.owner_wallet,
+    ownerUserId: row.owner_user_id,
+  }));
 }
 
 /**
