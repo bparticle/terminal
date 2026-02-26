@@ -14,6 +14,7 @@ import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
 import ScanlineTitle from './components/ScanlineTitle';
+import GalleryOverlay from './components/GalleryOverlay';
 import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import IframeGame from '@/components/terminal/IframeGame';
@@ -64,6 +65,7 @@ export default function GameTerminal() {
   const [soloMode, setSoloMode] = useState(false);
   const [isPrivateRoom, setIsPrivateRoom] = useState(false);
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,15 @@ export default function GameTerminal() {
     return () => {
       window.removeEventListener('display-image', handleDisplay as EventListener);
       window.removeEventListener('clear-display', handleClear);
+    };
+  }, []);
+
+  // ── Gallery open event (used by terminal command + UI actions) ──
+  useEffect(() => {
+    const openGallery = () => setGalleryOpen(true);
+    window.addEventListener('open-gallery', openGallery);
+    return () => {
+      window.removeEventListener('open-gallery', openGallery);
     };
   }, []);
 
@@ -517,6 +528,16 @@ export default function GameTerminal() {
     setActiveGame(null);
   }, []);
 
+  const openGallery = useCallback(() => {
+    setGalleryOpen(true);
+  }, []);
+
+  const closeGallery = useCallback(() => {
+    setGalleryOpen(false);
+    // Re-focus terminal input after closing the overlay.
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
   // Godot iframe game handlers
   const handleGodotMessage = useCallback((data: any) => {
     if (!engineRef.current || !data?.event) return;
@@ -744,7 +765,7 @@ export default function GameTerminal() {
 
         {/* Side Panel (Desktop) */}
         <div className="side-panel">
-          <Monitor imageUrl={monitorImageUrl} />
+          <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
           <StatsBox walletAddress={publicKey?.toBase58() || null} />
           <InventoryBox items={inventory} />
           <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
@@ -757,13 +778,20 @@ export default function GameTerminal() {
               className="mobile-sidebar"
               onClick={(e) => e.stopPropagation()}
             >
-              <Monitor imageUrl={monitorImageUrl} />
+              <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
               <StatsBox walletAddress={publicKey?.toBase58() || null} />
               <InventoryBox items={inventory} />
               <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
             </div>
           </div>
         )}
+
+        <GalleryOverlay
+          isOpen={galleryOpen}
+          walletAddress={publicKey?.toBase58() || null}
+          signAndSubmit={signAndSubmit}
+          onClose={closeGallery}
+        />
       </div>
     </div>
   );

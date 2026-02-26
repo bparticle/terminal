@@ -23,6 +23,7 @@ const ALLOWED_PATHS = [
   'campaigns/user/progress',
   'campaigns/simulate-achievement',
   'wallet',
+  'wallet/transfer',
   'nft',
   'site',
   'mint',

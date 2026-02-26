@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import { publicKey, some } from '@metaplex-foundation/umi';
 import { freezeV2 } from '@metaplex-foundation/mpl-bubblegum';
-import { config, getHeliusRpcUrl } from '../config/constants';
+import { getActiveCollectionMint, getHeliusRpcUrl } from '../config/constants';
 import { query } from '../config/database';
 import { SoulboundItem, MintParams, MintLeafData } from '../types';
 import { executeMint } from './mint.service';
@@ -43,7 +43,7 @@ export async function freezeAsset(
   const umi = getUmi();
   const bs58 = require('bs58');
 
-  const collectionAddr = config.itemsCollectionMint;
+  const collectionAddr = getActiveCollectionMint('items');
 
   for (let attempt = 1; attempt <= 5; attempt++) {
     if (attempt > 1) {

@@ -53,6 +53,7 @@ export const commands: Record<string, Command> = {
       ctx.addOutput('  mint          Mint commands (status/history/confirm)');
       ctx.addOutput('  soulbound     Soulbound item commands (list/verify)');
       ctx.addOutput('  pfp           PFP avatar commands (list/set/clear)');
+      ctx.addOutput('  gallery       Open NFT gallery overlay');
       ctx.addOutput('');
     },
   },
@@ -379,6 +380,7 @@ export const commands: Record<string, Command> = {
         ctx.addOutput('  pfp list         List your PFPs');
         ctx.addOutput('  pfp set <n>      Set PFP #n as your avatar');
         ctx.addOutput('  pfp clear        Remove avatar (show matrix rain)');
+        ctx.addOutput('  gallery          Open full NFT gallery view');
         ctx.addOutput('');
         return;
       }
@@ -447,6 +449,15 @@ export const commands: Record<string, Command> = {
       }
 
       ctx.addOutput('Unknown subcommand. Type "pfp help" for usage.', 'text-red-400');
+    },
+  },
+
+  gallery: {
+    description: 'Open NFT gallery overlay',
+    requiresWallet: true,
+    execute: (_args, ctx) => {
+      window.dispatchEvent(new CustomEvent('open-gallery'));
+      ctx.addOutput('Opening NFT gallery...', 'text-cyan-400');
     },
   },
 };

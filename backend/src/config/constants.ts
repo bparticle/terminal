@@ -45,16 +45,48 @@ export const config = {
   frontendUrl: process.env.FRONTEND_URL || '',
   heliusApiKey: process.env.HELIUS_API_KEY || '',
   solanaNetwork: (process.env.SOLANA_NETWORK || 'mainnet-beta') as 'devnet' | 'mainnet-beta',
+  collectionMintAddressDevnet: process.env.COLLECTION_MINT_ADDRESS_DEVNET || '',
+  collectionMintAddressMainnet: process.env.COLLECTION_MINT_ADDRESS_MAINNET || '',
   collectionMintAddress: process.env.COLLECTION_MINT_ADDRESS || '',
   adminWallets: (process.env.ADMIN_WALLETS || '').split(',').map(w => w.trim()).filter(Boolean),
   collectionAuthorityKeypair: process.env.COLLECTION_AUTHORITY_KEYPAIR || '',
   mintCreatorAddress: process.env.MINT_CREATOR_ADDRESS || '',
   merkleTree: process.env.MERKLE_TREE || '',
+  pfpCollectionMintDevnet: process.env.PFP_COLLECTION_MINT_DEVNET || '',
+  pfpCollectionMintMainnet: process.env.PFP_COLLECTION_MINT_MAINNET || '',
   pfpCollectionMint: process.env.PFP_COLLECTION_MINT || '',
+  itemsCollectionMintDevnet: process.env.ITEMS_COLLECTION_MINT_DEVNET || '',
+  itemsCollectionMintMainnet: process.env.ITEMS_COLLECTION_MINT_MAINNET || '',
   itemsCollectionMint: process.env.ITEMS_COLLECTION_MINT || '',
   treasuryWallet: process.env.TREASURY_WALLET || '',
   mintFeeLamports: parseInt(process.env.MINT_FEE_LAMPORTS || '50000000', 10),
 };
+
+type CollectionKind = 'core' | 'pfp' | 'items';
+
+/**
+ * Resolve collection mint by active network.
+ * Priority: network-specific env var -> legacy shared env var.
+ */
+export function getActiveCollectionMint(kind: CollectionKind): string {
+  const isDevnet = config.solanaNetwork === 'devnet';
+
+  if (kind === 'core') {
+    return isDevnet
+      ? (config.collectionMintAddressDevnet || config.collectionMintAddress)
+      : (config.collectionMintAddressMainnet || config.collectionMintAddress);
+  }
+
+  if (kind === 'pfp') {
+    return isDevnet
+      ? (config.pfpCollectionMintDevnet || config.pfpCollectionMint)
+      : (config.pfpCollectionMintMainnet || config.pfpCollectionMint);
+  }
+
+  return isDevnet
+    ? (config.itemsCollectionMintDevnet || config.itemsCollectionMint)
+    : (config.itemsCollectionMintMainnet || config.itemsCollectionMint);
+}
 
 /**
  * Build the Helius RPC URL for the configured Solana network.

@@ -1,6 +1,5 @@
 import fetch from 'node-fetch';
-import { config, getHeliusRpcUrl } from '../config/constants';
-const COLLECTION_MINT = config.collectionMintAddress;
+import { config, getActiveCollectionMint, getHeliusRpcUrl } from '../config/constants';
 
 export interface NFTAsset {
   id: string;
@@ -10,13 +9,82 @@ export interface NFTAsset {
   image?: string;
 }
 
+export interface GalleryCollectionConfig {
+  collectionId: string;
+  label: string;
+  type: 'pfp' | 'items' | 'core' | 'other';
+}
+
+export interface GalleryAsset {
+  assetId: string;
+  name: string;
+  image: string;
+  attributes: Array<{ trait_type: string; value: string }>;
+  collectionId: string;
+  owner: string;
+  compression: {
+    compressed: boolean;
+    leafId: number | null;
+    seq: number | null;
+    tree: string | null;
+  };
+}
+
+async function heliusRpc<T = any>(method: string, params: Record<string, any>): Promise<T> {
+  const response = await fetch(getHeliusRpcUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `${method}-${Date.now()}`,
+      method,
+      params,
+    }),
+  });
+
+  const data = await response.json() as any;
+  if (data.error) {
+    throw new Error(data.error.message || `Helius ${method} failed`);
+  }
+  return data.result as T;
+}
+
+function normalizeAttributes(raw: any): Array<{ trait_type: string; value: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((attr) => attr && typeof attr.trait_type === 'string')
+    .map((attr) => ({
+      trait_type: attr.trait_type,
+      value: String(attr.value ?? ''),
+    }));
+}
+
+function buildGalleryAsset(item: any, collectionId: string): GalleryAsset {
+  return {
+    assetId: item.id,
+    name: item.content?.metadata?.name || 'Unknown',
+    image: item.content?.links?.image || item.content?.files?.[0]?.uri || '',
+    attributes: normalizeAttributes(item.content?.metadata?.attributes),
+    collectionId,
+    owner: item.ownership?.owner || '',
+    compression: {
+      compressed: item.compression?.compressed === true,
+      leafId: typeof item.compression?.leaf_id === 'number' ? item.compression.leaf_id : null,
+      seq: typeof item.compression?.seq === 'number' ? item.compression.seq : null,
+      tree: typeof item.compression?.tree === 'string' ? item.compression.tree : null,
+    },
+  };
+}
+
 /**
  * Fetch all cNFTs owned by a wallet from the configured collection
  */
 export async function fetchWalletCollections(walletAddress: string) {
-  if (!config.heliusApiKey || !COLLECTION_MINT) {
+  const collectionMint = getActiveCollectionMint('core');
+
+  if (!config.heliusApiKey || !collectionMint) {
     console.warn('Helius API key or collection mint not configured');
-    return [{ collection_id: COLLECTION_MINT || 'not-configured', nfts: [] }];
+    return [{ collection_id: collectionMint || 'not-configured', nfts: [] }];
   }
 
   try {
@@ -29,7 +97,7 @@ export async function fetchWalletCollections(walletAddress: string) {
         method: 'searchAssets',
         params: {
           ownerAddress: walletAddress,
-          grouping: ['collection', COLLECTION_MINT],
+          grouping: ['collection', collectionMint],
           page: 1,
           limit: 1000,
           compressed: true,
@@ -50,14 +118,66 @@ export async function fetchWalletCollections(walletAddress: string) {
 
     return [
       {
-        collection_id: COLLECTION_MINT,
+        collection_id: collectionMint,
         nfts,
       },
     ];
   } catch (error) {
     console.error('Error fetching wallet collections:', error);
-    return [{ collection_id: COLLECTION_MINT, nfts: [] }];
+    return [{ collection_id: collectionMint, nfts: [] }];
   }
+}
+
+/**
+ * Fetch owned compressed assets grouped by a provided list of collection IDs.
+ * Deduplicates by leaf_id using highest seq (latest ownership state).
+ */
+export async function fetchOwnedAssetsByCollections(
+  walletAddress: string,
+  collections: GalleryCollectionConfig[],
+): Promise<Array<GalleryCollectionConfig & { nfts: GalleryAsset[] }>> {
+  if (!config.heliusApiKey || collections.length === 0) {
+    return collections.map((collection) => ({ ...collection, nfts: [] }));
+  }
+
+  const output: Array<GalleryCollectionConfig & { nfts: GalleryAsset[] }> = [];
+
+  for (const collection of collections) {
+    try {
+      const result = await heliusRpc<any>('searchAssets', {
+        ownerAddress: walletAddress,
+        grouping: ['collection', collection.collectionId],
+        page: 1,
+        limit: 1000,
+        compressed: true,
+      });
+
+      const items: any[] = Array.isArray(result?.items) ? result.items : [];
+      const byLeaf = new Map<string, any>();
+
+      for (const item of items) {
+        if (item?.burnt === true || item?.compression?.compressed !== true) continue;
+
+        const leafKey = item.compression?.leaf_id != null
+          ? String(item.compression.leaf_id)
+          : item.id;
+        const existing = byLeaf.get(leafKey);
+        const nextSeq = typeof item.compression?.seq === 'number' ? item.compression.seq : 0;
+        const existingSeq = typeof existing?.compression?.seq === 'number' ? existing.compression.seq : -1;
+        if (!existing || nextSeq >= existingSeq) {
+          byLeaf.set(leafKey, item);
+        }
+      }
+
+      const nfts = Array.from(byLeaf.values()).map((item) => buildGalleryAsset(item, collection.collectionId));
+      output.push({ ...collection, nfts });
+    } catch (error) {
+      console.error(`Error fetching owned assets for collection ${collection.collectionId}:`, error);
+      output.push({ ...collection, nfts: [] });
+    }
+  }
+
+  return output;
 }
 
 /**
@@ -84,6 +204,16 @@ export async function getNFTDetails(assetId: string) {
     return data.result;
   } catch (error) {
     console.error('Error fetching NFT details:', error);
+    return null;
+  }
+}
+
+export async function getAssetProof(assetId: string): Promise<any | null> {
+  if (!config.heliusApiKey) return null;
+  try {
+    return await heliusRpc<any>('getAssetProof', { id: assetId });
+  } catch (error) {
+    console.error('Error fetching NFT proof:', error);
     return null;
   }
 }

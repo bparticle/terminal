@@ -3,7 +3,7 @@ import { publicKey } from '@metaplex-foundation/umi';
 import { mintV2, parseLeafFromMintV2Transaction } from '@metaplex-foundation/mpl-bubblegum';
 import { transferSol } from '@metaplex-foundation/mpl-toolbox';
 import { sol } from '@metaplex-foundation/umi';
-import { config, getHeliusRpcUrl } from '../config/constants';
+import { config, getActiveCollectionMint, getHeliusRpcUrl } from '../config/constants';
 import { query, transaction } from '../config/database';
 import { WhitelistEntry, MintLogEntry, MintParams, MintResult, MintLeafData } from '../types';
 import { getUmi } from './umi';
@@ -126,8 +126,8 @@ export async function mintCompressedNFT(params: {
   // Single tree, collection resolved from param
   const merkleTreeAddr = config.merkleTree;
   const collectionAddr = params.collection === 'pfp'
-    ? config.pfpCollectionMint
-    : config.itemsCollectionMint;
+    ? getActiveCollectionMint('pfp')
+    : getActiveCollectionMint('items');
 
   if (!merkleTreeAddr) {
     throw new Error('MERKLE_TREE not configured');
@@ -293,8 +293,8 @@ export async function prepareMintTransaction(params: {
 
   const merkleTreeAddr = config.merkleTree;
   const collectionAddr = params.collection === 'pfp'
-    ? config.pfpCollectionMint
-    : config.itemsCollectionMint;
+    ? getActiveCollectionMint('pfp')
+    : getActiveCollectionMint('items');
 
   if (!merkleTreeAddr) {
     throw new Error('MERKLE_TREE not configured');
