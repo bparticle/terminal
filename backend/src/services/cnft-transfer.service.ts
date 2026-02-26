@@ -64,13 +64,16 @@ export async function prepareCompressedNftTransfer(params: {
     throw new Error('Only compressed NFTs are supported');
   }
 
-  const assetWithProof = await (getAssetWithProof as any)(umi, publicKey(params.assetId));
+  const assetWithProof = await (getAssetWithProof as any)(umi, publicKey(params.assetId), {
+    truncateCanopy: true,
+  });
   if (!canTransfer(assetWithProof)) {
     throw new Error('This NFT cannot be transferred (it may be frozen/soulbound)');
   }
 
   const transferArgs: any = {
     ...assetWithProof,
+    payer: ownerSigner,
     authority: ownerSigner,
     newLeafOwner: publicKey(params.toWallet),
   };
