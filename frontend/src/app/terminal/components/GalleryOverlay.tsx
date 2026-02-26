@@ -16,7 +16,7 @@ interface GalleryOverlayProps {
 export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, onClose }: GalleryOverlayProps) {
   const [collections, setCollections] = useState<GalleryCollection[]>([]);
   const [currentPfpAssetId, setCurrentPfpAssetId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
@@ -26,6 +26,8 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   const [transferError, setTransferError] = useState<string | null>(null);
   const [lastTransferSignature, setLastTransferSignature] = useState<string | null>(null);
   const [isSettingPfp, setIsSettingPfp] = useState(false);
+  const [isBooting, setIsBooting] = useState(false);
+  const BOOT_MIN_DURATION_MS = 1400;
 
   const explorerTxUrl = useMemo(() => {
     if (!lastTransferSignature) return null;
@@ -56,8 +58,26 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   }, [walletAddress]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    void loadGallery();
+    if (!isOpen) {
+      setIsBooting(false);
+      setLoading(true);
+      setError(null);
+      return;
+    }
+
+    setIsBooting(true);
+    let cancelled = false;
+    const bootDelay = new Promise<void>((resolve) => {
+      window.setTimeout(resolve, BOOT_MIN_DURATION_MS);
+    });
+
+    void Promise.allSettled([bootDelay, loadGallery()]).then(() => {
+      if (!cancelled) setIsBooting(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, loadGallery]);
 
   useEffect(() => {
@@ -152,161 +172,186 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   return (
     <div className="gallery-overlay-backdrop" onClick={onClose}>
       <div className="gallery-overlay-panel" onClick={(event) => event.stopPropagation()}>
-        <div className="gallery-overlay-header">
-          <div>
-            <div className="gallery-title">NFT GALLERY</div>
-            <div className="gallery-subtitle">Collection explorer and transfer console</div>
-          </div>
-          <button type="button" className="gallery-close-btn" onClick={onClose}>
-            CLOSE
-          </button>
-        </div>
-
-        {!walletAddress ? (
-          <div className="gallery-state-line text-yellow-400">Connect your wallet to open the gallery.</div>
-        ) : loading ? (
-          <div className="gallery-state-line text-cyan-400">Loading your collection data...</div>
-        ) : error ? (
-          <div className="gallery-state-wrap">
-            <div className="gallery-state-line text-red-400">{error}</div>
-            <button type="button" className="gallery-action-btn" onClick={() => void loadGallery()}>
-              RETRY
-            </button>
-          </div>
-        ) : (
-          <div className="gallery-layout">
-            <div className="gallery-collection-column">
-              <div className="gallery-section-label">Collections</div>
-              <div className="gallery-tabs">
-                {collections.map((collection) => (
-                  <button
-                    key={collection.collectionId}
-                    type="button"
-                    className={`gallery-tab ${activeCollectionId === collection.collectionId ? 'active' : ''}`}
-                    onClick={() => setCollection(collection.collectionId)}
-                  >
-                    {collection.label}
-                    <span className="gallery-tab-count">{collection.nfts.length}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="gallery-section-label">Assets</div>
-              <div className="gallery-assets-grid">
-                {(activeCollection?.nfts || []).map((nft) => {
-                  const selected = selectedAssetId === nft.assetId;
-                  const isCurrentPfp = currentPfpAssetId === nft.assetId;
-                  return (
-                    <button
-                      key={nft.assetId}
-                      type="button"
-                      className={`gallery-asset-card ${selected ? 'selected' : ''}`}
-                      onClick={() => setSelectedAssetId(nft.assetId)}
-                    >
-                      <img src={nft.image || ''} alt={nft.name} className="gallery-asset-image" />
-                      <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
-                      {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
-                    </button>
-                  );
-                })}
-                {activeCollection && activeCollection.nfts.length === 0 && (
-                  <div className="gallery-empty">No assets in this collection.</div>
-                )}
-              </div>
+        <div className={`gallery-overlay-body ${isBooting ? 'is-booting' : 'is-live'}`}>
+          <div className={`gallery-crt-boot ${isBooting ? 'crt-visible' : 'crt-hidden'}`} aria-hidden={!isBooting}>
+            <div className="gallery-crt-glow" />
+            <div className="gallery-crt-text">
+              <div className="gallery-boot-line text-green-400">[CRT] POWERING DISPLAY...</div>
+              <div className="gallery-boot-line text-cyan-400">[SYS] LOADING MEMORY BANKS...</div>
+              <div className="gallery-boot-line text-gray-400">Please stand by.</div>
             </div>
+          </div>
 
-            <div className="gallery-detail-column">
-              <div className="gallery-detail-actions">
-                <button type="button" className="gallery-action-btn" onClick={() => void loadGallery()} disabled={loading}>
-                  REFRESH
-                </button>
-              </div>
-              {selectedNft ? (
-                <>
-                  <div className="gallery-detail-top">
-                    <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
-                    <div className="gallery-detail-meta">
-                      <div className="gallery-detail-name">{selectedNft.name}</div>
-                      <div className="gallery-detail-assetid">
-                        {selectedNft.assetId.slice(0, 12)}...{selectedNft.assetId.slice(-12)}
-                      </div>
-                      {currentPfpAssetId === selectedNft.assetId ? (
-                        <div className="gallery-state-line text-green-400">This NFT is your active PFP.</div>
-                      ) : (
+          <div className={`gallery-live-content ${isBooting ? 'live-hidden' : 'live-visible'}`}>
+            <div className="gallery-live-main">
+              {!walletAddress ? (
+                <div className="gallery-state-line text-yellow-400">Connect your wallet to open the gallery.</div>
+              ) : loading ? (
+                <div className="gallery-state-line text-cyan-400">Loading your collection data...</div>
+              ) : error ? (
+                <div className="gallery-state-wrap">
+                  <div className="gallery-state-line text-red-400">{error}</div>
+                  <button type="button" className="gallery-action-btn" onClick={() => void loadGallery()}>
+                    RETRY
+                  </button>
+                </div>
+              ) : (
+                <div className="gallery-layout">
+                  <div className="gallery-collection-column">
+                    <div className="gallery-section-label">Collections</div>
+                    <div className="gallery-tabs">
+                      {collections.map((collection) => (
                         <button
+                          key={collection.collectionId}
                           type="button"
-                          className="gallery-action-btn"
-                          onClick={() => void handleSetAsPfp()}
-                          disabled={isSettingPfp}
+                          className={`gallery-tab ${activeCollectionId === collection.collectionId ? 'active' : ''}`}
+                          onClick={() => setCollection(collection.collectionId)}
                         >
-                          {isSettingPfp ? 'SETTING PFP...' : 'SET AS PFP'}
+                          {collection.label}
+                          <span className="gallery-tab-count">{collection.nfts.length}</span>
                         </button>
+                      ))}
+                    </div>
+
+                    <div className="gallery-section-label">Assets</div>
+                    <div className="gallery-assets-grid">
+                      {(activeCollection?.nfts || []).map((nft) => {
+                        const selected = selectedAssetId === nft.assetId;
+                        const isCurrentPfp = currentPfpAssetId === nft.assetId;
+                        return (
+                          <button
+                            key={nft.assetId}
+                            type="button"
+                            className={`gallery-asset-card ${selected ? 'selected' : ''}`}
+                            onClick={() => setSelectedAssetId(nft.assetId)}
+                          >
+                            <img src={nft.image || ''} alt={nft.name} className="gallery-asset-image" />
+                            <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
+                            {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
+                          </button>
+                        );
+                      })}
+                      {activeCollection && activeCollection.nfts.length === 0 && (
+                        <div className="gallery-empty">No assets in this collection.</div>
                       )}
                     </div>
                   </div>
 
-                  <div className="gallery-section-label">Traits</div>
-                  <div className="gallery-traits-list">
-                    {selectedNft.attributes.length === 0 && (
-                      <div className="gallery-empty">No traits available for this NFT.</div>
-                    )}
-                    {selectedNft.attributes.map((attr, idx) => (
-                      <div key={`${attr.trait_type}-${idx}`} className="gallery-trait-row">
-                        <span className="gallery-trait-type">{attr.trait_type}</span>
-                        <span className="gallery-trait-value">{String(attr.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="gallery-section-label">Transfer</div>
-                  {selectedNft.isSoulbound ? (
-                    <div className="gallery-state-line text-yellow-400">
-                      This NFT is soulbound and cannot be transferred.
-                    </div>
-                  ) : (
-                    <div className="gallery-transfer-box">
-                      <input
-                        type="text"
-                        className="gallery-transfer-input"
-                        value={recipientWallet}
-                        onChange={(event) => {
-                          setRecipientWallet(event.target.value);
-                          if (event.target.value) validateRecipient(event.target.value);
-                          else setRecipientError(null);
-                        }}
-                        placeholder="Recipient Solana wallet"
-                      />
-                      {recipientError && <div className="gallery-state-line text-red-400">{recipientError}</div>}
-                      {transferError && <div className="gallery-state-line text-red-400">{transferError}</div>}
-                      {lastTransferSignature && (
-                        <div className="gallery-success-wrap">
-                          <div className="gallery-state-line text-green-400">
-                            Transfer submitted: {lastTransferSignature.slice(0, 16)}...{lastTransferSignature.slice(-16)}
-                          </div>
-                          {explorerTxUrl && (
-                            <a href={explorerTxUrl} target="_blank" rel="noopener noreferrer" className="gallery-explorer-link">
-                              VIEW TRANSACTION
-                            </a>
-                          )}
-                        </div>
-                      )}
+                  <div className="gallery-detail-column">
+                    <div className="gallery-detail-actions">
                       <button
                         type="button"
                         className="gallery-action-btn"
-                        onClick={() => void handleTransfer()}
-                        disabled={isTransferring || !recipientWallet || !!recipientError}
+                        onClick={() => void loadGallery()}
+                        disabled={loading}
                       >
-                        {isTransferring ? 'CONFIRMING TRANSFER...' : 'TRANSFER NFT'}
+                        REFRESH
                       </button>
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="gallery-empty">Select an NFT to see details and transfer options.</div>
+                    {selectedNft ? (
+                      <>
+                        <div className="gallery-detail-top">
+                          <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
+                          <div className="gallery-detail-meta">
+                            <div className="gallery-detail-name">{selectedNft.name}</div>
+                            <div className="gallery-detail-assetid">
+                              {selectedNft.assetId.slice(0, 12)}...{selectedNft.assetId.slice(-12)}
+                            </div>
+                            {currentPfpAssetId === selectedNft.assetId ? (
+                              <div className="gallery-state-line text-green-400">This NFT is your active PFP.</div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="gallery-action-btn"
+                                onClick={() => void handleSetAsPfp()}
+                                disabled={isSettingPfp}
+                              >
+                                {isSettingPfp ? 'SETTING PFP...' : 'SET AS PFP'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="gallery-section-label">Traits</div>
+                        <div className="gallery-traits-list">
+                          {selectedNft.attributes.length === 0 && (
+                            <div className="gallery-empty">No traits available for this NFT.</div>
+                          )}
+                          {selectedNft.attributes.map((attr, idx) => (
+                            <div key={`${attr.trait_type}-${idx}`} className="gallery-trait-row">
+                              <span className="gallery-trait-type">{attr.trait_type}</span>
+                              <span className="gallery-trait-value">{String(attr.value)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="gallery-section-label">Transfer</div>
+                        {selectedNft.isSoulbound ? (
+                          <div className="gallery-state-line text-yellow-400">
+                            This NFT is soulbound and cannot be transferred.
+                          </div>
+                        ) : (
+                          <div className="gallery-transfer-box">
+                            <input
+                              type="text"
+                              className="gallery-transfer-input"
+                              value={recipientWallet}
+                              onChange={(event) => {
+                                setRecipientWallet(event.target.value);
+                                if (event.target.value) validateRecipient(event.target.value);
+                                else setRecipientError(null);
+                              }}
+                              placeholder="Recipient Solana wallet"
+                            />
+                            {recipientError && <div className="gallery-state-line text-red-400">{recipientError}</div>}
+                            {transferError && <div className="gallery-state-line text-red-400">{transferError}</div>}
+                            {lastTransferSignature && (
+                              <div className="gallery-success-wrap">
+                                <div className="gallery-state-line text-green-400">
+                                  Transfer submitted: {lastTransferSignature.slice(0, 16)}...{lastTransferSignature.slice(-16)}
+                                </div>
+                                {explorerTxUrl && (
+                                  <a href={explorerTxUrl} target="_blank" rel="noopener noreferrer" className="gallery-explorer-link">
+                                    VIEW TRANSACTION
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              className="gallery-action-btn"
+                              onClick={() => void handleTransfer()}
+                              disabled={isTransferring || !recipientWallet || !!recipientError}
+                            >
+                              {isTransferring ? 'CONFIRMING TRANSFER...' : 'TRANSFER NFT'}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="gallery-empty">Select an NFT to see details and transfer options.</div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </div>
-        )}
+        </div>
+
+        <div className="gallery-monitor-controls">
+          <div className="gallery-monitor-brand" aria-hidden>
+            SCANLINES CRT-9
+          </div>
+          <button
+            type="button"
+            className="gallery-monitor-close"
+            onClick={onClose}
+            aria-label="Power off gallery"
+            title="Power off"
+          >
+            <span aria-hidden>⏻</span>
+          </button>
+        </div>
       </div>
     </div>
   );
