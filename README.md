@@ -9,31 +9,30 @@
 ```
 
 > **Solana Hackathon submission**  
-> A text-first multiplayer game platform where ownership, identity, and progression live on-chain via compressed NFTs.
+> A text-based game engine with digital ownership, identity, and progression live on-chain via compressed NFTs.
 >
 > Out of touch retro CLI adventure straight from the `@solana` graveyard.  
 > Feels like the 80's // NFT utility like it's still 2022.
 
-Scanlines combines interactive fiction with crypto-native mechanics: wallet sign-in, cNFT-gated gameplay, persistent cloud saves, campaign achievements, and real-time social presence.
+Scanlines is a text adventure with wallet sign-in, cNFT-gated gameplay, cloud saves, campaigns, and live chat.
 
 ## Why We Built This
 
-Most Web3 games still feel like "wallet wrappers" around a traditional app.  
-Scanlines explores a different direction: **an immersive game loop where blockchain primitives unlock narrative, progression, and identity without interrupting the player experience**.
+Community and technology is the basis of why we are building on Solana. The real fun is when these two meet, and Scanlines is a product that starts with the story, the art, and the player/collector experience. Solana is offering the infrastructure to make user identification and ownership easy and fun.
 
 ### Vision
 
-- Make on-chain ownership feel meaningful in moment-to-moment gameplay
-- Merge text-first storytelling with modern multiplayer web architecture
-- Prove that Solana cNFTs can power scalable, low-friction game systems
-- Build a foundation for community-authored campaigns and collectible-driven worlds
-- Treat blockchain as infrastructure, not as friction in the player journey
-- Evolve from a single retro skin into a creator-friendly platform for many visual styles
+- Make on-chain ownership useful in normal gameplay
+- Pair text-first storytelling with modern multiplayer infrastructure
+- Use Solana cNFTs in a way that scales and feels simple
+- Open the platform to community-authored campaigns and collectible-driven worlds
+- Keep blockchain in the background as infrastructure
+- Evolve from one default skin into a creator-friendly platform with many visual styles
 
 ### Core Thesis
 
-- **Text-first play is intimate**: command and narrative interaction creates focus, imagination, and presence
-- **Social is the heartbeat**: real-time explorer chat turns solo adventure into a living world
+- **Text-first works**: commands and narrative keep players focused
+- **Social matters**: live explorer chat turns a solo game into a shared world
 
 ## Highlights
 
@@ -48,7 +47,7 @@ Scanlines explores a different direction: **an immersive game loop where blockch
 
 ## Solana Integration
 
-This project is built around Solana as a first-class game backend:
+This project uses Solana directly in core game systems:
 
 - Compressed NFTs (Bubblegum V2) for scalable minting
 - Helius DAS/RPC for asset indexing and transaction flow
