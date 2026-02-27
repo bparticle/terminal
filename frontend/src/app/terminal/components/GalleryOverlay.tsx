@@ -33,6 +33,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [selectedGlobalAssetId, setSelectedGlobalAssetId] = useState<string | null>(null);
+  const [globalSearch, setGlobalSearch] = useState('');
   const [recipientWallet, setRecipientWallet] = useState('');
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
@@ -139,10 +140,34 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
     return globalPfps.find((pfp) => pfp.assetId === selectedGlobalAssetId) || null;
   }, [globalPfps, selectedGlobalAssetId]);
 
+  const filteredGlobalPfps = useMemo(() => {
+    const query = globalSearch.trim().toLowerCase();
+    if (!query) return globalPfps;
+    return globalPfps.filter((pfp) => {
+      const ownerName = (pfp.ownerName || '').toLowerCase();
+      const pfpName = (pfp.pfpName || '').toLowerCase();
+      const ownerWallet = pfp.ownerWallet.toLowerCase();
+      return ownerName.includes(query) || pfpName.includes(query) || ownerWallet.includes(query);
+    });
+  }, [globalPfps, globalSearch]);
+
+  useEffect(() => {
+    if (!isGlobalPfpsTab) return;
+    if (filteredGlobalPfps.length === 0) {
+      setSelectedGlobalAssetId(null);
+      return;
+    }
+    const stillExists = filteredGlobalPfps.some((pfp) => pfp.assetId === selectedGlobalAssetId);
+    if (!stillExists) {
+      setSelectedGlobalAssetId(filteredGlobalPfps[0].assetId);
+    }
+  }, [isGlobalPfpsTab, filteredGlobalPfps, selectedGlobalAssetId]);
+
   const setCollection = useCallback((collectionId: string) => {
     if (collectionId === GLOBAL_PFPS_TAB_ID) {
       setActiveCollectionId(collectionId);
       setSelectedAssetId(null);
+      setGlobalSearch('');
       setRecipientWallet('');
       setRecipientError(null);
       setTransferError(null);
@@ -270,7 +295,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                         onClick={() => setCollection(GLOBAL_PFPS_TAB_ID)}
                       >
                         Global PFPs
-                        <span className="gallery-tab-count">{globalPfps.length}</span>
+                        <span className="gallery-tab-count">{filteredGlobalPfps.length}</span>
                       </button>
                     </div>
 
@@ -278,29 +303,43 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                       {isGlobalPfpsTab ? 'Global PFP Registry' : isSoulboundCollection ? 'Soulbound Items' : 'Assets'}
                     </div>
                     {isGlobalPfpsTab ? (
-                      <div className="gallery-assets-list">
+                      <div className="gallery-global-search-wrap">
+                        <input
+                          type="text"
+                          className="gallery-transfer-input gallery-global-search-input"
+                          placeholder="Search by owner, wallet, or PFP name"
+                          value={globalSearch}
+                          onChange={(event) => setGlobalSearch(event.target.value)}
+                        />
+                      </div>
+                    ) : null}
+                    {isGlobalPfpsTab ? (
+                      <div className="gallery-assets-grid">
                         {globalLoading && <div className="gallery-empty">Loading global PFP registry...</div>}
                         {!globalLoading && globalError && <div className="gallery-empty text-red-400">{globalError}</div>}
-                        {!globalLoading && !globalError && globalPfps.length === 0 && (
+                        {!globalLoading && !globalError && filteredGlobalPfps.length === 0 && (
                           <div className="gallery-empty">No confirmed PFP mints found yet.</div>
                         )}
-                        {!globalLoading && !globalError && globalPfps.map((pfp) => {
+                        {!globalLoading && !globalError && filteredGlobalPfps.map((pfp) => {
                           const selected = selectedGlobalAssetId === pfp.assetId;
                           return (
                             <button
                               key={pfp.assetId}
                               type="button"
-                              className={`gallery-asset-row gallery-global-pfp-row ${selected ? 'selected' : ''}`}
+                              className={`gallery-asset-card gallery-global-pfp-card ${selected ? 'selected' : ''}`}
                               onClick={() => setSelectedGlobalAssetId(pfp.assetId)}
                             >
+                              {pfp.image ? (
+                                <img src={pfp.image} alt={pfp.pfpName} className="gallery-asset-image" />
+                              ) : (
+                                <div className="gallery-global-pfp-image-fallback">NO IMAGE</div>
+                              )}
+                              <div className="gallery-asset-name">{pfp.pfpName || 'Scanlines PFP'}</div>
                               <div className="gallery-global-pfp-owner">
                                 {pfp.ownerName || `${pfp.ownerWallet.slice(0, 6)}...${pfp.ownerWallet.slice(-4)}`}
                               </div>
                               <div className="gallery-global-pfp-meta">
-                                <span>{pfp.pfpName || 'Scanlines PFP'}</span>
-                                <span className="gallery-asset-row-id">
-                                  {pfp.ownerWallet.slice(0, 8)}...{pfp.ownerWallet.slice(-8)}
-                                </span>
+                                {pfp.ownerWallet.slice(0, 8)}...{pfp.ownerWallet.slice(-8)}
                               </div>
                             </button>
                           );

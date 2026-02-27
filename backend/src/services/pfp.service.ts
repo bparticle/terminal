@@ -12,6 +12,8 @@ import { uploadPfpAndMetadata } from './arweave.service';
 import { executeMint, checkWhitelist, prepareMintTransaction, confirmUserMint } from './mint.service';
 import { query, transaction } from '../config/database';
 import type { FaceTraits as FaceTraitsType } from 'scanlines-pfp-generator';
+import { config } from '../config/constants';
+import { getNFTDetails } from './helius.service';
 
 const PFP_SIZE = 512;
 
@@ -44,6 +46,40 @@ export interface GlobalPfpOwner {
   ownerUserId: string;
 }
 
+async function resolveNetworkSeparatedPfps<T extends { asset_id: string; nft_metadata: any }>(rows: T[]): Promise<T[]> {
+  const directMatches: T[] = [];
+  const needsVerification: T[] = [];
+
+  for (const row of rows) {
+    const rowNetwork = row.nft_metadata?.network;
+    if (typeof rowNetwork === 'string') {
+      if (rowNetwork === config.solanaNetwork) {
+        directMatches.push(row);
+      }
+      continue;
+    }
+    // Legacy rows without explicit network metadata are verified against the active RPC.
+    needsVerification.push(row);
+  }
+
+  if (needsVerification.length === 0) {
+    return directMatches;
+  }
+
+  const verified = await Promise.all(
+    needsVerification.map(async (row) => {
+      const asset = await getNFTDetails(row.asset_id);
+      return asset ? row : null;
+    }),
+  );
+  const verifiedMatches: T[] = [];
+  for (const row of verified) {
+    if (row) verifiedMatches.push(row);
+  }
+
+  return [...directMatches, ...verifiedMatches];
+}
+
 /**
  * Check PFP mint status for a wallet.
  */
@@ -68,7 +104,8 @@ export async function getPfpStatus(userId: string, wallet: string): Promise<PfpS
     [userId],
   );
 
-  const pfps = pfpResult.rows.map((row: any) => ({
+  const networkRows = await resolveNetworkSeparatedPfps(pfpResult.rows as Array<{ asset_id: string; nft_metadata: any }>);
+  const pfps = networkRows.map((row: any) => ({
     assetId: row.asset_id,
     imageUri: row.nft_metadata?.imageUri || '',
     name: row.nft_metadata?.name || 'Scanlines PFP',
@@ -115,7 +152,8 @@ export async function getGlobalPfpOwners(limit = 200): Promise<GlobalPfpOwner[]>
     [safeLimit],
   );
 
-  return result.rows.map((row: any) => ({
+  const networkRows = await resolveNetworkSeparatedPfps(result.rows as Array<{ asset_id: string; nft_metadata: any }>);
+  return networkRows.map((row: any) => ({
     assetId: row.asset_id,
     image: row.nft_metadata?.imageUri || '',
     pfpName: row.nft_metadata?.name || row.nft_name || 'Scanlines PFP',
@@ -170,6 +208,7 @@ export async function mintPfp(userId: string, wallet: string): Promise<PfpMintRe
   await query(
     `UPDATE mint_log SET mint_type = 'pfp', nft_metadata = $1 WHERE id = $2`,
     [JSON.stringify({
+      network: config.solanaNetwork,
       seed,
       imageUri,
       metadataUri,
@@ -270,6 +309,7 @@ export async function preparePfpMint(userId: string, wallet: string): Promise<Pf
        VALUES ($1, $2, 'pfp', $3, $4, 'prepared')
        RETURNING id`,
       [userId, wallet, pfpName, JSON.stringify({
+        network: config.solanaNetwork,
         seed,
         imageUri,
         metadataUri,
