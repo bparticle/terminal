@@ -16,6 +16,7 @@ interface InventoryBoxProps {
 }
 
 const ITEMS_PER_PAGE = 2;
+const TOOLTIP_EXIT_MS = 140;
 
 // Two-step fallback: item-specific PNG → _generic.png → emoji
 function ItemIcon({ name }: { name: string }) {
@@ -118,14 +119,14 @@ function ItemSlot({
   item,
   isHighlight,
   slotKey,
-  isTooltipOpen,
+  tooltipState,
   onOpenTooltip,
   onScheduleCloseTooltip,
 }: {
   item: InventoryItem;
   isHighlight: boolean;
   slotKey: string;
-  isTooltipOpen: boolean;
+  tooltipState: 'open' | 'closing' | null;
   onOpenTooltip: (slotKey: string) => void;
   onScheduleCloseTooltip: (slotKey: string) => void;
 }) {
@@ -145,9 +146,10 @@ function ItemSlot({
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
-      {isTooltipOpen && (
+      {tooltipState && (
         <div
           className="soulbound-tooltip"
+          data-state={tooltipState}
           onMouseEnter={() => onOpenTooltip(slotKey)}
           onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
         >
@@ -166,19 +168,60 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const [page, setPage] = useState(0);
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
   const [activeTooltipKey, setActiveTooltipKey] = useState<string | null>(null);
+  const [closingTooltipKey, setClosingTooltipKey] = useState<string | null>(null);
   const prevItemsRef = useRef<string[]>([]);
   const closeTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTooltipKeyRef = useRef<string | null>(null);
 
   const openTooltip = useCallback((slotKey: string) => {
     if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
+    // If hovering the currently open tooltip, just cancel any close.
+    if (activeTooltipKey === slotKey) {
+      setClosingTooltipKey(null);
+      pendingTooltipKeyRef.current = null;
+      return;
+    }
+
+    // If another tooltip is open, close it first, then open the new one.
+    if (activeTooltipKey && activeTooltipKey !== slotKey) {
+      const closingKey = activeTooltipKey;
+      setActiveTooltipKey(null);
+      setClosingTooltipKey(closingKey);
+      pendingTooltipKeyRef.current = slotKey;
+      closeTooltipTimerRef.current = setTimeout(() => {
+        setClosingTooltipKey((current) => (current === closingKey ? null : current));
+        setActiveTooltipKey(slotKey);
+        pendingTooltipKeyRef.current = null;
+      }, TOOLTIP_EXIT_MS);
+      return;
+    }
+
+    // If something else is mid-close, queue this one to open after close.
+    if (closingTooltipKey && closingTooltipKey !== slotKey) {
+      const closingKey = closingTooltipKey;
+      pendingTooltipKeyRef.current = slotKey;
+      closeTooltipTimerRef.current = setTimeout(() => {
+        setClosingTooltipKey((current) => (current === closingKey ? null : current));
+        setActiveTooltipKey(slotKey);
+        pendingTooltipKeyRef.current = null;
+      }, TOOLTIP_EXIT_MS);
+      return;
+    }
+
+    pendingTooltipKeyRef.current = null;
+    setClosingTooltipKey(null);
     setActiveTooltipKey(slotKey);
-  }, []);
+  }, [activeTooltipKey, closingTooltipKey]);
 
   const scheduleCloseTooltip = useCallback((slotKey: string) => {
     if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
+    if (pendingTooltipKeyRef.current === slotKey) pendingTooltipKeyRef.current = null;
+    setClosingTooltipKey(slotKey);
+    setActiveTooltipKey((current) => (current === slotKey ? null : current));
     closeTooltipTimerRef.current = setTimeout(() => {
       setActiveTooltipKey((current) => (current === slotKey ? null : current));
-    }, 200);
+      setClosingTooltipKey((current) => (current === slotKey ? null : current));
+    }, TOOLTIP_EXIT_MS);
   }, []);
 
   useEffect(() => {
@@ -228,7 +271,11 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
               item={item}
               isHighlight={item.name === highlightItem}
               slotKey={slotKey}
-              isTooltipOpen={activeTooltipKey === slotKey}
+              tooltipState={
+                activeTooltipKey === slotKey
+                  ? 'open'
+                  : (closingTooltipKey === slotKey ? 'closing' : null)
+              }
               onOpenTooltip={openTooltip}
               onScheduleCloseTooltip={scheduleCloseTooltip}
             />

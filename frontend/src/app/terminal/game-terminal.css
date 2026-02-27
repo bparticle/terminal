@@ -870,7 +870,7 @@
   right: 8px;
   width: 18px;
   height: 18px;
-  padding: 10px;
+  padding: 1px;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -907,6 +907,53 @@
   pointer-events: auto;
   white-space: normal;
   backdrop-filter: blur(4px);
+  transform-origin: bottom right;
+  will-change: opacity, transform;
+}
+
+.soulbound-tooltip[data-state='open'] {
+  animation: inventoryTooltipIn 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.soulbound-tooltip[data-state='closing'] {
+  animation: inventoryTooltipOut 140ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes inventoryTooltipIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes inventoryTooltipOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.992);
+    filter: blur(1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soulbound-tooltip[data-state='open'],
+  .soulbound-tooltip[data-state='closing'] {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
 
 .soulbound-tooltip-title {
