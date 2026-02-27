@@ -64,6 +64,9 @@ export default function GameTerminal() {
   const [chatMode, setChatMode] = useState(false);
   const [soloMode, setSoloMode] = useState(false);
   const [isPrivateRoom, setIsPrivateRoom] = useState(false);
+  const [awayPlayers, setAwayPlayers] = useState<Set<string>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
 
@@ -138,15 +141,41 @@ export default function GameTerminal() {
     ]);
   }, []);
 
-  const { isConnected: isSocketConnected, joinRoom, leaveRoom, sendMessage } = useSocket({
+  const handlePlayerStatus = useCallback(({ name, status }: { name: string; status: 'active' | 'away' }) => {
+    setAwayPlayers((prev) => {
+      const next = new Set(prev);
+      if (status === 'away') next.add(name);
+      else next.delete(name);
+      return next;
+    });
+  }, []);
+
+  const handlePlayerTyping = useCallback(({ name }: { name: string }) => {
+    setTypingUsers((prev) => new Set(prev).add(name));
+    const existing = typingTimersRef.current.get(name);
+    if (existing) clearTimeout(existing);
+    typingTimersRef.current.set(name, setTimeout(() => {
+      setTypingUsers((prev) => { const next = new Set(prev); next.delete(name); return next; });
+      typingTimersRef.current.delete(name);
+    }, 3_000));
+  }, []);
+
+  const { isConnected: isSocketConnected, joinRoom, leaveRoom, sendMessage, setUserStatus, emitTyping } = useSocket({
     onChatMessage: handleChatMessage,
     onSystemEvent: handleSystemEvent,
+    onPlayerStatus: handlePlayerStatus,
+    onPlayerTyping: handlePlayerTyping,
   });
 
   // Wraps setCurrentLocation to also join/leave the Socket.IO room.
   // roomId is the chat cluster identifier (chat_room field on the node, or nodeId if unset).
   const handleLocationChange = useCallback((location: string, nodeId?: string, roomId?: string) => {
     setCurrentLocation(location);
+    // Clear per-room transient state on every room change
+    setAwayPlayers(new Set());
+    setTypingUsers(new Set());
+    typingTimersRef.current.forEach(clearTimeout);
+    typingTimersRef.current.clear();
     if (nodeId) {
       currentNodeIdRef.current = nodeId;
 
@@ -338,6 +367,18 @@ export default function GameTerminal() {
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
+
+  // Emit away/active status when the browser tab is hidden/shown
+  useEffect(() => {
+    const handleVisibility = () => setUserStatus(document.hidden ? 'away' : 'active');
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [setUserStatus]);
+
+  // Clean up typing timers on unmount
+  useEffect(() => {
+    return () => { typingTimersRef.current.forEach(clearTimeout); };
+  }, []);
 
   // Track auth state transitions: clean up persona when auth is lost
   useEffect(() => {
@@ -709,7 +750,7 @@ export default function GameTerminal() {
               ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); if (chatMode) emitTyping(); }}
               onKeyDown={(e) => {
                 if (e.key === 'Tab' && isAuthenticated && onboardingState === 'done' && !soloMode && !isPrivateRoom) {
                   e.preventDefault();
@@ -772,7 +813,7 @@ export default function GameTerminal() {
           <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
           <StatsBox walletAddress={publicKey?.toBase58() || null} />
           <InventoryBox items={inventory} />
-          <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
+          <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
         </div>
 
         {/* Mobile Sidebar */}
@@ -785,7 +826,7 @@ export default function GameTerminal() {
               <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
               <StatsBox walletAddress={publicKey?.toBase58() || null} />
               <InventoryBox items={inventory} />
-              <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} />
+              <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
             </div>
           </div>
         )}

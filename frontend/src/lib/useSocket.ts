@@ -18,9 +18,20 @@ export interface ChatSystemEvent {
   timestamp: number;
 }
 
+export interface PlayerStatusUpdate {
+  name: string;
+  status: 'active' | 'away';
+}
+
+export interface PlayerTypingEvent {
+  name: string;
+}
+
 interface UseSocketOptions {
   onChatMessage?: (msg: ChatMessage) => void;
   onSystemEvent?: (evt: ChatSystemEvent) => void;
+  onPlayerStatus?: (update: PlayerStatusUpdate) => void;
+  onPlayerTyping?: (evt: PlayerTypingEvent) => void;
 }
 
 const SOCKET_URL =
@@ -31,7 +42,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production' && SO
   console.warn('[socket] WARNING: Using unencrypted WebSocket URL in production. Use wss:// for security.');
 }
 
-export function useSocket({ onChatMessage, onSystemEvent }: UseSocketOptions = {}) {
+export function useSocket({ onChatMessage, onSystemEvent, onPlayerStatus, onPlayerTyping }: UseSocketOptions = {}) {
   const { session, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -42,6 +53,13 @@ export function useSocket({ onChatMessage, onSystemEvent }: UseSocketOptions = {
   onChatMessageRef.current = onChatMessage;
   const onSystemEventRef = useRef(onSystemEvent);
   onSystemEventRef.current = onSystemEvent;
+  const onPlayerStatusRef = useRef(onPlayerStatus);
+  onPlayerStatusRef.current = onPlayerStatus;
+  const onPlayerTypingRef = useRef(onPlayerTyping);
+  onPlayerTypingRef.current = onPlayerTyping;
+
+  // Debounce gate for typing events — emit at most once per 2s
+  const typingCooldownRef = useRef(false);
 
   // Connect / disconnect based on auth state
   useEffect(() => {
@@ -89,6 +107,14 @@ export function useSocket({ onChatMessage, onSystemEvent }: UseSocketOptions = {
       onSystemEventRef.current?.(evt);
     });
 
+    socket.on('user-status-update', (update: PlayerStatusUpdate) => {
+      onPlayerStatusRef.current?.(update);
+    });
+
+    socket.on('user-typing', (evt: PlayerTypingEvent) => {
+      onPlayerTypingRef.current?.(evt);
+    });
+
     socketRef.current = socket;
 
     return () => {
@@ -118,10 +144,27 @@ export function useSocket({ onChatMessage, onSystemEvent }: UseSocketOptions = {
     }
   }, []);
 
+  const setUserStatus = useCallback((status: 'active' | 'away') => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('user-status', { status });
+    }
+  }, []);
+
+  // Emit a typing signal at most once every 2s (pairs with server-side rate limit).
+  const emitTyping = useCallback(() => {
+    if (!socketRef.current?.connected) return;
+    if (typingCooldownRef.current) return;
+    socketRef.current.emit('user-typing');
+    typingCooldownRef.current = true;
+    setTimeout(() => { typingCooldownRef.current = false; }, 2_000);
+  }, []);
+
   return {
     isConnected,
     joinRoom,
     leaveRoom,
     sendMessage,
+    setUserStatus,
+    emitTyping,
   };
 }

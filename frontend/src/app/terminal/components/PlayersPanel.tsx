@@ -12,9 +12,11 @@ interface Player {
 interface PlayersPanelProps {
   currentPlayerName: string | null;
   isolated?: boolean;
+  awayPlayers?: Set<string>;
+  typingUsers?: Set<string>;
 }
 
-export default function PlayersPanel({ currentPlayerName, isolated = false }: PlayersPanelProps) {
+export default function PlayersPanel({ currentPlayerName, isolated = false, awayPlayers, typingUsers }: PlayersPanelProps) {
   const [players, setPlayers] = useState<Player[]>([]);
 
   const fetchPlayers = useCallback(async () => {
@@ -75,15 +77,20 @@ export default function PlayersPanel({ currentPlayerName, isolated = false }: Pl
             const isYou = player.name === currentPlayerName;
             const activity = isYou ? 'active' : getActivityLevel(player.last_active_at);
 
+            const isAway = !isYou && (awayPlayers?.has(player.name) ?? false);
+            const isTyping = !isYou && (typingUsers?.has(player.name) ?? false);
+            const dotClass = isYou ? 'active' : isAway ? 'away' : activity;
+
             return (
               <div
                 key={player.wallet_address}
                 className={`player-row ${isYou ? 'player-you' : ''}`}
               >
-                <span className={`player-dot dot-${activity}`} />
+                <span className={`player-dot dot-${dotClass}`} />
                 <span className="player-name">
                   {player.name}
                   {isYou && <span className="player-you-tag"> (you)</span>}
+                  {isTyping && <span className="player-typing">...</span>}
                 </span>
               </div>
             );

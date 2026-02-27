@@ -123,6 +123,37 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
     });
   });
 
+  // ── user-status ──────────────────────────────────────────
+  // Client emits when the browser tab becomes hidden/visible.
+  socket.on('user-status', (payload: { status: string }) => {
+    const { status } = payload || {};
+    if (status !== 'active' && status !== 'away') return;
+
+    socket.data.status = status;
+    const currentRoom = getCurrentRoom(socket);
+    if (!currentRoom) return;
+
+    const name = socket.data.playerName;
+    if (!name) return;
+
+    socket.to(currentRoom).emit('user-status-update', { name, status });
+  });
+
+  // ── user-typing ───────────────────────────────────────────
+  // Client emits while typing in chat mode (debounced on client side).
+  socket.on('user-typing', () => {
+    // Rate limit: max 1 event per 2 seconds — pairs with client-side debounce
+    if (!checkRateLimit(rateBuckets, 'typing', 1, 2_000)) return;
+
+    const currentRoom = getCurrentRoom(socket);
+    if (!currentRoom) return;
+
+    const name = socket.data.playerName;
+    if (!name) return;
+
+    socket.to(currentRoom).emit('user-typing', { name });
+  });
+
   // ── chat-message ─────────────────────────────────────────
   socket.on('chat-message', async (payload: { message: string }) => {
     const { message } = payload || {};
