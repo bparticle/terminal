@@ -98,6 +98,13 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
       soulboundRows.rows.map((row: any) => row.asset_id).filter(Boolean)
     );
 
+    // Map asset_id → item_name so the frontend can resolve local override images
+    const soulboundItemNames = new Map<string, string>(
+      soulboundRows.rows
+        .filter((row: any) => row.asset_id && row.item_name)
+        .map((row: any) => [row.asset_id, row.item_name])
+    );
+
     const normalized = collections.map((collection) => ({
       collectionId: collection.collectionId,
       label: collection.label,
@@ -117,6 +124,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
           terminalMetadata: metadata?.nft_metadata || null,
           isCurrentPfp: currentPfpAssetId === nft.assetId,
           isSoulbound: soulboundAssetIds.has(nft.assetId),
+          itemName: soulboundItemNames.get(nft.assetId) || null,
         };
       }),
     }));
@@ -153,6 +161,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
               terminalMetadata: metadata?.nft_metadata || null,
               isCurrentPfp: currentPfpAssetId === row.asset_id,
               isSoulbound: true,
+              itemName: row.item_name || null,
             };
           })
         );

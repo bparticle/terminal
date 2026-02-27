@@ -18,6 +18,7 @@ export interface GalleryNft {
   mintType: string;
   isCurrentPfp: boolean;
   isSoulbound: boolean;
+  itemName?: string | null;
   compression?: {
     compressed: boolean;
     leafId: number | null;

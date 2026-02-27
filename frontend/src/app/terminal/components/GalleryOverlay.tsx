@@ -34,39 +34,73 @@ function proxyUrl(url: string): string {
 }
 
 /**
- * Image (or video fallback) with Arweave proxy, lazy loading, and error fallback. (#2, #4, #8)
- * Uses the same className as the <img> would so it inherits sizing.
- * Falls back to <video> when image is absent but animationUrl is present.
+ * Image with priority chain: local override PNG → on-chain image → GIF placeholder (for
+ * soulbound items) or animationUrl video → "NO IMAGE".
+ *
+ * - itemName: snake_case item key (e.g. "cold_room_key"). When provided, tries
+ *   /items/{itemName}.png first (same convention as InventoryBox).
+ * - src: on-chain image URL, proxied through Arweave gateway if needed.
+ * - animationUrl: only used for non-soulbound NFTs when both local and on-chain image fail.
+ * - GIF (/items/_generic.gif) is the final fallback for any soulbound item without a local PNG.
  */
-function GalleryImg({ src, alt, className, imgKey, animationUrl }: { src: string; alt: string; className: string; imgKey?: string; animationUrl?: string }) {
-  const [failed, setFailed] = useState(false);
+function GalleryImg({
+  src, alt, className, imgKey, animationUrl, itemName,
+}: {
+  src: string; alt: string; className: string; imgKey?: string; animationUrl?: string; itemName?: string | null;
+}) {
+  // 'local' → try /items/{itemName}.png first (only when itemName provided)
+  // 'remote' → try on-chain src
+  // 'fallback' → GIF (soulbound) or animationUrl video or NO IMAGE
+  const [state, setState] = useState<'local' | 'remote' | 'fallback'>(
+    () => (itemName ? 'local' : 'remote')
+  );
 
-  // Reset failed state when the image src changes (new NFT selected in detail panel)
   useEffect(() => {
-    setFailed(false);
-  }, [src, imgKey]);
+    setState(itemName ? 'local' : 'remote');
+  }, [src, imgKey, itemName]);
 
-  if (!src || failed) {
-    if (animationUrl) {
-      return <video src={animationUrl} autoPlay loop muted playsInline className={className} />;
-    }
+  // 1. Local override PNG
+  if (state === 'local' && itemName) {
     return (
-      <div
+      <img
+        src={`/items/${itemName}.png`}
+        alt={alt}
         className={className}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}
-      >
-        NO IMAGE
-      </div>
+        loading="lazy"
+        onError={() => setState('remote')}
+      />
     );
   }
+
+  // 2. On-chain image (with Arweave proxy)
+  if (state !== 'fallback' && src) {
+    return (
+      <img
+        src={proxyUrl(src)}
+        alt={alt}
+        className={className}
+        loading="lazy"
+        onError={() => setState('fallback')}
+      />
+    );
+  }
+
+  // 3. Fallback
+  if (itemName) {
+    // Soulbound item: GIF placeholder
+    return <img src="/items/_generic.gif" alt={alt} className={className} loading="lazy" />;
+  }
+  if (animationUrl) {
+    // Non-soulbound NFT with animation (e.g. video NFT)
+    return <video src={animationUrl} autoPlay loop muted playsInline className={className} />;
+  }
   return (
-    <img
-      src={proxyUrl(src)}
-      alt={alt}
+    <div
       className={className}
-      loading="lazy"
-      onError={() => setFailed(true)}
-    />
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}
+    >
+      NO IMAGE
+    </div>
   );
 }
 
@@ -445,6 +479,13 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                                 className={`gallery-asset-row ${selected ? 'selected' : ''}`}
                                 onClick={() => setSelectedAssetId(nft.assetId)}
                               >
+                                <GalleryImg
+                                  src={nft.image}
+                                  animationUrl={nft.animationUrl}
+                                  itemName={nft.itemName}
+                                  alt={nft.name || 'Unnamed item'}
+                                  className="gallery-asset-row-thumb"
+                                />
                                 <div className="gallery-asset-row-main">
                                   <div className="gallery-asset-name">{nft.name || 'Unnamed item'}</div>
                                   <div className="gallery-asset-row-id">
@@ -466,7 +507,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                               className={`gallery-asset-card ${selected ? 'selected' : ''}`}
                               onClick={() => setSelectedAssetId(nft.assetId)}
                             >
-                              <GalleryImg src={nft.image} animationUrl={nft.animationUrl} alt={nft.name || 'Unnamed NFT'} className="gallery-asset-image" />
+                              <GalleryImg src={nft.image} animationUrl={nft.animationUrl} itemName={nft.itemName} alt={nft.name || 'Unnamed NFT'} className="gallery-asset-image" />
                               <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
                               {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
                             </button>
@@ -534,6 +575,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                             <GalleryImg
                               src={selectedNft.image}
                               animationUrl={selectedNft.animationUrl}
+                              itemName={selectedNft.itemName}
                               alt={selectedNft.name}
                               className="gallery-detail-image"
                               imgKey={selectedNft.assetId}
@@ -545,11 +587,14 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                               {selectedNft.assetId.slice(0, 12)}...{selectedNft.assetId.slice(-12)}
                             </div>
                             {isSoulboundCollection && (
-                              selectedNft.animationUrl ? (
-                                <video src={selectedNft.animationUrl} autoPlay loop muted playsInline className="gallery-detail-image" />
-                              ) : (
-                                <div className="gallery-state-line text-gray-400">Image preview unavailable for this soulbound item.</div>
-                              )
+                              <GalleryImg
+                                src={selectedNft.image}
+                                animationUrl={selectedNft.animationUrl}
+                                itemName={selectedNft.itemName}
+                                alt={selectedNft.name}
+                                className="gallery-detail-image"
+                                imgKey={selectedNft.assetId}
+                              />
                             )}
                             {currentPfpAssetId === selectedNft.assetId ? (
                               <div className="gallery-state-line text-green-400">This NFT is your active PFP.</div>

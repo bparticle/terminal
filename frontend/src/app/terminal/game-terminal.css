@@ -1559,8 +1559,18 @@
   box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2);
 }
 
+.gallery-asset-row-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+}
+
 .gallery-asset-row-main {
   min-width: 0;
+  flex: 1;
 }
 
 .gallery-asset-row-id {
