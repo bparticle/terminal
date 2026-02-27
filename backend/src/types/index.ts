@@ -133,6 +133,16 @@ export interface MintParams {
   collection?: 'pfp' | 'items';
   soulbound?: boolean;
   itemName?: string;
+  mintKey?: string;
+  maxSupply?: number;
+  oncePerPlayer?: boolean;
+}
+
+export interface MintEligibility {
+  alreadyMinted: boolean;
+  globalMinted: number;
+  maxSupply: number;
+  supplyRemaining: number;
 }
 
 export interface MintLeafData {

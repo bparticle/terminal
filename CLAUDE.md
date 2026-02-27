@@ -170,12 +170,13 @@ All routes prefixed with `/api/v1/`. Frontend proxies through Next.js `/api/prox
 - `POST /simulate-achievement` - [Admin] Testing
 
 ### Mint (`/mint`) - write limiter
-- `POST /execute` - Mint a cNFT (whitelist-enforced, server-paid, requires `name` + `uri`)
-- `POST /prepare` - Build partially-signed mint tx (user-paid: user is fee payer + treasury fee)
+- `POST /execute` - Mint a cNFT (server-paid, requires `name` + `uri`). Whitelist-enforced when no `mintKey`; supply/dedup-enforced when `mintKey` is set
+- `POST /prepare` - Build partially-signed mint tx (user-paid: user is fee payer + treasury fee). Same whitelist/mintKey branching as execute
 - `POST /confirm` - Accept user-signed tx, submit to Helius, confirm, parse asset ID
+- `GET /check-eligibility` - Check mintKey supply/dedup: `?mintKey=X&maxSupply=N` → `{ alreadyMinted, globalMinted, maxSupply, supplyRemaining }`
 - `GET /status/:signature` - Check transaction confirmation
 - `GET /history` - User's mint history
-- `GET /whitelist/check` - Check if user is whitelisted
+- `GET /whitelist/check` - Check if user is whitelisted (PFP mints only)
 - `GET /admin/whitelist` | `POST /admin/whitelist` - [Admin] List/add whitelist
 - `POST /admin/whitelist/bulk` - [Admin] Bulk add wallets
 - `PUT /admin/whitelist/:wallet` | `DELETE /admin/whitelist/:wallet` - [Admin] Update/remove
@@ -208,8 +209,8 @@ The game engine (`frontend/src/lib/game-engine.ts`) processes a graph of **GameN
 - **quiz** - Question with `correct_answer`, max attempts, success/failure nodes
 - **nft_check** - Gates content behind cNFT ownership (owned/missing branches)
 - **godot_game** - Triggers embedded mini-game (Snake), score tracked in state
-- **mint_action** - Triggers cNFT mint via `mint_config` (name, uri, etc.), branches to success/failure/not-whitelisted nodes
-- **pfp_mint** - Triggers PFP generation + Arweave upload + cNFT mint. Branches to success/failure/not-eligible/limit nodes
+- **mint_action** - Triggers cNFT mint via `mint_config`. Supports `mintKey` for supply caps (`maxSupply`) and per-player dedup (`oncePerPlayer`), custom UI (`steps`, `mintTitle`, `revealDetails`, `revealImageUrl`), and additional state effects (`successState`, `successItems`). No whitelist — access is gated by game node requirements. Branches to success/failure/already-minted/supply-exhausted nodes
+- **pfp_mint** - Triggers PFP generation + Arweave upload + cNFT mint. Whitelist-gated. Branches to success/failure/not-eligible/limit nodes
 
 ### Game State Flow
 ```
@@ -345,6 +346,60 @@ Collections must be created with the `BubblegumV2` plugin (create-only, cannot b
 - `uri` (required) — Pre-uploaded Arweave/IPFS metadata JSON URI
 - `collection` — `'pfp'` or `'items'` (defaults to `'items'`)
 - `symbol`, `sellerFeeBasisPoints`, `soulbound`, `itemName` — optional
+- `mintKey` — Unique identifier for supply/dedup tracking (triggers mintKey path, bypasses whitelist)
+- `maxSupply` — Global supply cap (0 = unlimited). Enforced atomically in DB transaction
+- `oncePerPlayer` — One mint per wallet for this mintKey
+
+### Enhanced `mint_action` Nodes
+
+`mint_action` nodes do **not** use the whitelist. Access is gated by game node `requirements` on the choice leading to the node. Supply and dedup are controlled via `mintKey` in `mint_config`.
+
+**Whitelist separation**: The `mint_whitelist` table is used **only** by PFP mints. When `mintKey` is set on a mint request, `executeMint()` and the prepare route skip the whitelist entirely — supply/dedup checks query `mint_log` by `nft_metadata->>'mintKey'` instead. When `mintKey` is absent (legacy callers like soulbound service), the whitelist path is still used.
+
+**Supply enforcement**: Counts are checked atomically inside the DB transaction that creates the `mint_log` entry. The pending/prepared entry itself reserves the slot. Stale prepared entries (>10 min) are excluded from counts. Backend returns HTTP 409 for "Already minted" or "Supply exhausted" — the game engine catches these and branches to `mint_already_minted_node` or `mint_supply_exhausted_node`.
+
+**MintConfig fields** (all optional, extend the base `name`/`uri`/etc.):
+
+| Field | Purpose |
+|---|---|
+| `mintKey` | Unique key for supply/dedup tracking |
+| `oncePerPlayer` | One per wallet (dedup by mintKey + wallet in mint_log) |
+| `maxSupply` | Global edition cap |
+| `steps` | Custom spinner step labels (array of strings) |
+| `mintTitle` | Cyan banner text displayed before mint sequence |
+| `revealImageUrl` | Show image in Monitor sidebar on success |
+| `revealDetails` | Post-mint detail lines: `[{ label, value }]` |
+| `successState` | Additional game_state flags to set on success |
+| `successItems` | Additional inventory items to grant on success |
+
+**GameNode branch fields**:
+- `mint_success_node` — after successful mint
+- `mint_failure_node` — on error
+- `mint_already_minted_node` — player already minted this mintKey
+- `mint_supply_exhausted_node` — global supply cap reached
+
+**Example node** (limited edition, state-gated via choice requirements):
+```typescript
+mint_boss_trophy: {
+  id: 'mint_boss_trophy',
+  type: 'mint_action',
+  content: 'The trophy materializes.',
+  mint_config: {
+    mintKey: 'boss_trophy',
+    name: 'Boss Trophy',
+    uri: 'https://gateway.irys.xyz/...',
+    oncePerPlayer: true,
+    maxSupply: 50,
+    soulbound: true,
+    mintTitle: 'TROPHY FORGING SEQUENCE',
+    successState: { has_boss_trophy: true },
+  },
+  mint_success_node: 'trophy_obtained',
+  mint_already_minted_node: 'trophy_already_claimed',
+  mint_supply_exhausted_node: 'trophies_gone',
+  mint_failure_node: 'trophy_error',
+},
+```
 
 ### Scripts (`backend/scripts/`)
 - `create-tree.ts` — Create a Bubblegum V2 Merkle tree. `npx ts-node scripts/create-tree.ts --devnet --depth 7`

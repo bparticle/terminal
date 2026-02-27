@@ -1,5 +1,27 @@
 import { fetchWithAuth } from './api';
 
+// ── Eligibility ───────────────────────────────
+
+export interface MintEligibility {
+  alreadyMinted: boolean;
+  globalMinted: number;
+  maxSupply: number;
+  supplyRemaining: number;
+}
+
+export async function checkMintEligibility(mintKey: string, maxSupply: number = 0): Promise<MintEligibility> {
+  const params = new URLSearchParams({ mintKey });
+  if (maxSupply > 0) params.set('maxSupply', String(maxSupply));
+  const response = await fetchWithAuth(`mint/check-eligibility?${params}`);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Authentication required — please reconnect your wallet.');
+    }
+    return { alreadyMinted: false, globalMinted: 0, maxSupply: 0, supplyRemaining: 0 };
+  }
+  return response.json();
+}
+
 // ── User endpoints ─────────────────────────────
 
 export async function checkWhitelistStatus(): Promise<{
@@ -29,6 +51,9 @@ export async function executeMint(config: {
   collection?: 'pfp' | 'items';
   soulbound?: boolean;
   itemName?: string;
+  mintKey?: string;
+  maxSupply?: number;
+  oncePerPlayer?: boolean;
 }): Promise<{
   success: boolean;
   assetId: string;
@@ -53,6 +78,9 @@ export async function prepareMint(config: {
   uri: string;
   symbol?: string;
   collection?: 'pfp' | 'items';
+  mintKey?: string;
+  maxSupply?: number;
+  oncePerPlayer?: boolean;
 }): Promise<{
   transactionBase64: string;
   mintLogId: string;
