@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { fetchWithAuth } from '@/lib/api';
 
 interface Player {
   wallet_address: string;
@@ -18,7 +19,7 @@ export default function PlayersPanel({ currentPlayerName, isolated = false }: Pl
 
   const fetchPlayers = useCallback(async () => {
     try {
-      const response = await fetch('/api/proxy/users/online');
+      const response = await fetchWithAuth('users/online');
       if (response.ok) {
         const data = await response.json();
         setPlayers(data.players || []);
