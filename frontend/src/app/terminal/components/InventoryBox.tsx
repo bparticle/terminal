@@ -18,7 +18,8 @@ interface InventoryBoxProps {
 }
 
 const ITEMS_PER_PAGE = 2;
-const TOOLTIP_EXIT_MS = 140;
+const CLOSE_DELAY_MS = 120;
+const HOVER_PADDING = 8; // px buffer around rects before triggering close
 
 // Two-step fallback: item-specific PNG → _generic.png → emoji
 function ItemIcon({ name }: { name: string }) {
@@ -121,34 +122,107 @@ function ItemSlot({
   item,
   isHighlight,
   slotKey,
-  tooltipState,
-  onOpenTooltip,
-  onScheduleCloseTooltip,
+  isOpen,
+  onOpen,
+  onClose,
 }: {
   item: InventoryItem;
   isHighlight: boolean;
   slotKey: string;
-  tooltipState: 'open' | 'closing' | null;
-  onOpenTooltip: (slotKey: string) => void;
-  onScheduleCloseTooltip: (slotKey: string) => void;
+  isOpen: boolean;
+  onOpen: (slotKey: string) => void;
+  onClose: (slotKey: string) => void;
 }) {
   const slotRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ right: number; bottom: number } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafRef = useRef<number | null>(null);
 
-  const handleOpen = useCallback(() => {
-    if (slotRef.current) {
-      const rect = slotRef.current.getBoundingClientRect();
-      setTooltipPos({
-        right: window.innerWidth - rect.right,
-        bottom: window.innerHeight - rect.top + 10,
+  // Compute position and drive CSS visibility when open state changes
+  useEffect(() => {
+    if (isOpen) {
+      if (slotRef.current) {
+        const rect = slotRef.current.getBoundingClientRect();
+        setTooltipPos({
+          right: window.innerWidth - rect.right,
+          bottom: window.innerHeight - rect.top + 10,
+        });
+      }
+      // Render at opacity:0 first, then flip to is-open in the next frame
+      // so the browser has a chance to paint before the transition starts.
+      rafRef.current = requestAnimationFrame(() => {
+        setIsVisible(true);
+        rafRef.current = null;
       });
+    } else {
+      setIsVisible(false);
+      // Keep tooltipPos so the closing transition renders at the correct position
     }
-    onOpenTooltip(slotKey);
-  }, [slotKey, onOpenTooltip]);
+  }, [isOpen]);
 
-  const handleClose = useCallback(() => {
-    onScheduleCloseTooltip(slotKey);
-  }, [slotKey, onScheduleCloseTooltip]);
+  // Global pointermove: geometry-based close detection
+  // This completely sidesteps mouseenter/mouseleave DOM hierarchy issues.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onMove = (e: PointerEvent) => {
+      // Throttle to one check per animation frame
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const { clientX: x, clientY: y } = e;
+        const slotRect = slotRef.current?.getBoundingClientRect();
+        const tooltipRect = tooltipRef.current?.getBoundingClientRect();
+
+        const inSlot = slotRect &&
+          x >= slotRect.left - HOVER_PADDING &&
+          x <= slotRect.right + HOVER_PADDING &&
+          y >= slotRect.top - HOVER_PADDING &&
+          y <= slotRect.bottom + HOVER_PADDING;
+
+        const inTooltip = tooltipRect &&
+          x >= tooltipRect.left - HOVER_PADDING &&
+          x <= tooltipRect.right + HOVER_PADDING &&
+          y >= tooltipRect.top - HOVER_PADDING &&
+          y <= tooltipRect.bottom + HOVER_PADDING;
+
+        if (inSlot || inTooltip) {
+          if (closeTimerRef.current) {
+            clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+          }
+        } else if (!closeTimerRef.current) {
+          closeTimerRef.current = setTimeout(() => {
+            closeTimerRef.current = null;
+            onClose(slotKey);
+          }, CLOSE_DELAY_MS);
+        }
+      });
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+    };
+  }, [isOpen, slotKey, onClose]);
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+  }, []);
+
+  const handlePointerEnter = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    onOpen(slotKey);
+  }, [slotKey, onOpen]);
 
   if (!item.name) {
     return (
@@ -158,34 +232,26 @@ function ItemSlot({
     );
   }
 
-  const tooltipEl = tooltipState && tooltipPos
-    ? (
-      <div
-        className="soulbound-tooltip"
-        data-state={tooltipState}
-        style={{ position: 'fixed', right: tooltipPos.right, bottom: tooltipPos.bottom }}
-        onMouseEnter={handleOpen}
-        onMouseLeave={handleClose}
-      >
-        {item.soulbound ? (
-          <SoulboundTooltipContent item={item} />
-        ) : (
-          <LocalItemTooltipContent item={item} />
-        )}
-      </div>
-    )
-    : null;
-
   return (
     <div
       ref={slotRef}
       className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-      onMouseEnter={handleOpen}
-      onMouseLeave={handleClose}
+      onPointerEnter={handlePointerEnter}
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
-      {tooltipEl && createPortal(tooltipEl, document.body)}
+      {tooltipPos && createPortal(
+        <div
+          ref={tooltipRef}
+          className={`soulbound-tooltip${isVisible ? ' is-open' : ''}`}
+          style={{ right: tooltipPos.right, bottom: tooltipPos.bottom }}
+        >
+          {item.soulbound
+            ? <SoulboundTooltipContent item={item} />
+            : <LocalItemTooltipContent item={item} />}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -193,61 +259,12 @@ function ItemSlot({
 export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps) {
   const [page, setPage] = useState(0);
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
-  const [activeTooltipKey, setActiveTooltipKey] = useState<string | null>(null);
-  const [closingTooltipKey, setClosingTooltipKey] = useState<string | null>(null);
+  const [openSlotKey, setOpenSlotKey] = useState<string | null>(null);
   const prevItemsRef = useRef<string[]>([]);
-  const closeTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingTooltipKeyRef = useRef<string | null>(null);
 
-  const openTooltip = useCallback((slotKey: string) => {
-    if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
-    // If hovering the currently open tooltip, just cancel any close.
-    if (activeTooltipKey === slotKey) {
-      setClosingTooltipKey(null);
-      pendingTooltipKeyRef.current = null;
-      return;
-    }
-
-    // If another tooltip is open, close it first, then open the new one.
-    if (activeTooltipKey && activeTooltipKey !== slotKey) {
-      const closingKey = activeTooltipKey;
-      setActiveTooltipKey(null);
-      setClosingTooltipKey(closingKey);
-      pendingTooltipKeyRef.current = slotKey;
-      closeTooltipTimerRef.current = setTimeout(() => {
-        setClosingTooltipKey((current) => (current === closingKey ? null : current));
-        setActiveTooltipKey(slotKey);
-        pendingTooltipKeyRef.current = null;
-      }, TOOLTIP_EXIT_MS);
-      return;
-    }
-
-    // If something else is mid-close, queue this one to open after close.
-    if (closingTooltipKey && closingTooltipKey !== slotKey) {
-      const closingKey = closingTooltipKey;
-      pendingTooltipKeyRef.current = slotKey;
-      closeTooltipTimerRef.current = setTimeout(() => {
-        setClosingTooltipKey((current) => (current === closingKey ? null : current));
-        setActiveTooltipKey(slotKey);
-        pendingTooltipKeyRef.current = null;
-      }, TOOLTIP_EXIT_MS);
-      return;
-    }
-
-    pendingTooltipKeyRef.current = null;
-    setClosingTooltipKey(null);
-    setActiveTooltipKey(slotKey);
-  }, [activeTooltipKey, closingTooltipKey]);
-
-  const scheduleCloseTooltip = useCallback((slotKey: string) => {
-    if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
-    if (pendingTooltipKeyRef.current === slotKey) pendingTooltipKeyRef.current = null;
-    setClosingTooltipKey(slotKey);
-    setActiveTooltipKey((current) => (current === slotKey ? null : current));
-    closeTooltipTimerRef.current = setTimeout(() => {
-      setActiveTooltipKey((current) => (current === slotKey ? null : current));
-      setClosingTooltipKey((current) => (current === slotKey ? null : current));
-    }, TOOLTIP_EXIT_MS);
+  const openTooltip = useCallback((key: string) => setOpenSlotKey(key), []);
+  const closeTooltip = useCallback((key: string) => {
+    setOpenSlotKey((prev) => (prev === key ? null : prev));
   }, []);
 
   useEffect(() => {
@@ -262,12 +279,6 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
     prevItemsRef.current = currentNames;
   }, [items]);
-
-  useEffect(() => {
-    return () => {
-      if (closeTooltipTimerRef.current) clearTimeout(closeTooltipTimerRef.current);
-    };
-  }, []);
 
   const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
   const startIdx = page * ITEMS_PER_PAGE;
@@ -288,26 +299,20 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
       <div className="inventory-grid">
         <div className="inventory-slots">
-          {slots.map((item, i) => (
-            (() => {
-              const slotKey = `${startIdx + i}-${item.name}`;
-              return (
-            <ItemSlot
-              key={slotKey}
-              item={item}
-              isHighlight={item.name === highlightItem}
-              slotKey={slotKey}
-              tooltipState={
-                activeTooltipKey === slotKey
-                  ? 'open'
-                  : (closingTooltipKey === slotKey ? 'closing' : null)
-              }
-              onOpenTooltip={openTooltip}
-              onScheduleCloseTooltip={scheduleCloseTooltip}
-            />
-              );
-            })()
-          ))}
+          {slots.map((item, i) => {
+            const slotKey = `${startIdx + i}-${item.name}`;
+            return (
+              <ItemSlot
+                key={slotKey}
+                item={item}
+                isHighlight={item.name === highlightItem}
+                slotKey={slotKey}
+                isOpen={openSlotKey === slotKey}
+                onOpen={openTooltip}
+                onClose={closeTooltip}
+              />
+            );
+          })}
         </div>
       </div>
 
