@@ -101,6 +101,19 @@ function SoulboundTooltipContent({ item }: { item: InventoryItem }) {
   );
 }
 
+function LocalItemTooltipContent({ item }: { item: InventoryItem }) {
+  return (
+    <>
+      <div className="soulbound-tooltip-title">{item.name.replace(/_/g, ' ')}</div>
+      <div className="soulbound-tooltip-tag local-item-tooltip-tag">◉ LOCAL ITEM</div>
+      <div className="soulbound-tooltip-row">
+        <span className="soulbound-tooltip-label">Status</span>
+        <span className="soulbound-tooltip-value">Stored locally</span>
+      </div>
+    </>
+  );
+}
+
 function ItemSlot({
   item,
   isHighlight,
@@ -127,9 +140,8 @@ function ItemSlot({
   return (
     <div
       className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-      onMouseEnter={item.soulbound ? () => onOpenTooltip(slotKey) : undefined}
-      onMouseLeave={item.soulbound ? () => onScheduleCloseTooltip(slotKey) : undefined}
-      title={!item.soulbound ? item.name.replace(/_/g, ' ') : undefined}
+      onMouseEnter={() => onOpenTooltip(slotKey)}
+      onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
@@ -139,7 +151,11 @@ function ItemSlot({
           onMouseEnter={() => onOpenTooltip(slotKey)}
           onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
         >
-          <SoulboundTooltipContent item={item} />
+          {item.soulbound ? (
+            <SoulboundTooltipContent item={item} />
+          ) : (
+            <LocalItemTooltipContent item={item} />
+          )}
         </div>
       )}
     </div>

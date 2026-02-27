@@ -931,6 +931,12 @@
   margin-bottom: 8px;
 }
 
+.local-item-tooltip-tag {
+  color: rgba(var(--primary-rgb), 0.72);
+  background: rgba(var(--primary-rgb), 0.08);
+  border-color: rgba(var(--primary-rgb), 0.2);
+}
+
 .soulbound-tooltip-row {
   display: flex;
   justify-content: space-between;
