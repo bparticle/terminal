@@ -80,7 +80,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
         [address]
       ),
       query(
-        `SELECT asset_id, item_name FROM soulbound_items WHERE wallet_address = $1`,
+        `SELECT asset_id, item_name, created_at FROM soulbound_items WHERE wallet_address = $1`,
         [address]
       ),
     ]);
@@ -130,12 +130,21 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
       const missing = soulboundRows.rows.filter(
         (row: any) => row.asset_id && !heliusAssetIds.has(row.asset_id)
       ).slice(0, 20); // cap to avoid excessive API calls
-
       if (missing.length > 0) {
         const fallbackAssets = await Promise.all(
           missing.map(async (row: any) => {
             const asset = await getNFTDetails(row.asset_id);
-            if (!asset) return null;
+            if (!asset) {
+              // Asset doesn't exist on-chain. If the entry is older than 10 minutes it's
+              // stale (failed mint, wrong network, etc.) — remove it so the game engine
+              // can trigger a fresh mint on the next game load.
+              const ageMs = Date.now() - new Date(row.created_at).getTime();
+              if (ageMs > 10 * 60 * 1000) {
+                await query('DELETE FROM soulbound_items WHERE asset_id = $1', [row.asset_id]);
+                console.warn(`[soulbound] Pruned stale entry for "${row.item_name}" (${row.asset_id}) — not found on-chain after ${Math.round(ageMs / 60000)}min`);
+              }
+              return null;
+            }
             const ga = buildGalleryAsset(asset, activeItemsCollection);
             const metadata = byAsset.get(row.asset_id);
             return {
