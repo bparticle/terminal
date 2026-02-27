@@ -11,6 +11,7 @@ export interface GalleryNft {
   assetId: string;
   name: string;
   image: string;
+  animationUrl?: string;
   attributes: GalleryAttribute[];
   collectionId: string;
   owner: string;
