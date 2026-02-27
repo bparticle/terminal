@@ -267,6 +267,7 @@ API_KEY=<must match backend>
 NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
 NEXT_PUBLIC_COLLECTION_MINT=<cnft collection mint>
 NEXT_PUBLIC_HELIUS_RPC_URL=<helius rpc url>
+NEXT_PUBLIC_ITEM_IMAGE_VERSION=<cache bust version for /public/items, e.g. 2026-02-27>
 ```
 
 ## Development

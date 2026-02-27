@@ -145,6 +145,9 @@ Minimum values to run locally:
 | `frontend/.env.local` | `API_BASE_URL` | Usually `http://localhost:3001/api/v1` |
 | `frontend/.env.local` | `API_KEY` | Must match backend `API_KEY` |
 | `frontend/.env.local` | `NEXT_PUBLIC_SOCKET_URL` | Usually `http://localhost:3001` |
+| `frontend/.env.local` | `NEXT_PUBLIC_ITEM_IMAGE_VERSION` | Cache-bust version for `/public/items` assets (e.g. `2026-02-27`) |
+
+When you ship updated item art with the same filenames, bump `NEXT_PUBLIC_ITEM_IMAGE_VERSION` and redeploy the frontend to force browsers to fetch the new images.
 
 ### 4) Run the app
 

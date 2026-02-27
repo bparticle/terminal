@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { genericItemPngSrc, itemPngSrc } from '@/lib/item-image';
 
 interface InventoryItem {
   name: string;
@@ -27,7 +28,7 @@ function ItemIcon({ name }: { name: string }) {
   if (imgState === 'specific') {
     return (
       <Image
-        src={`/items/${name}.png`}
+        src={itemPngSrc(name)}
         alt={name.replace(/_/g, ' ')}
         width={48}
         height={48}
@@ -41,7 +42,7 @@ function ItemIcon({ name }: { name: string }) {
   if (imgState === 'generic') {
     return (
       <Image
-        src="/items/_generic.png"
+        src={genericItemPngSrc()}
         alt={name.replace(/_/g, ' ')}
         width={48}
         height={48}

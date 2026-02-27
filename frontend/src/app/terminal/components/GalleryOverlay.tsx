@@ -14,6 +14,7 @@ import {
 } from '@/lib/gallery-api';
 import { updateProfilePfp } from '@/lib/api';
 import type { SignAndSubmitFn } from '@/lib/game-engine';
+import { genericItemGifSrc, itemPngSrc } from '@/lib/item-image';
 
 // Module-level constant — not inside the component (#10)
 const BOOT_MIN_DURATION_MS = 1400;
@@ -63,7 +64,7 @@ function GalleryImg({
   if (state === 'local' && itemName) {
     return (
       <img
-        src={`/items/${itemName}.png`}
+        src={itemPngSrc(itemName)}
         alt={alt}
         className={className}
         loading="lazy"
@@ -88,7 +89,7 @@ function GalleryImg({
   // 3. Fallback
   if (itemName) {
     // Soulbound item: GIF placeholder
-    return <img src="/items/_generic.gif" alt={alt} className={className} loading="lazy" />;
+    return <img src={genericItemGifSrc()} alt={alt} className={className} loading="lazy" />;
   }
   if (animationUrl) {
     // Non-soulbound NFT with animation (e.g. video NFT)
