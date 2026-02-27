@@ -811,9 +811,11 @@ export default function GameTerminal() {
         {/* Side Panel (Desktop) */}
         <div className="side-panel">
           <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
-          <StatsBox walletAddress={publicKey?.toBase58() || null} />
-          <InventoryBox items={inventory} />
-          <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
+          <div className="side-panel-scroll">
+            <StatsBox walletAddress={publicKey?.toBase58() || null} />
+            <InventoryBox items={inventory} />
+            <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
+          </div>
         </div>
 
         {/* Mobile Sidebar */}

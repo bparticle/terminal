@@ -337,10 +337,16 @@
   flex-direction: column;
   gap: 0;
   flex-shrink: 0;
-  overflow-y: auto;
-  overflow-x: visible;
+  overflow: hidden;
   position: relative;
   z-index: 20;
+}
+
+.side-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: visible;
 }
 
 .panel-box {
