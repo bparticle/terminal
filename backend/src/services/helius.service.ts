@@ -59,7 +59,7 @@ function normalizeAttributes(raw: any): Array<{ trait_type: string; value: strin
     }));
 }
 
-function buildGalleryAsset(item: any, collectionId: string): GalleryAsset {
+export function buildGalleryAsset(item: any, collectionId: string): GalleryAsset {
   return {
     assetId: item.id,
     name: item.content?.metadata?.name || 'Unknown',

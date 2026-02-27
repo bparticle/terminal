@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { fetchOwnedAssetsByCollections, fetchWalletCollections, getNFTDetails } from '../services/helius.service';
+import { fetchOwnedAssetsByCollections, fetchWalletCollections, getNFTDetails, buildGalleryAsset } from '../services/helius.service';
 import { isValidSolanaAddress } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
@@ -80,7 +80,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
         [address]
       ),
       query(
-        `SELECT asset_id FROM soulbound_items WHERE wallet_address = $1`,
+        `SELECT asset_id, item_name FROM soulbound_items WHERE wallet_address = $1`,
         [address]
       ),
     ]);
@@ -119,6 +119,43 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
         };
       }),
     }));
+
+    // DAS fallback: searchAssets can miss frozen/soulbound cNFTs due to indexing lag.
+    // For any soulbound item that's in the DB but absent from the Helius response,
+    // fetch it directly via getAsset (which is more reliable for individual lookups)
+    // and inject it into the Items collection.
+    if (activeItemsCollection) {
+      const heliusAssetIds = new Set(normalized.flatMap((c) => c.nfts.map((n) => n.assetId)));
+      const missing = soulboundRows.rows.filter(
+        (row: any) => row.asset_id && !heliusAssetIds.has(row.asset_id)
+      ).slice(0, 20); // cap to avoid excessive API calls
+
+      if (missing.length > 0) {
+        const fallbackAssets = await Promise.all(
+          missing.map(async (row: any) => {
+            const asset = await getNFTDetails(row.asset_id);
+            if (!asset) return null;
+            const ga = buildGalleryAsset(asset, activeItemsCollection);
+            const metadata = byAsset.get(row.asset_id);
+            return {
+              ...ga,
+              mintType: metadata?.mint_type || 'items',
+              terminalMetadata: metadata?.nft_metadata || null,
+              isCurrentPfp: currentPfpAssetId === row.asset_id,
+              isSoulbound: true,
+            };
+          })
+        );
+
+        const valid = fallbackAssets.filter(Boolean) as typeof normalized[number]['nfts'];
+        if (valid.length > 0) {
+          const itemsCollection = normalized.find((c) => c.type === 'items');
+          if (itemsCollection) {
+            itemsCollection.nfts.push(...valid);
+          }
+        }
+      }
+    }
 
     res.json({
       wallet: address,
