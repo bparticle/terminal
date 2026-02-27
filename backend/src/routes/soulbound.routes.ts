@@ -9,6 +9,7 @@ import {
   getSoulboundItems,
   verifySoulbound,
 } from '../services/soulbound.service';
+import { ITEM_METADATA_URIS } from '../config/item-uris';
 
 const router = Router();
 
@@ -58,7 +59,9 @@ router.post('/mint', requireAuth, async (req: AuthenticatedRequest, res: Respons
  */
 router.post('/mint-background', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const itemName = validateString(req.body.itemName, 'itemName', { required: true, maxLength: 200 })!;
-  const uri = validateString(req.body.uri, 'uri', { required: true, maxLength: 2048 })!;
+  const fallbackUri = validateString(req.body.uri, 'uri', { required: true, maxLength: 2048 })!;
+  // Prefer item-specific Arweave metadata if available, otherwise use the caller's generic URI
+  const uri = ITEM_METADATA_URIS[itemName] || fallbackUri;
   const name = validateString(req.body.name, 'name', { maxLength: 200 }) || itemName;
   const symbol = validateString(req.body.symbol, 'symbol', { maxLength: 10 });
   const description = validateString(req.body.description, 'description', { maxLength: 1000 });
