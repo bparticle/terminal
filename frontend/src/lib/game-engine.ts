@@ -7,7 +7,7 @@ import { checkPfpStatus, mintPfp, preparePfpMint, confirmPfpMint } from './pfp-a
 import { updateProfilePfp } from './api';
 
 // Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
-const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/27zv62z1d9L5xLpHZvXHuxJSmX36z63J21XH86WmyTr1';
+const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/7QqN4xNSS1ZujZgVjgsU2sU4dCBRdeUCbdc3qUHLchon';
 
 // Items that are consumed or transformed during gameplay — skip soulbound minting
 const CONSUMABLE_ITEMS = new Set([
