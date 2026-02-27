@@ -368,6 +368,49 @@ router.delete('/admin/whitelist/:wallet', requireAuth, requireAdmin, async (req:
 });
 
 /**
+ * GET /api/v1/mint/admin/health
+ * Stuck/failed mints and unfrozen soulbound items across all players.
+ * "Stuck" = pending older than 5 min, or prepared older than 10 min.
+ */
+router.get('/admin/health', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const [mintRows, soulboundRows] = await Promise.all([
+      query(
+        `SELECT ml.id, ml.wallet_address, ml.mint_type, ml.nft_name, ml.status,
+                ml.asset_id, ml.signature, ml.error_message, ml.created_at, ml.confirmed_at,
+                u.name AS user_name
+         FROM mint_log ml
+         LEFT JOIN users u ON u.id = ml.user_id
+         WHERE ml.status = 'failed'
+            OR (ml.status = 'pending'  AND ml.created_at < NOW() - INTERVAL '5 minutes')
+            OR (ml.status = 'prepared' AND ml.created_at < NOW() - INTERVAL '10 minutes')
+         ORDER BY ml.created_at DESC
+         LIMIT 200`,
+        [],
+      ),
+      query(
+        `SELECT si.id, si.wallet_address, si.item_name, si.asset_id,
+                si.is_frozen, si.freeze_signature, si.created_at, si.updated_at,
+                u.name AS user_name
+         FROM soulbound_items si
+         LEFT JOIN users u ON u.id = si.user_id
+         WHERE si.is_frozen = false
+         ORDER BY si.created_at DESC
+         LIMIT 200`,
+        [],
+      ),
+    ]);
+
+    res.json({
+      stuckMints: mintRows.rows,
+      unFrozenSoulbound: soulboundRows.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch mint health data' });
+  }
+});
+
+/**
  * GET /api/v1/mint/admin/log
  * View all mint logs (with optional filters)
  */

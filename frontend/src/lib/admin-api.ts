@@ -121,6 +121,49 @@ export async function getSiteInfo(): Promise<SiteInfo> {
   return response.json();
 }
 
+export interface StuckMint {
+  id: string;
+  wallet_address: string;
+  user_name: string | null;
+  mint_type: string;
+  nft_name: string;
+  status: string;
+  asset_id: string | null;
+  signature: string | null;
+  error_message: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+}
+
+export interface UnfrozenSoulbound {
+  id: string;
+  wallet_address: string;
+  user_name: string | null;
+  item_name: string;
+  asset_id: string;
+  is_frozen: boolean;
+  freeze_signature: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MintHealth {
+  stuckMints: StuckMint[];
+  unFrozenSoulbound: UnfrozenSoulbound[];
+}
+
+/**
+ * Admin: get stuck/failed mints and unfrozen soulbound items
+ */
+export async function getMintHealth(): Promise<MintHealth> {
+  const response = await fetchWithAuth('mint/admin/health');
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch mint health');
+  }
+  return response.json();
+}
+
 /**
  * Admin: update site settings (maintenance mode toggle + message)
  */
