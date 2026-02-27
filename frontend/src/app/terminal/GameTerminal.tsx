@@ -9,12 +9,13 @@ import { setAuthContext, getUserProfile, updateProfileName, fetchWithAuth } from
 import { GameEngine, SignAndSubmitFn } from '@/lib/game-engine';
 import { processCommand, TerminalContext } from '@/lib/terminal-commands';
 import Monitor from './components/Monitor';
-import StatsBox from './components/StatsBox';
+import SidebarWalletPanel from './components/SidebarWalletPanel';
 import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
 import ScanlineTitle from './components/ScanlineTitle';
 import GalleryOverlay from './components/GalleryOverlay';
+import CampaignOverlay from './components/CampaignOverlay';
 import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import IframeGame from '@/components/terminal/IframeGame';
@@ -69,6 +70,7 @@ export default function GameTerminal() {
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -111,6 +113,15 @@ export default function GameTerminal() {
     window.addEventListener('open-gallery', openGallery);
     return () => {
       window.removeEventListener('open-gallery', openGallery);
+    };
+  }, []);
+
+  // ── Campaign screen open event (used by UI actions) ──
+  useEffect(() => {
+    const openCampaign = () => setCampaignOpen(true);
+    window.addEventListener('open-campaign', openCampaign);
+    return () => {
+      window.removeEventListener('open-campaign', openCampaign);
     };
   }, []);
 
@@ -583,6 +594,34 @@ export default function GameTerminal() {
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
+  const handleWalletPrimaryAction = useCallback(async () => {
+    if (!connected) {
+      setVisible(true);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      try {
+        addOutput('Verifying wallet signature...', 'text-cyan-400');
+        await authenticate();
+      } catch {
+        addOutput('Wallet verification failed. Please try again.', 'text-red-400');
+      }
+      return;
+    }
+
+    setVisible(true);
+  }, [connected, isAuthenticated, setVisible, authenticate, addOutput]);
+
+  const openCampaign = useCallback(() => {
+    setCampaignOpen(true);
+  }, []);
+
+  const closeCampaign = useCallback(() => {
+    setCampaignOpen(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
   // Godot iframe game handlers
   const handleGodotMessage = useCallback((data: any) => {
     if (!engineRef.current || !data?.event) return;
@@ -810,10 +849,20 @@ export default function GameTerminal() {
 
         {/* Side Panel (Desktop) */}
         <div className="side-panel">
-          <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
-          <div className="side-panel-scroll">
-            <StatsBox walletAddress={publicKey?.toBase58() || null} />
+          <div className="side-panel-fixed">
+            <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
+            <SidebarWalletPanel
+              walletAddress={publicKey?.toBase58() || null}
+              isWalletConnected={connected}
+              isAuthenticated={isAuthenticated}
+              isAuthenticating={isAuthenticating}
+              onChangeWallet={() => void handleWalletPrimaryAction()}
+              onDisconnectWallet={() => void disconnect()}
+              onOpenCampaign={openCampaign}
+            />
             <InventoryBox items={inventory} />
+          </div>
+          <div className="side-panel-scroll">
             <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
           </div>
         </div>
@@ -826,7 +875,15 @@ export default function GameTerminal() {
               onClick={(e) => e.stopPropagation()}
             >
               <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
-              <StatsBox walletAddress={publicKey?.toBase58() || null} />
+              <SidebarWalletPanel
+                walletAddress={publicKey?.toBase58() || null}
+                isWalletConnected={connected}
+                isAuthenticated={isAuthenticated}
+                isAuthenticating={isAuthenticating}
+                onChangeWallet={() => void handleWalletPrimaryAction()}
+                onDisconnectWallet={() => void disconnect()}
+                onOpenCampaign={openCampaign}
+              />
               <InventoryBox items={inventory} />
               <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />
             </div>
@@ -838,6 +895,11 @@ export default function GameTerminal() {
           walletAddress={publicKey?.toBase58() || null}
           signAndSubmit={signAndSubmit}
           onClose={closeGallery}
+        />
+        <CampaignOverlay
+          isOpen={campaignOpen}
+          walletAddress={publicKey?.toBase58() || null}
+          onClose={closeCampaign}
         />
       </div>
     </div>

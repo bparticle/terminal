@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { genericItemPngSrc, itemPngSrc } from '@/lib/item-image';
 
@@ -131,6 +132,24 @@ function ItemSlot({
   onOpenTooltip: (slotKey: string) => void;
   onScheduleCloseTooltip: (slotKey: string) => void;
 }) {
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ right: number; bottom: number } | null>(null);
+
+  const handleOpen = useCallback(() => {
+    if (slotRef.current) {
+      const rect = slotRef.current.getBoundingClientRect();
+      setTooltipPos({
+        right: window.innerWidth - rect.right,
+        bottom: window.innerHeight - rect.top + 10,
+      });
+    }
+    onOpenTooltip(slotKey);
+  }, [slotKey, onOpenTooltip]);
+
+  const handleClose = useCallback(() => {
+    onScheduleCloseTooltip(slotKey);
+  }, [slotKey, onScheduleCloseTooltip]);
+
   if (!item.name) {
     return (
       <div className="inventory-slot empty">
@@ -139,28 +158,34 @@ function ItemSlot({
     );
   }
 
+  const tooltipEl = tooltipState && tooltipPos
+    ? (
+      <div
+        className="soulbound-tooltip"
+        data-state={tooltipState}
+        style={{ position: 'fixed', right: tooltipPos.right, bottom: tooltipPos.bottom }}
+        onMouseEnter={handleOpen}
+        onMouseLeave={handleClose}
+      >
+        {item.soulbound ? (
+          <SoulboundTooltipContent item={item} />
+        ) : (
+          <LocalItemTooltipContent item={item} />
+        )}
+      </div>
+    )
+    : null;
+
   return (
     <div
+      ref={slotRef}
       className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-      onMouseEnter={() => onOpenTooltip(slotKey)}
-      onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
+      onMouseEnter={handleOpen}
+      onMouseLeave={handleClose}
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
-      {tooltipState && (
-        <div
-          className="soulbound-tooltip"
-          data-state={tooltipState}
-          onMouseEnter={() => onOpenTooltip(slotKey)}
-          onMouseLeave={() => onScheduleCloseTooltip(slotKey)}
-        >
-          {item.soulbound ? (
-            <SoulboundTooltipContent item={item} />
-          ) : (
-            <LocalItemTooltipContent item={item} />
-          )}
-        </div>
-      )}
+      {tooltipEl && createPortal(tooltipEl, document.body)}
     </div>
   );
 }
