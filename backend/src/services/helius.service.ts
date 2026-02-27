@@ -19,6 +19,7 @@ export interface GalleryAsset {
   assetId: string;
   name: string;
   image: string;
+  animationUrl: string;
   attributes: Array<{ trait_type: string; value: string }>;
   collectionId: string;
   owner: string;
@@ -64,6 +65,7 @@ function buildGalleryAsset(item: any, collectionId: string): GalleryAsset {
     assetId: item.id,
     name: item.content?.metadata?.name || 'Unknown',
     image: item.content?.links?.image || item.content?.files?.[0]?.uri || '',
+    animationUrl: item.content?.links?.animation_url || '',
     attributes: normalizeAttributes(item.content?.metadata?.attributes),
     collectionId,
     owner: item.ownership?.owner || '',

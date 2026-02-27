@@ -341,7 +341,11 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                             className={`gallery-asset-card ${selected ? 'selected' : ''}`}
                             onClick={() => setSelectedAssetId(nft.assetId)}
                           >
-                            <img src={nft.image || ''} alt={nft.name} className="gallery-asset-image" />
+                            {nft.image ? (
+                              <img src={nft.image} alt={nft.name} className="gallery-asset-image" />
+                            ) : nft.animationUrl ? (
+                              <video src={nft.animationUrl} autoPlay loop muted playsInline className="gallery-asset-image" />
+                            ) : null}
                             <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
                             {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
                           </button>
@@ -404,7 +408,11 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                       <>
                         <div className={`gallery-detail-top ${isSoulboundCollection ? 'gallery-detail-top-list' : ''}`}>
                           {!isSoulboundCollection && (
-                            <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
+                            selectedNft.image ? (
+                              <img src={selectedNft.image} alt={selectedNft.name} className="gallery-detail-image" />
+                            ) : selectedNft.animationUrl ? (
+                              <video src={selectedNft.animationUrl} autoPlay loop muted playsInline className="gallery-detail-image" />
+                            ) : null
                           )}
                           <div className="gallery-detail-meta">
                             <div className="gallery-detail-name">{selectedNft.name}</div>
@@ -412,7 +420,11 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                               {selectedNft.assetId.slice(0, 12)}...{selectedNft.assetId.slice(-12)}
                             </div>
                             {isSoulboundCollection && (
-                              <div className="gallery-state-line text-gray-400">Image preview unavailable for this soulbound item.</div>
+                              selectedNft.animationUrl ? (
+                                <video src={selectedNft.animationUrl} autoPlay loop muted playsInline className="gallery-detail-image" />
+                              ) : (
+                                <div className="gallery-state-line text-gray-400">Image preview unavailable for this soulbound item.</div>
+                              )
                             )}
                             {currentPfpAssetId === selectedNft.assetId ? (
                               <div className="gallery-state-line text-green-400">This NFT is your active PFP.</div>

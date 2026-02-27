@@ -108,6 +108,7 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
           assetId: nft.assetId,
           name: nft.name,
           image: nft.image,
+          animationUrl: nft.animationUrl,
           attributes: nft.attributes,
           collectionId: nft.collectionId,
           owner: nft.owner,
