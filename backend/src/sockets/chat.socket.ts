@@ -67,6 +67,13 @@ export function registerChatHandlers(io: Server, socket: Socket): void {
   const walletAddress: string = socket.data.walletAddress;
   const rateBuckets = new Map<string, RateBucket>();
 
+  // Pre-fetch player name immediately so it's available before join-room fires.
+  // join-room also refreshes it (picks up renames), but this removes the async
+  // window where user-typing / user-status events would be silently dropped.
+  getPlayerName(walletAddress).then((name) => {
+    socket.data.playerName = name;
+  });
+
   console.log(`[socket] connected: ${walletAddress} (${socket.id})`);
 
   // ── join-room ────────────────────────────────────────────

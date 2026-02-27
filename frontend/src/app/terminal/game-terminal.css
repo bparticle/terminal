@@ -337,7 +337,8 @@
   flex-direction: column;
   gap: 0;
   flex-shrink: 0;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: visible;
   position: relative;
   z-index: 20;
 }
