@@ -811,13 +811,13 @@
 }
 
 .inventory-slot.soulbound {
-  border-color: #a855f7;
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4), inset 0 0 4px rgba(168, 85, 247, 0.1);
+  border-color: var(--primary-dim);
+  box-shadow: none;
 }
 
 .inventory-slot.soulbound:hover {
-  border-color: #c084fc;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.6), inset 0 0 6px rgba(168, 85, 247, 0.15);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.4), inset 0 0 10px rgba(var(--primary-rgb), 0.1);
 }
 
 .inventory-slot .empty-slot {
@@ -866,69 +866,92 @@
 /* Soulbound chain badge — corner tag */
 .soulbound-badge {
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  font-size: 9px;
+  bottom: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  padding: 10px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   line-height: 1;
-  opacity: 0.8;
+  opacity: 0.95;
   pointer-events: none;
   z-index: 1;
-  filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.9));
+  color: rgba(var(--primary-rgb), 0.95);
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(var(--primary-rgb), 0.35);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
 }
 
 /* Soulbound hover tooltip */
 .soulbound-tooltip {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 10px);
   right: 0;
   z-index: 300;
-  background: rgba(8, 8, 8, 0.97);
-  border: 1px solid #a855f7;
-  border-radius: 3px;
-  padding: 8px 10px;
-  min-width: 195px;
+  background:
+    linear-gradient(180deg, rgba(18, 24, 22, 0.96) 0%, rgba(6, 10, 9, 0.96) 100%);
+  border: 1px solid rgba(var(--primary-rgb), 0.28);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 210px;
   font-family: 'VT323', monospace;
   color: var(--primary-color);
-  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(var(--primary-rgb), 0.1) inset;
   pointer-events: auto;
-  white-space: nowrap;
+  white-space: normal;
+  backdrop-filter: blur(4px);
 }
 
 .soulbound-tooltip-title {
-  font-size: 14px;
-  color: #e2e8f0;
-  margin-bottom: 3px;
+  font-size: 15px;
+  color: #e5efe9;
+  margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.045em;
+  line-height: 1.1;
 }
 
 .soulbound-tooltip-tag {
-  color: #a855f7;
-  font-size: 11px;
-  margin-bottom: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(var(--primary-rgb), 0.88);
+  background: rgba(var(--primary-rgb), 0.12);
+  border: 1px solid rgba(var(--primary-rgb), 0.26);
+  border-radius: 999px;
+  font-size: 10px;
+  padding: 1px 7px;
+  margin-bottom: 8px;
 }
 
 .soulbound-tooltip-row {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   font-size: 11px;
 }
 
 .soulbound-tooltip-label {
-  color: rgba(var(--primary-rgb), 0.45);
+  color: rgba(var(--primary-rgb), 0.52);
   flex-shrink: 0;
 }
 
 .soulbound-tooltip-value {
-  color: rgba(var(--primary-rgb), 0.8);
+  color: rgba(var(--primary-rgb), 0.84);
   font-size: 10px;
   font-family: 'Courier New', Courier, monospace;
 }
 
 .soulbound-status-frozen {
-  color: #c084fc;
+  color: #7dd3fc;
 }
 
 .soulbound-status-pending {
@@ -937,12 +960,12 @@
 
 .soulbound-tooltip-link {
   display: block;
-  margin-top: 7px;
+  margin-top: 8px;
   color: #60a5fa;
   text-decoration: none;
   font-size: 11px;
-  border-top: 1px solid rgba(168, 85, 247, 0.2);
-  padding-top: 5px;
+  border-top: 1px solid rgba(var(--primary-rgb), 0.2);
+  padding-top: 6px;
 }
 
 .soulbound-tooltip-link:hover {
