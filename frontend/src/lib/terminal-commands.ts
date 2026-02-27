@@ -1,7 +1,7 @@
 import { GameEngine } from './game-engine';
 import { checkWhitelistStatus, getMintHistory, checkMintStatus, getSoulboundItems, verifySoulbound } from './mint-api';
 import { checkPfpStatus } from './pfp-api';
-import { updateProfilePfp } from './api';
+import { updateProfileName, updateProfilePfp } from './api';
 
 export interface TerminalContext {
   engine: GameEngine | null;
@@ -39,6 +39,8 @@ export const commands: Record<string, Command> = {
       ctx.addOutput('Wallet:', 'text-yellow-400');
       ctx.addOutput('  connect       Connect your wallet');
       ctx.addOutput('  disconnect    Disconnect wallet');
+      ctx.addOutput('  rename <name> Set your player name (2–20 chars, letters/numbers/._-)');
+
       ctx.addOutput('');
       ctx.addOutput('Game:', 'text-yellow-400');
       ctx.addOutput('  [number]      Select a choice');
@@ -458,6 +460,38 @@ export const commands: Record<string, Command> = {
     execute: (_args, ctx) => {
       window.dispatchEvent(new CustomEvent('open-gallery'));
       ctx.addOutput('Opening NFT gallery...', 'text-cyan-400');
+    },
+  },
+
+  rename: {
+    description: 'Set your player name',
+    requiresWallet: true,
+    execute: async (args, ctx) => {
+      const name = args.trim();
+
+      if (!name) {
+        ctx.addOutput('Usage: rename <name>', 'text-yellow-400');
+        ctx.addOutput('Names must be 2–20 characters: letters, numbers, spaces, and . _ -', 'text-gray-400');
+        return;
+      }
+
+      if (name.length < 2 || name.length > 20) {
+        ctx.addOutput(`Name must be between 2 and 20 characters (got ${name.length}).`, 'text-red-400');
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_\- .]+$/.test(name)) {
+        ctx.addOutput('Invalid characters. Only letters, numbers, spaces, and . _ - are allowed.', 'text-red-400');
+        return;
+      }
+
+      ctx.addOutput(`Renaming to "${name}"...`, 'text-gray-400');
+      try {
+        await updateProfileName(name);
+        ctx.addOutput(`Player name updated to "${name}".`, 'text-green-400');
+      } catch {
+        ctx.addOutput('Failed to update name. Please try again.', 'text-red-400');
+      }
     },
   },
 };
