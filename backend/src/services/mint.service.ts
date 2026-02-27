@@ -5,7 +5,8 @@ import { transferSol } from '@metaplex-foundation/mpl-toolbox';
 import { sol } from '@metaplex-foundation/umi';
 import { config, getActiveCollectionMint, getHeliusRpcUrl } from '../config/constants';
 import { query, transaction } from '../config/database';
-import { WhitelistEntry, MintLogEntry, MintParams, MintResult, MintLeafData } from '../types';
+import { WhitelistEntry, MintLogEntry, MintParams, MintResult, MintLeafData, MintEligibility } from '../types';
+import { AppError } from '../middleware/errorHandler';
 import { getUmi } from './umi';
 
 // ── Whitelist CRUD ─────────────────────────────
@@ -106,6 +107,38 @@ export async function bulkAddToWhitelist(
   return { added, updated, skipped };
 }
 
+// ── Eligibility ───────────────────────────────
+
+export async function checkMintEligibility(
+  wallet: string,
+  mintKey: string,
+  maxSupply: number = 0,
+): Promise<MintEligibility> {
+  // Per-player dedup
+  const playerResult = await query(
+    `SELECT COUNT(*)::int AS cnt FROM mint_log
+     WHERE wallet_address = $1
+       AND nft_metadata->>'mintKey' = $2
+       AND status IN ('confirmed', 'pending', 'prepared')
+       AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+    [wallet, mintKey],
+  );
+  const alreadyMinted = (playerResult.rows[0]?.cnt || 0) > 0;
+
+  // Global supply
+  const globalResult = await query(
+    `SELECT COUNT(*)::int AS cnt FROM mint_log
+     WHERE nft_metadata->>'mintKey' = $1
+       AND status IN ('confirmed', 'pending', 'prepared')
+       AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+    [mintKey],
+  );
+  const globalMinted = globalResult.rows[0]?.cnt || 0;
+  const supplyRemaining = maxSupply <= 0 ? -1 : Math.max(0, maxSupply - globalMinted);
+
+  return { alreadyMinted, globalMinted, maxSupply, supplyRemaining };
+}
+
 // ── Minting ────────────────────────────────────
 
 /**
@@ -199,26 +232,54 @@ export async function executeMint(
   wallet: string,
   mintConfig: MintParams
 ): Promise<MintResult> {
-  // Atomically check whitelist + reserve a mint slot + create log entry
-  const { mintLogId } = await transaction(async (client) => {
-    // Lock the whitelist row to prevent concurrent reads
-    const wlResult = await client.query(
-      'SELECT * FROM mint_whitelist WHERE wallet_address = $1 FOR UPDATE',
-      [wallet]
-    );
-    const entry = wlResult.rows[0];
-    if (!entry || !entry.is_active) {
-      throw new Error('Wallet not whitelisted for minting');
-    }
-    if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
-      throw new Error('Mint limit reached');
-    }
+  const useMintKey = !!mintConfig.mintKey;
 
-    // Reserve the mint slot immediately
-    await client.query(
-      'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
-      [wallet]
-    );
+  // Atomically check constraints + create log entry
+  const { mintLogId } = await transaction(async (client) => {
+    if (useMintKey) {
+      // mintKey path: supply/dedup only, no whitelist
+      if (mintConfig.oncePerPlayer) {
+        const dup = await client.query(
+          `SELECT COUNT(*)::int AS cnt FROM mint_log
+           WHERE wallet_address = $1 AND nft_metadata->>'mintKey' = $2
+             AND status IN ('confirmed', 'pending', 'prepared')
+             AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+          [wallet, mintConfig.mintKey],
+        );
+        if (dup.rows[0].cnt > 0) {
+          throw new AppError('Already minted', 409);
+        }
+      }
+      if (mintConfig.maxSupply && mintConfig.maxSupply > 0) {
+        const supply = await client.query(
+          `SELECT COUNT(*)::int AS cnt FROM mint_log
+           WHERE nft_metadata->>'mintKey' = $1
+             AND status IN ('confirmed', 'pending', 'prepared')
+             AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+          [mintConfig.mintKey],
+        );
+        if (supply.rows[0].cnt >= mintConfig.maxSupply) {
+          throw new AppError('Supply exhausted', 409);
+        }
+      }
+    } else {
+      // Legacy whitelist path (used by soulbound service, etc.)
+      const wlResult = await client.query(
+        'SELECT * FROM mint_whitelist WHERE wallet_address = $1 FOR UPDATE',
+        [wallet]
+      );
+      const entry = wlResult.rows[0];
+      if (!entry || !entry.is_active) {
+        throw new Error('Wallet not whitelisted for minting');
+      }
+      if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+        throw new Error('Mint limit reached');
+      }
+      await client.query(
+        'UPDATE mint_whitelist SET mints_used = mints_used + 1 WHERE wallet_address = $1',
+        [wallet]
+      );
+    }
 
     // Create pending log entry
     const logResult = await client.query(
@@ -230,6 +291,7 @@ export async function executeMint(
         description: mintConfig.description,
         image: mintConfig.image,
         attributes: mintConfig.attributes,
+        ...(mintConfig.mintKey ? { mintKey: mintConfig.mintKey } : {}),
       })]
     );
 
@@ -257,15 +319,18 @@ export async function executeMint(
 
     return { assetId, signature, mintLogId, leafData };
   } catch (error: any) {
-    // Mark log as failed and release the reserved mint slot
+    // Mark log as failed
     await query(
       `UPDATE mint_log SET status = 'failed', error_message = $1 WHERE id = $2`,
       [error.message || 'Unknown error', mintLogId]
     );
-    await query(
-      'UPDATE mint_whitelist SET mints_used = GREATEST(mints_used - 1, 0) WHERE wallet_address = $1',
-      [wallet]
-    );
+    // Release whitelist slot only if we reserved one
+    if (!useMintKey) {
+      await query(
+        'UPDATE mint_whitelist SET mints_used = GREATEST(mints_used - 1, 0) WHERE wallet_address = $1',
+        [wallet]
+      );
+    }
     throw error;
   }
 }

@@ -2,7 +2,7 @@ import { GameNode, GameSave, Requirements, GameEffects } from './types/game';
 import { gameNodes } from '@/data/game-nodes';
 import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
-import { checkWhitelistStatus, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems, prepareMint, confirmMint } from './mint-api';
+import { checkMintEligibility, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems, prepareMint, confirmMint } from './mint-api';
 import { checkPfpStatus, mintPfp, preparePfpMint, confirmPfpMint } from './pfp-api';
 import { updateProfilePfp } from './api';
 
@@ -451,34 +451,70 @@ export class GameEngine {
   private async handleMintActionNode(node: GameNode): Promise<void> {
     if (!this.save || !node.mint_config) return;
 
+    const mintConfig = node.mint_config;
+
     // Display node content
     const content = this.renderTemplate(node.content);
     content.split('\n').forEach((line) => this.outputFn(line, 'text-white'));
     this.outputFn('');
 
+    // Optional title banner
+    if (mintConfig.mintTitle) {
+      this.outputFn(`> ${mintConfig.mintTitle}`, 'text-cyan-400');
+      this.outputFn('');
+    }
+
+    // Custom step labels or defaults
+    const defaultSteps = mintConfig.soulbound
+      ? ['Checking mint eligibility', 'Minting soulbound token']
+      : this.signAndSubmitFn
+        ? ['Checking mint eligibility', 'Preparing transaction', 'Awaiting wallet approval (0.05 SOL fee)', 'Confirming on-chain']
+        : ['Checking mint eligibility', 'Minting'];
+    const steps = mintConfig.steps && mintConfig.steps.length > 0 ? mintConfig.steps : defaultSteps;
+
     let mintStep = 0;
     const mintId = () => `mint-step-${mintStep}`;
 
-    this.startSpinner('Checking mint eligibility', mintId());
+    this.startSpinner(steps[0] || 'Checking mint eligibility', mintId());
     try {
-      const status = await checkWhitelistStatus();
-      if (!status.whitelisted) {
-        this.stopSpinner(mintId(), 'Not whitelisted', false);
-        if (node.mint_not_whitelisted_node) {
-          this.outputFn('');
-          this.outputFn('Press ENTER to continue...', 'text-gray-400');
-          this.currentNode = { ...node, next_node: node.mint_not_whitelisted_node, choices: undefined };
+      // Check supply/dedup via mintKey (no whitelist — that's PFP-only)
+      if (mintConfig.mintKey) {
+        const eligibility = await checkMintEligibility(mintConfig.mintKey, mintConfig.maxSupply);
+        if (mintConfig.oncePerPlayer && eligibility.alreadyMinted) {
+          this.stopSpinner(mintId(), 'Already minted', false);
+          if (node.mint_already_minted_node) {
+            this.outputFn('');
+            this.outputFn('Press ENTER to continue...', 'text-gray-400');
+            this.currentNode = { ...node, next_node: node.mint_already_minted_node, choices: undefined };
+          }
+          return;
         }
-        return;
+        if (mintConfig.maxSupply && mintConfig.maxSupply > 0 && eligibility.supplyRemaining === 0) {
+          this.stopSpinner(mintId(), 'Supply exhausted', false);
+          if (node.mint_supply_exhausted_node) {
+            this.outputFn('');
+            this.outputFn('Press ENTER to continue...', 'text-gray-400');
+            this.currentNode = { ...node, next_node: node.mint_supply_exhausted_node, choices: undefined };
+          }
+          return;
+        }
+        // Show edition info when supply-capped
+        if (mintConfig.maxSupply && mintConfig.maxSupply > 0) {
+          const edition = eligibility.globalMinted + 1;
+          this.stopSpinner(mintId(), `Eligibility confirmed — Edition ${edition} of ${mintConfig.maxSupply}`);
+        } else {
+          this.stopSpinner(mintId(), 'Eligibility confirmed');
+        }
+      } else {
+        // No mintKey — just pass through (game node requirements gate access)
+        this.stopSpinner(mintId(), 'Eligibility confirmed');
       }
-      this.stopSpinner(mintId(), 'Eligibility confirmed');
       mintStep++;
 
-      const mintConfig = node.mint_config;
       let result: any;
 
       if (mintConfig.soulbound) {
-        this.startSpinner('Minting soulbound token', mintId(), 'text-yellow-400');
+        this.startSpinner(steps[mintStep] || 'Minting soulbound token', mintId(), 'text-yellow-400');
         result = await mintSoulbound(mintConfig);
         this.stopSpinner(mintId(), 'Soulbound token minted');
         this.soulboundItemsMap.set(mintConfig.itemName || mintConfig.name, {
@@ -487,42 +523,85 @@ export class GameEngine {
         });
         mintStep++;
       } else if (this.signAndSubmitFn) {
-        this.startSpinner('Preparing transaction', mintId());
+        this.startSpinner(steps[mintStep] || 'Preparing transaction', mintId());
         const prepared = await prepareMint({
           name: mintConfig.name,
           uri: mintConfig.uri,
           symbol: mintConfig.symbol,
           collection: mintConfig.collection,
+          mintKey: mintConfig.mintKey,
+          maxSupply: mintConfig.maxSupply,
+          oncePerPlayer: mintConfig.oncePerPlayer,
         });
         this.stopSpinner(mintId(), 'Transaction prepared');
         mintStep++;
 
-        this.startSpinner('Awaiting wallet approval (0.05 SOL fee)', mintId(), 'text-yellow-400');
+        this.startSpinner(steps[mintStep] || 'Awaiting wallet approval (0.05 SOL fee)', mintId(), 'text-yellow-400');
         const signedTxBase64 = await this.signAndSubmitFn(prepared.transactionBase64);
         this.stopSpinner(mintId(), 'Transaction signed');
         mintStep++;
 
-        this.startSpinner('Confirming on-chain', mintId());
+        this.startSpinner(steps[mintStep] || 'Confirming on-chain', mintId());
         result = await confirmMint(prepared.mintLogId, signedTxBase64);
         this.stopSpinner(mintId(), 'Confirmed on-chain');
         mintStep++;
       } else {
-        this.startSpinner('Minting', mintId(), 'text-yellow-400');
-        result = await executeMint(mintConfig);
+        this.startSpinner(steps[mintStep] || 'Minting', mintId(), 'text-yellow-400');
+        result = await executeMint({
+          ...mintConfig,
+          mintKey: mintConfig.mintKey,
+          maxSupply: mintConfig.maxSupply,
+          oncePerPlayer: mintConfig.oncePerPlayer,
+        });
         this.stopSpinner(mintId(), 'Minted');
         mintStep++;
       }
 
+      this.outputFn('');
       this.outputFn(`Mint successful! Asset: ${result.assetId.slice(0, 16)}...`, 'text-green-400');
 
+      // Reveal details
+      if (mintConfig.revealDetails && mintConfig.revealDetails.length > 0) {
+        this.outputFn('');
+        for (const detail of mintConfig.revealDetails) {
+          this.outputFn(`  ${detail.label}: ${detail.value}`, 'text-cyan-400');
+        }
+      }
+
+      // Show image in Monitor
+      if (mintConfig.revealImageUrl) {
+        window.dispatchEvent(new CustomEvent('display-image', { detail: { imageUrl: mintConfig.revealImageUrl } }));
+      }
+
+      // Standard item tracking
       if (mintConfig.itemName && !this.save.inventory.includes(mintConfig.itemName)) {
         this.save.inventory.push(mintConfig.itemName);
         this.outputFn(`[Item obtained: ${mintConfig.itemName}]`, 'text-yellow-400');
         this.inventoryChangeFn?.(this.buildInventoryItems());
       }
 
+      // Additional success items
+      if (mintConfig.successItems) {
+        for (const item of mintConfig.successItems) {
+          if (!this.save.inventory.includes(item)) {
+            this.save.inventory.push(item);
+            this.outputFn(`[Item obtained: ${item}]`, 'text-yellow-400');
+          }
+        }
+        if (mintConfig.successItems.length > 0) {
+          this.inventoryChangeFn?.(this.buildInventoryItems());
+        }
+      }
+
       this.save.game_state[`minted_${node.id}`] = true;
       this.save.game_state[`asset_${node.id}`] = result.assetId;
+
+      // Additional success state
+      if (mintConfig.successState) {
+        for (const [key, value] of Object.entries(mintConfig.successState)) {
+          this.save.game_state[key] = value;
+        }
+      }
 
       if (node.mint_success_node) {
         this.outputFn('');
@@ -540,6 +619,26 @@ export class GameEngine {
         this.outputFn('Transaction cancelled.', 'text-yellow-400');
         this.outputFn('');
         this.displayCurrentNode();
+        return;
+      }
+
+      // Handle 409 supply/dedup errors from backend enforcement
+      if (msg.includes('Already minted')) {
+        this.outputFn('You have already minted this item.', 'text-yellow-400');
+        if (node.mint_already_minted_node) {
+          this.outputFn('');
+          this.outputFn('Press ENTER to continue...', 'text-gray-400');
+          this.currentNode = { ...node, next_node: node.mint_already_minted_node, choices: undefined };
+        }
+        return;
+      }
+      if (msg.includes('Supply exhausted')) {
+        this.outputFn('All editions have been claimed.', 'text-yellow-400');
+        if (node.mint_supply_exhausted_node) {
+          this.outputFn('');
+          this.outputFn('Press ENTER to continue...', 'text-gray-400');
+          this.currentNode = { ...node, next_node: node.mint_supply_exhausted_node, choices: undefined };
+        }
         return;
       }
 

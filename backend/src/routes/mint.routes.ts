@@ -6,6 +6,7 @@ import { isValidSolanaAddress } from '../services/auth.service';
 import { validateString } from '../middleware/validate';
 import {
   checkWhitelist,
+  checkMintEligibility,
   addToWhitelist,
   removeFromWhitelist,
   updateWhitelist,
@@ -40,6 +41,9 @@ router.post('/execute', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const soulbound = typeof req.body.soulbound === 'boolean' ? req.body.soulbound : false;
     const itemName = validateString(req.body.itemName, 'itemName', { maxLength: 200 });
     const collection = req.body.collection === 'pfp' ? 'pfp' as const : 'items' as const;
+    const mintKey = validateString(req.body.mintKey, 'mintKey', { maxLength: 200 });
+    const maxSupply = typeof req.body.maxSupply === 'number' ? Math.floor(req.body.maxSupply) : 0;
+    const oncePerPlayer = typeof req.body.oncePerPlayer === 'boolean' ? req.body.oncePerPlayer : false;
 
     const attributes = Array.isArray(req.body.attributes) ? req.body.attributes : [];
 
@@ -54,6 +58,9 @@ router.post('/execute', requireAuth, async (req: AuthenticatedRequest, res: Resp
       collection,
       soulbound,
       itemName,
+      mintKey,
+      maxSupply,
+      oncePerPlayer,
     });
 
     res.json({ success: true, ...result });
@@ -78,24 +85,60 @@ router.post('/prepare', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const uri = validateString(req.body.uri, 'uri', { required: true, maxLength: 2048 })!;
     const symbol = validateString(req.body.symbol, 'symbol', { maxLength: 10 });
     const collection = req.body.collection === 'pfp' ? 'pfp' as const : 'items' as const;
+    const mintKey = validateString(req.body.mintKey, 'mintKey', { maxLength: 200 });
+    const maxSupply = typeof req.body.maxSupply === 'number' ? Math.floor(req.body.maxSupply) : 0;
+    const oncePerPlayer = typeof req.body.oncePerPlayer === 'boolean' ? req.body.oncePerPlayer : false;
 
-    // Check whitelist
-    const entry = await checkWhitelist(req.user!.walletAddress);
-    if (!entry || !entry.is_active) {
-      throw new AppError('Wallet not whitelisted for minting', 403);
-    }
-    if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
-      throw new AppError('Mint limit reached', 403);
-    }
+    // Atomic supply/dedup checks + log entry creation
+    const mintLogId = await transaction(async (client) => {
+      if (mintKey) {
+        // mintKey path: supply/dedup only, no whitelist
+        if (oncePerPlayer) {
+          const dup = await client.query(
+            `SELECT COUNT(*)::int AS cnt FROM mint_log
+             WHERE wallet_address = $1 AND nft_metadata->>'mintKey' = $2
+               AND status IN ('confirmed', 'pending', 'prepared')
+               AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+            [req.user!.walletAddress, mintKey],
+          );
+          if (dup.rows[0].cnt > 0) {
+            throw new AppError('Already minted', 409);
+          }
+        }
+        if (maxSupply > 0) {
+          const supply = await client.query(
+            `SELECT COUNT(*)::int AS cnt FROM mint_log
+             WHERE nft_metadata->>'mintKey' = $1
+               AND status IN ('confirmed', 'pending', 'prepared')
+               AND (status != 'prepared' OR created_at > NOW() - INTERVAL '10 minutes')`,
+            [mintKey],
+          );
+          if (supply.rows[0].cnt >= maxSupply) {
+            throw new AppError('Supply exhausted', 409);
+          }
+        }
+      } else {
+        // Legacy whitelist path
+        const entry = await checkWhitelist(req.user!.walletAddress);
+        if (!entry || !entry.is_active) {
+          throw new AppError('Wallet not whitelisted for minting', 403);
+        }
+        if (entry.max_mints > 0 && entry.mints_used >= entry.max_mints) {
+          throw new AppError('Mint limit reached', 403);
+        }
+      }
 
-    // Create prepared mint_log entry
-    const logResult = await query(
-      `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
-       VALUES ($1, $2, 'standard', $3, $4, 'prepared')
-       RETURNING id`,
-      [req.user!.userId, req.user!.walletAddress, name, JSON.stringify({ symbol, uri, collection })]
-    );
-    const mintLogId = logResult.rows[0].id;
+      const logResult = await client.query(
+        `INSERT INTO mint_log (user_id, wallet_address, mint_type, nft_name, nft_metadata, status)
+         VALUES ($1, $2, 'standard', $3, $4, 'prepared')
+         RETURNING id`,
+        [req.user!.userId, req.user!.walletAddress, name, JSON.stringify({
+          symbol, uri, collection,
+          ...(mintKey ? { mintKey } : {}),
+        })],
+      );
+      return logResult.rows[0].id;
+    });
 
     // Build partially-signed transaction
     const { transactionBase64 } = await prepareMintTransaction({
@@ -221,6 +264,29 @@ router.get('/whitelist/check', requireAuth, async (req: AuthenticatedRequest, re
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to check whitelist' });
+  }
+});
+
+/**
+ * GET /api/v1/mint/check-eligibility
+ * Check eligibility for a specific mintKey (supply + per-player dedup)
+ */
+router.get('/check-eligibility', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const mintKey = validateString(req.query.mintKey as string | undefined, 'mintKey', { required: true, maxLength: 200 })!;
+    const maxSupply = typeof req.query.maxSupply === 'string' ? parseInt(req.query.maxSupply, 10) : 0;
+    if (isNaN(maxSupply) || maxSupply < 0) {
+      throw new AppError('maxSupply must be a non-negative integer', 400);
+    }
+
+    const eligibility = await checkMintEligibility(req.user!.walletAddress, mintKey, maxSupply);
+    res.json(eligibility);
+  } catch (error: any) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to check mint eligibility' });
+    }
   }
 });
 

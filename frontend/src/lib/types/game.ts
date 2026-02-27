@@ -33,6 +33,21 @@ export interface MintConfig {
   collection?: 'pfp' | 'items';
   soulbound?: boolean;
   itemName?: string;
+
+  // Eligibility & supply
+  mintKey?: string;
+  oncePerPlayer?: boolean;
+  maxSupply?: number;
+
+  // UI customization
+  steps?: string[];
+  mintTitle?: string;
+  revealImageUrl?: string;
+  revealDetails?: Array<{ label: string; value: string }>;
+
+  // State effects on success
+  successState?: Record<string, any>;
+  successItems?: string[];
 }
 
 export interface GameNode {
@@ -77,6 +92,8 @@ export interface GameNode {
   mint_success_node?: string;
   mint_failure_node?: string;
   mint_not_whitelisted_node?: string;
+  mint_already_minted_node?: string;
+  mint_supply_exhausted_node?: string;
 
   // PFP mint fields
   pfp_mint_success_node?: string;
