@@ -201,15 +201,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
         Inventory ({items.length}/{maxItems})
       </div>
 
-      <div className="inventory-row">
-        <button
-          className="nav-btn nav-arrow"
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-          disabled={!hasMultiplePages || page === 0}
-        >
-          ◄
-        </button>
-
+      <div className="inventory-grid">
         <div className="inventory-slots">
           {slots.map((item, i) => (
             (() => {
@@ -228,15 +220,42 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
             })()
           ))}
         </div>
-
-        <button
-          className="nav-btn nav-arrow"
-          onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-          disabled={!hasMultiplePages || page >= totalPages - 1}
-        >
-          ►
-        </button>
       </div>
+
+      {hasMultiplePages && (
+        <div className="inventory-pager" role="group" aria-label="Inventory pagination">
+          <button
+            className="nav-btn nav-arrow"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            aria-label="Previous inventory page"
+          >
+            ◄
+          </button>
+
+          <div className="inventory-pager-dots" aria-hidden="true">
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <span
+                key={`page-dot-${idx}`}
+                className={`inventory-page-dot ${idx === page ? 'active' : ''}`}
+              />
+            ))}
+          </div>
+
+          <div className="inventory-page-label">
+            {page + 1}/{totalPages}
+          </div>
+
+          <button
+            className="nav-btn nav-arrow"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            aria-label="Next inventory page"
+          >
+            ►
+          </button>
+        </div>
+      )}
     </div>
   );
 }
