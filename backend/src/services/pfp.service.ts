@@ -46,6 +46,9 @@ export interface GlobalPfpOwner {
   ownerUserId: string;
 }
 
+// Max concurrent Helius calls when verifying legacy rows without network metadata (#6)
+const LEGACY_VERIFY_BATCH_SIZE = 10;
+
 async function resolveNetworkSeparatedPfps<T extends { asset_id: string; nft_metadata: any }>(rows: T[]): Promise<T[]> {
   const directMatches: T[] = [];
   const needsVerification: T[] = [];
@@ -66,15 +69,19 @@ async function resolveNetworkSeparatedPfps<T extends { asset_id: string; nft_met
     return directMatches;
   }
 
-  const verified = await Promise.all(
-    needsVerification.map(async (row) => {
-      const asset = await getNFTDetails(row.asset_id);
-      return asset ? row : null;
-    }),
-  );
+  // Process in bounded batches to avoid fanning out hundreds of simultaneous Helius calls
   const verifiedMatches: T[] = [];
-  for (const row of verified) {
-    if (row) verifiedMatches.push(row);
+  for (let i = 0; i < needsVerification.length; i += LEGACY_VERIFY_BATCH_SIZE) {
+    const batch = needsVerification.slice(i, i + LEGACY_VERIFY_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (row) => {
+        const asset = await getNFTDetails(row.asset_id);
+        return asset ? row : null;
+      }),
+    );
+    for (const row of results) {
+      if (row) verifiedMatches.push(row);
+    }
   }
 
   return [...directMatches, ...verifiedMatches];

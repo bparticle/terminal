@@ -140,44 +140,43 @@ export async function fetchOwnedAssetsByCollections(
     return collections.map((collection) => ({ ...collection, nfts: [] }));
   }
 
-  const output: Array<GalleryCollectionConfig & { nfts: GalleryAsset[] }> = [];
+  // Fetch all collections in parallel instead of sequentially (#5)
+  return Promise.all(
+    collections.map(async (collection) => {
+      try {
+        const result = await heliusRpc<any>('searchAssets', {
+          ownerAddress: walletAddress,
+          grouping: ['collection', collection.collectionId],
+          page: 1,
+          limit: 1000,
+          compressed: true,
+        });
 
-  for (const collection of collections) {
-    try {
-      const result = await heliusRpc<any>('searchAssets', {
-        ownerAddress: walletAddress,
-        grouping: ['collection', collection.collectionId],
-        page: 1,
-        limit: 1000,
-        compressed: true,
-      });
+        const items: any[] = Array.isArray(result?.items) ? result.items : [];
+        const byLeaf = new Map<string, any>();
 
-      const items: any[] = Array.isArray(result?.items) ? result.items : [];
-      const byLeaf = new Map<string, any>();
+        for (const item of items) {
+          if (item?.burnt === true || item?.compression?.compressed !== true) continue;
 
-      for (const item of items) {
-        if (item?.burnt === true || item?.compression?.compressed !== true) continue;
-
-        const leafKey = item.compression?.leaf_id != null
-          ? String(item.compression.leaf_id)
-          : item.id;
-        const existing = byLeaf.get(leafKey);
-        const nextSeq = typeof item.compression?.seq === 'number' ? item.compression.seq : 0;
-        const existingSeq = typeof existing?.compression?.seq === 'number' ? existing.compression.seq : -1;
-        if (!existing || nextSeq >= existingSeq) {
-          byLeaf.set(leafKey, item);
+          const leafKey = item.compression?.leaf_id != null
+            ? String(item.compression.leaf_id)
+            : item.id;
+          const existing = byLeaf.get(leafKey);
+          const nextSeq = typeof item.compression?.seq === 'number' ? item.compression.seq : 0;
+          const existingSeq = typeof existing?.compression?.seq === 'number' ? existing.compression.seq : -1;
+          if (!existing || nextSeq >= existingSeq) {
+            byLeaf.set(leafKey, item);
+          }
         }
+
+        const nfts = Array.from(byLeaf.values()).map((item) => buildGalleryAsset(item, collection.collectionId));
+        return { ...collection, nfts };
+      } catch (error) {
+        console.error(`Error fetching owned assets for collection ${collection.collectionId}:`, error);
+        return { ...collection, nfts: [] };
       }
-
-      const nfts = Array.from(byLeaf.values()).map((item) => buildGalleryAsset(item, collection.collectionId));
-      output.push({ ...collection, nfts });
-    } catch (error) {
-      console.error(`Error fetching owned assets for collection ${collection.collectionId}:`, error);
-      output.push({ ...collection, nfts: [] });
-    }
-  }
-
-  return output;
+    }),
+  );
 }
 
 /**

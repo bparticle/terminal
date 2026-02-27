@@ -47,13 +47,17 @@ export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
     let animFrame: number;
     let time = 0;
 
+    // Read color once and update only when the theme attribute changes (#7)
+    let color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#2dfe39';
+    const observer = new MutationObserver(() => {
+      color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#2dfe39';
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
     const draw = () => {
       time += 0.02;
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const style = getComputedStyle(document.documentElement);
-      const color = style.getPropertyValue('--primary-color').trim() || '#2dfe39';
 
       ctx.font = '10px VT323';
       ctx.fillStyle = color;
@@ -71,7 +75,10 @@ export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
 
     draw();
 
-    return () => cancelAnimationFrame(animFrame);
+    return () => {
+      cancelAnimationFrame(animFrame);
+      observer.disconnect();
+    };
   }, [showImage]);
 
   return (

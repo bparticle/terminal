@@ -124,8 +124,14 @@ router.get('/online', requireAuth, async (_req: Request, res: Response) => {
 router.get('/pfp-owners', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const limitRaw = req.query.limit;
-    const parsedLimit = typeof limitRaw === 'string' ? Number(limitRaw) : undefined;
-    const owners = await getGlobalPfpOwners(parsedLimit);
+    let safeLimit = 200;
+    if (typeof limitRaw === 'string' && limitRaw !== '') {
+      const parsed = parseInt(limitRaw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        safeLimit = Math.min(parsed, 500);
+      }
+    }
+    const owners = await getGlobalPfpOwners(safeLimit);
     res.json({ owners });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch global PFP owners' });

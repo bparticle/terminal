@@ -49,7 +49,35 @@ export interface GlobalPfpOwner {
   ownerUserId: string;
 }
 
+// --- Short-lived client-side cache (#9) ---
+
+interface CacheEntry<T> {
+  data: T;
+  fetchedAt: number;
+}
+
+const GALLERY_CACHE_TTL_MS = 60_000;
+const GLOBAL_PFP_CACHE_TTL_MS = 120_000;
+
+const galleryCache = new Map<string, CacheEntry<WalletGalleryResponse>>();
+let globalPfpCache: CacheEntry<GlobalPfpOwner[]> | null = null;
+
+export function invalidateGalleryCache(walletAddress: string): void {
+  galleryCache.delete(walletAddress);
+}
+
+export function invalidateGlobalPfpCache(): void {
+  globalPfpCache = null;
+}
+
+// ------------------------------------------
+
 export async function getWalletGallery(walletAddress: string): Promise<WalletGalleryResponse> {
+  const cached = galleryCache.get(walletAddress);
+  if (cached && Date.now() - cached.fetchedAt < GALLERY_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const response = await fetchWithAuth(`wallet/${walletAddress}/gallery`);
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
@@ -57,10 +85,16 @@ export async function getWalletGallery(walletAddress: string): Promise<WalletGal
     }
     throw new Error('Failed to load NFT gallery');
   }
-  return response.json();
+  const data: WalletGalleryResponse = await response.json();
+  galleryCache.set(walletAddress, { data, fetchedAt: Date.now() });
+  return data;
 }
 
 export async function getGlobalPfpOwners(limit = 200): Promise<GlobalPfpOwner[]> {
+  if (globalPfpCache && Date.now() - globalPfpCache.fetchedAt < GLOBAL_PFP_CACHE_TTL_MS) {
+    return globalPfpCache.data;
+  }
+
   const response = await fetchWithAuth(`users/pfp-owners?limit=${limit}`);
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
@@ -69,7 +103,9 @@ export async function getGlobalPfpOwners(limit = 200): Promise<GlobalPfpOwner[]>
     throw new Error('Failed to load global PFP owners');
   }
   const data = await response.json();
-  return Array.isArray(data?.owners) ? data.owners : [];
+  const owners: GlobalPfpOwner[] = Array.isArray(data?.owners) ? data.owners : [];
+  globalPfpCache = { data: owners, fetchedAt: Date.now() };
+  return owners;
 }
 
 export async function prepareNftTransfer(assetId: string, toWallet: string): Promise<{

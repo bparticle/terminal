@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import {
   confirmNftTransfer,
   getGlobalPfpOwners,
   getWalletGallery,
+  invalidateGalleryCache,
+  invalidateGlobalPfpCache,
   prepareNftTransfer,
   type GalleryCollection,
   type GlobalPfpOwner,
@@ -13,14 +15,63 @@ import {
 import { updateProfilePfp } from '@/lib/api';
 import type { SignAndSubmitFn } from '@/lib/game-engine';
 
+// Module-level constant — not inside the component (#10)
+const BOOT_MIN_DURATION_MS = 1400;
+const GLOBAL_PFPS_TAB_ID = 'global-pfps';
+
+/**
+ * Proxy Arweave/Irys image URLs through our Next.js server to avoid
+ * client-side SSL or network issues with gateway.irys.xyz. (#2)
+ */
+function proxyUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'gateway.irys.xyz' || parsed.hostname === 'arweave.net') {
+      return `/api/image?url=${encodeURIComponent(url)}`;
+    }
+  } catch { /* not a valid URL, return as-is */ }
+  return url;
+}
+
+/**
+ * Image with Arweave proxy, lazy loading, and error fallback. (#2, #4, #8)
+ * Uses the same className as the <img> would so it inherits sizing.
+ */
+function GalleryImg({ src, alt, className, imgKey }: { src: string; alt: string; className: string; imgKey?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  // Reset failed state when the image src changes (new NFT selected in detail panel)
+  useEffect(() => {
+    setFailed(false);
+  }, [src, imgKey]);
+
+  if (!src || failed) {
+    return (
+      <div
+        className={className}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '10px', letterSpacing: '0.05em' }}
+      >
+        NO IMAGE
+      </div>
+    );
+  }
+  return (
+    <img
+      src={proxyUrl(src)}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface GalleryOverlayProps {
   isOpen: boolean;
   walletAddress: string | null;
   signAndSubmit: SignAndSubmitFn;
   onClose: () => void;
 }
-
-const GLOBAL_PFPS_TAB_ID = 'global-pfps';
 
 export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, onClose }: GalleryOverlayProps) {
   const [collections, setCollections] = useState<GalleryCollection[]>([]);
@@ -30,6 +81,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [globalPfps, setGlobalPfps] = useState<GlobalPfpOwner[]>([]);
+  const [globalPfpsFetched, setGlobalPfpsFetched] = useState(false);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [selectedGlobalAssetId, setSelectedGlobalAssetId] = useState<string | null>(null);
@@ -41,7 +93,9 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
   const [lastTransferSignature, setLastTransferSignature] = useState<string | null>(null);
   const [isSettingPfp, setIsSettingPfp] = useState(false);
   const [isBooting, setIsBooting] = useState(false);
-  const BOOT_MIN_DURATION_MS = 1400;
+
+  // Generation counter — guards against stale loadGallery calls overwriting fresh data (#3)
+  const loadGenRef = useRef(0);
 
   const explorerTxUrl = useMemo(() => {
     if (!lastTransferSignature) return null;
@@ -52,11 +106,15 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
 
   const loadGallery = useCallback(async () => {
     if (!walletAddress) return;
+    // Increment generation — any in-flight call from a previous generation will be discarded (#3)
+    const gen = ++loadGenRef.current;
 
     setLoading(true);
     setError(null);
     try {
       const data = await getWalletGallery(walletAddress);
+      if (loadGenRef.current !== gen) return;
+
       setCollections(data.collections || []);
       setCurrentPfpAssetId(data.currentPfpAssetId || null);
 
@@ -65,9 +123,10 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
       setActiveCollectionId(firstCollection?.collectionId || null);
       setSelectedAssetId(firstCollection?.nfts[0]?.assetId || null);
     } catch (err) {
+      if (loadGenRef.current !== gen) return;
       setError(err instanceof Error ? err.message : 'Failed to load gallery');
     } finally {
-      setLoading(false);
+      if (loadGenRef.current === gen) setLoading(false);
     }
   }, [walletAddress]);
 
@@ -81,6 +140,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : 'Failed to load global PFP list');
     } finally {
+      setGlobalPfpsFetched(true);
       setGlobalLoading(false);
     }
   }, []);
@@ -118,16 +178,26 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Clear transfer state when a different NFT is selected, but not when deselecting after a transfer (#1)
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    setRecipientWallet('');
+    setRecipientError(null);
+    setTransferError(null);
+    setLastTransferSignature(null);
+  }, [selectedAssetId]);
+
   const activeCollection = useMemo(
     () => collections.find((collection) => collection.collectionId === activeCollectionId) || null,
     [collections, activeCollectionId],
   );
   const isGlobalPfpsTab = activeCollectionId === GLOBAL_PFPS_TAB_ID;
 
+  // Use collection type only for grid/list layout decision — not per-NFT soulbound flag (#12)
+  // Individual soulbound NFTs in non-items collections still get correct treatment in the detail panel
   const isSoulboundCollection = useMemo(() => {
     if (!activeCollection) return false;
-    if (activeCollection.type === 'items') return true;
-    return activeCollection.nfts.some((nft) => nft.isSoulbound);
+    return activeCollection.type === 'items';
   }, [activeCollection]);
 
   const selectedNft = useMemo(() => {
@@ -187,6 +257,17 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
     setLastTransferSignature(null);
   }, [collections, globalPfps.length, loadGlobalPfps]);
 
+  // Manual refresh — bypasses cache (#9)
+  const handleRefresh = useCallback(() => {
+    if (isGlobalPfpsTab) {
+      invalidateGlobalPfpCache();
+      void loadGlobalPfps();
+    } else {
+      if (walletAddress) invalidateGalleryCache(walletAddress);
+      void loadGallery();
+    }
+  }, [isGlobalPfpsTab, walletAddress, loadGlobalPfps, loadGallery]);
+
   const validateRecipient = useCallback((address: string): boolean => {
     const trimmed = address.trim();
     if (!trimmed) {
@@ -237,13 +318,15 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
       setLastTransferSignature(confirmed.signature);
       setSelectedAssetId(null);
       setRecipientWallet('');
+      // Invalidate cache so the next load reflects the transferred asset (#9)
+      if (walletAddress) invalidateGalleryCache(walletAddress);
       await loadGallery();
     } catch (err) {
       setTransferError(err instanceof Error ? err.message : 'Transfer failed');
     } finally {
       setIsTransferring(false);
     }
-  }, [selectedNft, validateRecipient, recipientWallet, signAndSubmit, loadGallery]);
+  }, [selectedNft, validateRecipient, recipientWallet, signAndSubmit, walletAddress, loadGallery]);
 
   if (!isOpen) return null;
 
@@ -295,7 +378,10 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                         onClick={() => setCollection(GLOBAL_PFPS_TAB_ID)}
                       >
                         Global PFPs
-                        <span className="gallery-tab-count">{filteredGlobalPfps.length}</span>
+                        {/* Show '—' until data has been fetched at least once (#11) */}
+                        <span className="gallery-tab-count">
+                          {globalPfpsFetched ? filteredGlobalPfps.length : '—'}
+                        </span>
                       </button>
                     </div>
 
@@ -329,11 +415,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                               className={`gallery-asset-card gallery-global-pfp-card ${selected ? 'selected' : ''}`}
                               onClick={() => setSelectedGlobalAssetId(pfp.assetId)}
                             >
-                              {pfp.image ? (
-                                <img src={pfp.image} alt={pfp.pfpName} className="gallery-asset-image" />
-                              ) : (
-                                <div className="gallery-global-pfp-image-fallback">NO IMAGE</div>
-                              )}
+                              <GalleryImg src={pfp.image} alt={pfp.pfpName || 'Scanlines PFP'} className="gallery-asset-image" />
                               <div className="gallery-asset-name">{pfp.pfpName || 'Scanlines PFP'}</div>
                               <div className="gallery-global-pfp-owner">
                                 {pfp.ownerName || `${pfp.ownerWallet.slice(0, 6)}...${pfp.ownerWallet.slice(-4)}`}
@@ -348,43 +430,43 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                     ) : (
                       <div className={isSoulboundCollection ? 'gallery-assets-list' : 'gallery-assets-grid'}>
                         {(activeCollection?.nfts || []).map((nft) => {
-                        const selected = selectedAssetId === nft.assetId;
-                        const isCurrentPfp = currentPfpAssetId === nft.assetId;
+                          const selected = selectedAssetId === nft.assetId;
+                          const isCurrentPfp = currentPfpAssetId === nft.assetId;
 
-                        if (isSoulboundCollection) {
+                          if (isSoulboundCollection) {
+                            return (
+                              <button
+                                key={nft.assetId}
+                                type="button"
+                                className={`gallery-asset-row ${selected ? 'selected' : ''}`}
+                                onClick={() => setSelectedAssetId(nft.assetId)}
+                              >
+                                <div className="gallery-asset-row-main">
+                                  <div className="gallery-asset-name">{nft.name || 'Unnamed item'}</div>
+                                  <div className="gallery-asset-row-id">
+                                    {nft.assetId.slice(0, 10)}...{nft.assetId.slice(-10)}
+                                  </div>
+                                </div>
+                                <div className="gallery-asset-row-tags">
+                                  <span className="gallery-soulbound-chip">SOULBOUND</span>
+                                  {isCurrentPfp && <span className="gallery-badge">ACTIVE PFP</span>}
+                                </div>
+                              </button>
+                            );
+                          }
+
                           return (
                             <button
                               key={nft.assetId}
                               type="button"
-                              className={`gallery-asset-row ${selected ? 'selected' : ''}`}
+                              className={`gallery-asset-card ${selected ? 'selected' : ''}`}
                               onClick={() => setSelectedAssetId(nft.assetId)}
                             >
-                              <div className="gallery-asset-row-main">
-                                <div className="gallery-asset-name">{nft.name || 'Unnamed item'}</div>
-                                <div className="gallery-asset-row-id">
-                                  {nft.assetId.slice(0, 10)}...{nft.assetId.slice(-10)}
-                                </div>
-                              </div>
-                              <div className="gallery-asset-row-tags">
-                                <span className="gallery-soulbound-chip">SOULBOUND</span>
-                                {isCurrentPfp && <span className="gallery-badge">ACTIVE PFP</span>}
-                              </div>
+                              <GalleryImg src={nft.image} alt={nft.name || 'Unnamed NFT'} className="gallery-asset-image" />
+                              <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
+                              {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
                             </button>
                           );
-                        }
-
-                        return (
-                          <button
-                            key={nft.assetId}
-                            type="button"
-                            className={`gallery-asset-card ${selected ? 'selected' : ''}`}
-                            onClick={() => setSelectedAssetId(nft.assetId)}
-                          >
-                            <img src={nft.image || ''} alt={nft.name} className="gallery-asset-image" />
-                            <div className="gallery-asset-name">{nft.name || 'Unnamed NFT'}</div>
-                            {isCurrentPfp && <div className="gallery-badge">ACTIVE PFP</div>}
-                          </button>
-                        );
                         })}
                         {activeCollection && activeCollection.nfts.length === 0 && (
                           <div className="gallery-empty">No assets in this collection.</div>
@@ -398,7 +480,7 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                       <button
                         type="button"
                         className="gallery-action-btn"
-                        onClick={() => void (isGlobalPfpsTab ? loadGlobalPfps() : loadGallery())}
+                        onClick={handleRefresh}
                         disabled={isGlobalPfpsTab ? globalLoading : loading}
                       >
                         REFRESH
@@ -409,11 +491,13 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                         <>
                           <div className="gallery-detail-top gallery-detail-top-list">
                             <div className="gallery-detail-meta">
-                              {selectedGlobalPfp.image ? (
-                                <img src={selectedGlobalPfp.image} alt={selectedGlobalPfp.pfpName} className="gallery-global-pfp-image" />
-                              ) : (
-                                <div className="gallery-state-line text-gray-400">Image preview unavailable.</div>
-                              )}
+                              {/* imgKey resets failed state when selection changes (#4) */}
+                              <GalleryImg
+                                src={selectedGlobalPfp.image}
+                                alt={selectedGlobalPfp.pfpName || 'Scanlines PFP'}
+                                className="gallery-global-pfp-image"
+                                imgKey={selectedGlobalPfp.assetId}
+                              />
                               <div className="gallery-detail-name">{selectedGlobalPfp.pfpName}</div>
                               <div className="gallery-detail-assetid">
                                 {selectedGlobalPfp.assetId.slice(0, 12)}...{selectedGlobalPfp.assetId.slice(-12)}
@@ -443,7 +527,12 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                       <>
                         <div className={`gallery-detail-top ${isSoulboundCollection ? 'gallery-detail-top-list' : ''}`}>
                           {!isSoulboundCollection && (
-                            <img src={selectedNft.image || ''} alt={selectedNft.name} className="gallery-detail-image" />
+                            <GalleryImg
+                              src={selectedNft.image}
+                              alt={selectedNft.name}
+                              className="gallery-detail-image"
+                              imgKey={selectedNft.assetId}
+                            />
                           )}
                           <div className="gallery-detail-meta">
                             <div className="gallery-detail-name">{selectedNft.name}</div>
