@@ -23,9 +23,14 @@ export interface SkinLayoutConfig {
   retroPadding: string;
   titleMaxWidthDesktop: string;
   titleMaxWidthMobile: string;
+  terminalBorderWidth: string;
+  terminalBorderStyle: string;
+  terminalBorderRadius: string;
   sidebarWidth: string;
   mobileSidebarWidth: string;
   mobileSidebarMaxWidth: string;
+  monitorBorderWidth: string;
+  monitorBorderStyle: string;
   monitorBorderRadius: string;
   monitorPadding: string;
   monitorMarginBottom: string;
@@ -39,6 +44,15 @@ export interface SkinTypographyConfig {
   titleTextColor: string;
 }
 
+export interface SkinPaletteConfig {
+  primaryColor: string;
+  primaryRgb: string;
+  primaryDim: string;
+  primaryDark: string;
+  primaryLight: string;
+  primaryGlow: string;
+}
+
 export interface SkinConfig {
   id: string;
   displayName: string;
@@ -46,6 +60,7 @@ export interface SkinConfig {
   background: SkinBackgroundConfig;
   layout: SkinLayoutConfig;
   typography: SkinTypographyConfig;
+  palette?: SkinPaletteConfig;
 }
 
 export type DeepPartial<T> = {

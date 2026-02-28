@@ -87,8 +87,8 @@
 .terminal-section {
   flex: 1;
   background: var(--skin-terminal-bg, #1a1a1a);
-  border: 3px solid var(--primary-color);
-  border-radius: 10px;
+  border: var(--skin-terminal-border-width, 3px) var(--skin-terminal-border-style, solid) var(--primary-color);
+  border-radius: var(--skin-terminal-border-radius, 10px);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
@@ -403,7 +403,7 @@
   position: relative;
   z-index: 5;
   background: var(--skin-monitor-bg, #1a1a1a);
-  border: 2px solid var(--primary-color) !important;
+  border: var(--skin-monitor-border-width, 2px) var(--skin-monitor-border-style, solid) var(--primary-color) !important;
   border-radius: var(--skin-monitor-border-radius, 8px) !important;
   box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2) !important;
   padding: var(--skin-monitor-padding, 10px);

@@ -18,10 +18,16 @@
   --skin-title-text-letter-spacing: 0.2em;
   --skin-title-text-color: var(--primary-color);
 
+  --skin-terminal-border-width: 3px;
+  --skin-terminal-border-style: solid;
+  --skin-terminal-border-radius: 10px;
+
   --skin-sidebar-width: 250px;
   --skin-mobile-sidebar-width: 280px;
   --skin-mobile-sidebar-max-width: 80vw;
 
+  --skin-monitor-border-width: 2px;
+  --skin-monitor-border-style: solid;
   --skin-monitor-border-radius: 8px;
   --skin-monitor-padding: 10px;
   --skin-monitor-margin-bottom: 8px;
