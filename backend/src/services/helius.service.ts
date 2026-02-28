@@ -108,7 +108,7 @@ export async function fetchWalletCollections(walletAddress: string) {
     });
 
     const data = await response.json() as any;
-    const assets = data.result?.items || [];
+    const assets = (data.result?.items || []).filter((asset: any) => asset?.burnt !== true);
 
     const nfts: NFTAsset[] = assets.map((asset: any) => ({
       id: asset.id,

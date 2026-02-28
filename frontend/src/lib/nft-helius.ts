@@ -36,7 +36,7 @@ export async function fetchOwnedNFTs(walletAddress: string): Promise<OwnedNFT[]>
     });
 
     const data = await response.json();
-    const assets = data.result?.items || [];
+    const assets = (data.result?.items || []).filter((asset: any) => asset?.burnt !== true);
 
     return assets.map((asset: any) => ({
       id: asset.id,

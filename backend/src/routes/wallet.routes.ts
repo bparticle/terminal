@@ -148,14 +148,15 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
         const fallbackAssets = await Promise.all(
           missing.map(async (row: any) => {
             const asset = await getNFTDetails(row.asset_id);
-            if (!asset) {
-              // Asset doesn't exist on-chain. If the entry is older than 10 minutes it's
-              // stale (failed mint, wrong network, etc.) — remove it so the game engine
-              // can trigger a fresh mint on the next game load.
+            if (!asset || asset.burnt === true) {
+              // Asset doesn't exist on-chain or has been burned. If the entry is older
+              // than 10 minutes it's stale — remove it so the game engine can trigger a
+              // fresh mint on the next game load.
               const ageMs = Date.now() - new Date(row.created_at).getTime();
               if (ageMs > 10 * 60 * 1000) {
                 await query('DELETE FROM soulbound_items WHERE asset_id = $1', [row.asset_id]);
-                console.warn(`[soulbound] Pruned stale entry for "${row.item_name}" (${row.asset_id}) — not found on-chain after ${Math.round(ageMs / 60000)}min`);
+                const reason = asset?.burnt === true ? 'burned on-chain' : 'not found on-chain';
+                console.warn(`[soulbound] Pruned stale entry for "${row.item_name}" (${row.asset_id}) — ${reason} after ${Math.round(ageMs / 60000)}min`);
               }
               return null;
             }

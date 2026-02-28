@@ -76,7 +76,7 @@ async function resolveNetworkSeparatedPfps<T extends { asset_id: string; nft_met
     const results = await Promise.all(
       batch.map(async (row) => {
         const asset = await getNFTDetails(row.asset_id);
-        return asset ? row : null;
+        return (asset && asset.burnt !== true) ? row : null;
       }),
     );
     for (const row of results) {
