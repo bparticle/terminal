@@ -39,10 +39,9 @@ export const newsroomDemoNodes: Record<string, GameNode> = {
       'Recovered fragments appear:\n' +
       '- "sinkhole event"\n' +
       '- "delete before morning briefing"\n' +
-      '- signed by Editor-in-Chief V. Grindle\n\n' +
+      '- signed by Editor-in-Chief V. Bernstein\n\n' +
       'Your boss did not bury a story. He paved over it.',
     effects: {
-      add_item: ['press_badge'],
       set_state: { found_lead: true },
     },
     next_node: 'investigate_coverup',
@@ -57,7 +56,7 @@ export const newsroomDemoNodes: Record<string, GameNode> = {
       'Inside are 62 files named "do_not_open". Helpful.\n\n' +
       'One memo survives:\n' +
       '"Reminder: if asked about the sinkhole, use phrase infrastructure sparkle event."\n' +
-      '- V. Grindle\n\n' +
+      '- V. Bernstein\n\n' +
       'You copy everything to a USB stick labeled TAX FORMS.',
     effects: {
       add_item: ['redacted_memo'],
@@ -73,7 +72,7 @@ export const newsroomDemoNodes: Record<string, GameNode> = {
     content:
       'Cross-reference complete. "AUTO_CLEANSE_3" is not a codename.\n' +
       'It is the newsroom script that auto-deletes "sensitive civic incidents."\n' +
-      'Last editor: V. Grindle.\n' +
+      'Last editor: V. Bernstein.\n' +
       'Last run: 3 hours before the public statement.\n\n' +
       'Your monitor pops up a chat from your boss:\n' +
       '"Need that office plant story by noon. no drama."\n\n' +

@@ -14,7 +14,6 @@ interface InventoryItem {
 
 interface InventoryBoxProps {
   items: InventoryItem[];
-  maxItems?: number;
 }
 
 const ITEMS_PER_PAGE = 2;
@@ -208,7 +207,7 @@ function ItemSlot({
   );
 }
 
-export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps) {
+export default function InventoryBox({ items }: InventoryBoxProps) {
   const [page, setPage] = useState(0);
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
   const [openSlotKey, setOpenSlotKey] = useState<string | null>(null);
@@ -299,7 +298,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   return (
     <div className="panel-box inventory-box">
       <div className="panel-title">
-        Inventory ({items.length}/{maxItems})
+        Inventory ({items.length})
       </div>
 
       <div className="inventory-grid">
