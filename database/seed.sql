@@ -68,19 +68,21 @@ WHERE NOT EXISTS (
 );
 
 -- Campaign 2: seeded demo campaign for the newsroom node set/skin.
+-- target_states uses states native to newsroom-demo.nodes.ts (story_published is set
+-- in the publish_story node — the newsroom's natural completion point).
 UPDATE campaigns
 SET
   description = 'Demonstration campaign for the newsroom node set. Useful for testing campaign scoping and skin/node-set routing in non-production environments.',
   skin_id = 'newsroom',
   node_set_id = 'newsroom-demo',
-  target_states = ARRAY['temple_entered'],
+  target_states = ARRAY['story_published'],
   target_value = 'true',
   require_all = true,
   sets_state = 'campaign_newsroom_demo_complete',
   max_winners = 0,
   reward_description = 'Newsroom Demo Complete',
   reward_nft_mint = NULL,
-  is_active = true,
+  is_active = false,
   expires_at = NULL,
   created_by = 'system-seed'
 WHERE name = 'Newsroom Demo Campaign';
@@ -106,14 +108,14 @@ SELECT
   'Demonstration campaign for the newsroom node set. Useful for testing campaign scoping and skin/node-set routing in non-production environments.',
   'newsroom',
   'newsroom-demo',
-  ARRAY['temple_entered'],
+  ARRAY['story_published'],
   'true',
   true,
   'campaign_newsroom_demo_complete',
   0,
   'Newsroom Demo Complete',
   NULL,
-  true,
+  false,
   NULL,
   'system-seed'
 WHERE NOT EXISTS (

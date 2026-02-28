@@ -208,10 +208,16 @@ function checkCampaignRequirements(
 }
 
 /**
- * Validate that a sets_state key is an allowlisted achievement state name.
+ * Validate that a sets_state key is safe to write into game_state.
  * Prevents campaigns from clobbering core game_state fields like current_node_id.
+ *
+ * Two categories are allowed:
+ *   1. Keys in the achievement allowlist (extracted from game node set_state effects).
+ *   2. Keys with the "campaign_" prefix — backend-only completion markers that are
+ *      never user-submitted and can't clash with core engine fields.
  */
 function isValidSetsState(key: string): boolean {
+  if (key.startsWith('campaign_')) return true;
   return VALID_ACHIEVEMENT_STATES.has(key);
 }
 
