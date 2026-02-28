@@ -1666,6 +1666,22 @@ export class GameEngine {
     }
   }
 
+  syncProfilePfp(pfpImageUrl: string | null): void {
+    this.pfpImageUrl = pfpImageUrl || null;
+    if (!this.save) return;
+
+    if (this.pfpImageUrl) {
+      this.save.game_state.has_pfp = true;
+      this.save.game_state.has_existing_pfp = true;
+      this.save.game_state.pfp_count = Math.max(1, Number(this.save.game_state.pfp_count || 0));
+    } else {
+      this.save.game_state.has_pfp = false;
+      this.save.game_state.has_existing_pfp = Boolean(this.save.game_state.has_existing_pfp || this.save.game_state.pfp_count);
+    }
+
+    void this.autoSave();
+  }
+
   private extractErrorMessage(error: unknown): string {
     if (error instanceof Error && error.message) return error.message;
     if (typeof error === 'string' && error) return error;

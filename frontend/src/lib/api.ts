@@ -108,5 +108,16 @@ export async function updateProfilePfp(pfpImageUrl: string, pfpNftId: string): P
     body: JSON.stringify({ pfp_image_url: pfpImageUrl, pfp_nft_id: pfpNftId }),
   });
   if (!response.ok) throw new Error('Failed to update PFP');
-  return response.json();
+  const data = await response.json();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('profile-pfp-updated', {
+        detail: {
+          imageUrl: pfpImageUrl || null,
+          assetId: pfpNftId || null,
+        },
+      }),
+    );
+  }
+  return data;
 }

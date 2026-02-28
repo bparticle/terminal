@@ -115,6 +115,21 @@ export default function GameTerminal() {
     };
   }, []);
 
+  // Keep engine progression flags in sync with profile avatar updates from any UI path
+  // (terminal command, gallery overlay, reclaim flow, etc.).
+  useEffect(() => {
+    const handleProfilePfpUpdated = (e: CustomEvent<{ imageUrl: string | null }>) => {
+      const imageUrl = e.detail?.imageUrl || null;
+      pfpImageUrlRef.current = imageUrl;
+      engineRef.current?.syncProfilePfp(imageUrl);
+    };
+
+    window.addEventListener('profile-pfp-updated', handleProfilePfpUpdated as EventListener);
+    return () => {
+      window.removeEventListener('profile-pfp-updated', handleProfilePfpUpdated as EventListener);
+    };
+  }, []);
+
   // ── Gallery open event (used by terminal command + UI actions) ──
   useEffect(() => {
     const openGallery = () => setGalleryOpen(true);

@@ -4886,9 +4886,8 @@ export const gameNodes: Record<string, GameNode> = {
     choices: [
       {
         id: 1,
-        text: 'Use my existing PFP',
+        text: 'Use an existing PFP (if found)',
         next_node: 'pfp_booth_reclaim_success',
-        visibilityRequirements: { state: { has_existing_pfp: true } },
       },
       {
         id: 2,
