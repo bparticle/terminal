@@ -11,6 +11,35 @@ const router = Router();
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
+ * GET /api/v1/game/last-campaign
+ * Returns the authenticated player's most recently played active campaign.
+ */
+router.get('/last-campaign', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT gs.campaign_id, gs.updated_at AS last_played_at
+       FROM game_saves gs
+       INNER JOIN campaigns c ON c.id = gs.campaign_id
+       WHERE gs.wallet_address = $1
+         AND c.is_active = true
+         AND (c.expires_at IS NULL OR c.expires_at > NOW())
+       ORDER BY gs.updated_at DESC NULLS LAST
+       LIMIT 1`,
+      [req.user!.walletAddress]
+    );
+
+    const row = result.rows[0];
+    res.json({
+      campaign_id: row?.campaign_id ?? null,
+      last_played_at: row?.last_played_at ?? null,
+    });
+  } catch (error) {
+    console.error('Get last campaign error:', error);
+    res.status(500).json({ error: 'Failed to fetch last played campaign' });
+  }
+});
+
+/**
  * GET /api/v1/game/load/:wallet_address
  * Load existing game save
  */

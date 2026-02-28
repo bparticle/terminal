@@ -80,7 +80,7 @@ SET
   max_winners = 0,
   reward_description = 'Newsroom Demo Complete',
   reward_nft_mint = NULL,
-  is_active = false,
+  is_active = true,
   expires_at = NULL,
   created_by = 'system-seed'
 WHERE name = 'Newsroom Demo Campaign';
@@ -113,7 +113,7 @@ SELECT
   0,
   'Newsroom Demo Complete',
   NULL,
-  false,
+  true,
   NULL,
   'system-seed'
 WHERE NOT EXISTS (

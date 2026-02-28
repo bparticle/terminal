@@ -20,6 +20,7 @@ import SnakeGame from '@/components/terminal/SnakeGame';
 import IframeGame from '@/components/terminal/IframeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
 import { getCampaigns } from '@/lib/campaign-api';
+import { getLastPlayedCampaign } from '@/lib/game-api';
 import { applySkin } from '@/skins/applySkin';
 import { resolveSkin } from '@/skins/resolver';
 import { getAdminSkinOverrideStorageKey, readAdminSkinOverride, writeAdminSkinOverride } from '@/skins/admin-override';
@@ -29,6 +30,12 @@ import './game-terminal.css';
 const godotGameConfig: Record<string, { title: string; src: string }> = {
   snake_godot: { title: 'Snake', src: '/games/snake/snake.html' },
 };
+
+const NEWSROOM_COFFEE_STAIN_ASSETS = [
+  '/assets/cup-coffee-stain-1_s.png',
+  '/assets/cup-coffee-stain-2_s.png',
+  '/assets/cup-coffee-stain-3_s.png',
+];
 
 function parseFormattedText(text: string): React.ReactNode {
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -147,26 +154,33 @@ export default function GameTerminal() {
     };
   }, []);
 
-  // Resolve active campaign and its assigned skin.
+  // Resolve active campaign and its assigned skin for authenticated players.
+  // Prefer the user's most recently played campaign; fall back to first active.
   // Retry once on failure so a transient network error doesn't leave the player
   // stuck (engine won't start without activeCampaignId).
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     let cancelled = false;
     const load = () =>
-      getCampaigns()
-        .then((rows) => {
+      Promise.all([getCampaigns(), getLastPlayedCampaign()])
+        .then(([rows, lastPlayed]) => {
           if (cancelled) return;
-          const firstCampaign = rows[0];
-          if (!firstCampaign) {
+          const preferredCampaign = lastPlayed?.campaign_id
+            ? rows.find((campaign) => campaign.id === lastPlayed.campaign_id)
+            : null;
+          const selectedCampaign = preferredCampaign || rows[0];
+
+          if (!selectedCampaign) {
             // No campaigns in the system — the engine cannot start without one.
             // Show a clear message rather than silently hanging.
             addOutput('', undefined);
             addOutput('No campaigns available. Ask an admin to create one.', 'text-yellow-400');
             return;
           }
-          setActiveCampaignId((prev) => prev || firstCampaign.id);
-          setCampaignAssignedSkinId((prev) => prev ?? firstCampaign.skin_id ?? null);
-          setActiveNodeSetId(firstCampaign.node_set_id || 'terminal-core');
+          setActiveCampaignId(selectedCampaign.id);
+          setCampaignAssignedSkinId(selectedCampaign.skin_id ?? null);
+          setActiveNodeSetId(selectedCampaign.node_set_id || 'terminal-core');
         })
         .catch(() => {
           if (cancelled) return;
@@ -177,7 +191,7 @@ export default function GameTerminal() {
         });
     load();
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- addOutput is stable
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps -- addOutput is stable
 
   const resolvedSkin = useMemo(
     () =>
@@ -217,6 +231,101 @@ export default function GameTerminal() {
 
   // Apply skin CSS variables and data-skin attribute to document root.
   useEffect(() => applySkin(resolvedSkin.config), [resolvedSkin]);
+
+  // Newsroom-only ambient texture: random coffee stain overlays.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    const outputEl = terminalOutputRef.current;
+    const stainVarNames = [
+      '--newsroom-stain-1',
+      '--newsroom-stain-2',
+      '--newsroom-stain-3',
+      '--newsroom-stain-1-x',
+      '--newsroom-stain-2-x',
+      '--newsroom-stain-3-x',
+      '--newsroom-stain-1-y',
+      '--newsroom-stain-2-y',
+      '--newsroom-stain-3-y',
+      '--newsroom-stain-1-size',
+      '--newsroom-stain-2-size',
+      '--newsroom-stain-3-size',
+      '--newsroom-scroll-offset',
+    ];
+
+    const clearVars = () => {
+      for (const name of stainVarNames) {
+        root.style.removeProperty(name);
+      }
+    };
+
+    if (resolvedSkin.skinId !== 'newsroom') {
+      clearVars();
+      return clearVars;
+    }
+
+    const randomPercent = (min: number, max: number) =>
+      `${Math.round(min + Math.random() * (max - min))}%`;
+    const randomSize = () => Math.round(220 + Math.random() * 160);
+    const randomAsset = () => NEWSROOM_COFFEE_STAIN_ASSETS[Math.floor(Math.random() * NEWSROOM_COFFEE_STAIN_ASSETS.length)];
+    const randomFarBelow = (height: number) => height + 160 + Math.round(Math.random() * 1100);
+    const scrollFactor = 0.35;
+
+    type StainState = { asset: string; x: string; y: number; size: number };
+    const stains: StainState[] = Array.from({ length: 3 }, (_, i) => ({
+      asset: randomAsset(),
+      x: randomPercent(16, 76),
+      y: 160 + i * 320 + Math.round(Math.random() * 180),
+      size: randomSize(),
+    }));
+
+    const applyStain = (index: number, stain: StainState) => {
+      const n = index + 1;
+      root.style.setProperty(`--newsroom-stain-${n}`, `url("${stain.asset}")`);
+      root.style.setProperty(`--newsroom-stain-${n}-x`, stain.x);
+      root.style.setProperty(`--newsroom-stain-${n}-y`, `${Math.round(stain.y)}px`);
+      root.style.setProperty(`--newsroom-stain-${n}-size`, `${stain.size}px auto`);
+    };
+
+    for (let i = 0; i < stains.length; i++) {
+      applyStain(i, stains[i]);
+    }
+    root.style.setProperty('--newsroom-scroll-offset', '0px');
+
+    const onScroll = () => {
+      if (!outputEl) return;
+      const offset = outputEl.scrollTop * scrollFactor;
+      root.style.setProperty('--newsroom-scroll-offset', `${offset}px`);
+
+      const viewportHeight = outputEl.clientHeight;
+      let changed = false;
+      for (const stain of stains) {
+        const visibleY = stain.y - offset;
+        // Once a stain has moved off the top, recycle it below the viewport
+        // with a fresh asset, size, and x-position.
+        if (visibleY < -stain.size - 60) {
+          stain.asset = randomAsset();
+          stain.x = randomPercent(16, 76);
+          stain.size = randomSize();
+          stain.y = offset + randomFarBelow(viewportHeight);
+          changed = true;
+        }
+      }
+      if (changed) {
+        for (let i = 0; i < stains.length; i++) {
+          applyStain(i, stains[i]);
+        }
+      }
+    };
+    onScroll();
+    outputEl?.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      outputEl?.removeEventListener('scroll', onScroll);
+      clearVars();
+    };
+  }, [resolvedSkin.skinId]);
 
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
@@ -727,39 +836,31 @@ export default function GameTerminal() {
   }, []);
 
   const switchCampaign = useCallback(async (campaignId: string, skinId?: string | null, nodeSetId?: string | null) => {
-    if (!campaignId) return;
-    if (campaignId === activeCampaignId) {
+    if (!campaignId || campaignId === activeCampaignId) {
       setCampaignOpen(false);
       return;
     }
 
-    const previousCampaignId = activeCampaignId;
-    const previousSkinId = campaignAssignedSkinId;
-    const previousNodeSetId = activeNodeSetId;
+    // Best-effort save of the current campaign before React tears down the engine.
+    if (engineRef.current) {
+      try {
+        await engineRef.current.autoSave();
+      } catch {
+        // Non-fatal; allow switching even if save fails.
+      }
+    }
+
+    addOutput('', undefined);
+    addOutput('[CAMPAIGN] Switching context...', 'text-cyan-400');
+
     setCampaignOpen(false);
     setActiveCampaignId(campaignId);
-    setCampaignAssignedSkinId(skinId || null);
+    setCampaignAssignedSkinId(skinId ?? null);
     setActiveNodeSetId(nodeSetId || 'terminal-core');
 
-    if (!engineRef.current) {
-      return;
-    }
-
-    addOutput(`Switching to campaign: ${campaignId}`, 'text-cyan-400');
-    try {
-      await engineRef.current.switchCampaign(campaignId, nodeSetId || 'terminal-core');
-      addOutput('Campaign context loaded.', 'text-green-400');
-      window.dispatchEvent(new CustomEvent('game-progress-updated'));
-    } catch (error) {
-      console.error('Campaign switch failed:', error);
-      setActiveCampaignId(previousCampaignId);
-      setCampaignAssignedSkinId(previousSkinId);
-      setActiveNodeSetId(previousNodeSetId);
-      addOutput('Failed to switch campaign context.', 'text-red-400');
-    } finally {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [activeCampaignId, campaignAssignedSkinId, activeNodeSetId, addOutput]);
+    window.dispatchEvent(new CustomEvent('game-progress-updated'));
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [activeCampaignId, addOutput]);
 
   // Godot iframe game handlers
   const handleGodotMessage = useCallback((data: any) => {

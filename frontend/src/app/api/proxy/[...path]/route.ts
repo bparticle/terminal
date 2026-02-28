@@ -12,6 +12,7 @@ const ALLOWED_PATHS = [
   'users/heartbeat',
   'users/pfp-owners',
   'game/new',
+  'game/last-campaign',
   'game/load',
   'game/save',
   'game/action',

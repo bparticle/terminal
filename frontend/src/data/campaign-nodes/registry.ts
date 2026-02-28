@@ -24,7 +24,7 @@ const NODE_SET_META: CampaignNodeSetInfo[] = [
   {
     id: 'newsroom-demo',
     displayName: 'Newsroom Demo',
-    description: 'Clone of terminal-core to begin campaign-specific edits.',
+    description: 'Short satirical newsroom investigation campaign.',
   },
 ];
 

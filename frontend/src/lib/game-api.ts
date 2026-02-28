@@ -15,6 +15,33 @@ export interface GameSave {
   updated_at: string;
 }
 
+export interface LastPlayedCampaign {
+  campaign_id: string | null;
+  last_played_at: string | null;
+}
+
+/**
+ * Get player's most recently played active campaign.
+ */
+export async function getLastPlayedCampaign(): Promise<LastPlayedCampaign | null> {
+  try {
+    const response = await fetchWithAuth('game/last-campaign');
+
+    if (response.status === 401 || response.status === 403) {
+      return null;
+    }
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  } catch (error: any) {
+    if (error.name === 'AbortError') throw error;
+    console.error('Failed to load last played campaign:', error);
+    return null;
+  }
+}
+
 /**
  * Load an existing game save
  * Returns null if no save exists (404)

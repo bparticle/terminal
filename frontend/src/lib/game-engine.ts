@@ -16,6 +16,8 @@ const CONSUMABLE_ITEMS = new Set([
   'corrupted_page',
   'first_pixel',
   'signal_tower_code',
+  'press_badge',
+  'redacted_memo',
 ]);
 
 type OutputFn = (text: string, className?: string, id?: string) => void;
@@ -127,10 +129,9 @@ export class GameEngine {
     // Fetch owned NFTs in background
     this.fetchNFTs(walletAddress);
 
-    // Push loaded inventory to UI so it renders after a refresh
-    if (this.save.inventory.length > 0) {
-      this.inventoryChangeFn?.(this.buildInventoryItems());
-    }
+    // Always push loaded inventory to UI, including empty arrays.
+    // This prevents stale sidebar items from a previously active campaign.
+    this.inventoryChangeFn?.(this.buildInventoryItems());
 
     // Only show PFP on the monitor if the current game state has earned it
     if (this.pfpImageUrl && this.save.game_state.has_pfp) {
@@ -186,7 +187,7 @@ export class GameEngine {
       // mark it as pending and re-queue background minting.
       if (this.save?.inventory?.length) {
         for (const item of this.save.inventory) {
-          if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
+          if (this.shouldBackgroundMintSoulboundItems() && !this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
             this.queueSoulboundBackgroundMint(item);
           }
         }
@@ -964,6 +965,11 @@ export class GameEngine {
     });
   }
 
+  private shouldBackgroundMintSoulboundItems(): boolean {
+    // Test campaign node set intentionally skips automatic soulbound item minting.
+    return this.activeNodeSetId !== 'newsroom-demo';
+  }
+
   /**
    * Build inventory items with soulbound annotation
    */
@@ -1427,7 +1433,7 @@ export class GameEngine {
 
           // Background soulbound mint — fire-and-forget, one per user per item
           // Skip consumable/transient items that will be removed or transformed
-          if (!this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
+          if (this.shouldBackgroundMintSoulboundItems() && !this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
             this.queueSoulboundBackgroundMint(item);
           }
         }
