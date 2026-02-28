@@ -238,12 +238,26 @@ export async function checkSoulboundExists(
   campaignId?: string
 ): Promise<SoulboundItem | null> {
   if (campaignId) {
-    // Check campaign-specific mapping first
+    // Check campaign-specific mapping first.
+    // LEFT JOIN soulbound_items to fill fields that only live in the global table
+    // (user_id, mint_log_id, metadata). New mints always write to both tables, so
+    // the join will resolve for all but backfilled/legacy items.
     const campaignResult = await query(
-      `SELECT csi.item_name, csi.asset_id, csi.is_frozen, csi.freeze_signature,
-              csi.created_at, csi.updated_at
+      `SELECT
+         COALESCE(si.id, csi.id)   AS id,
+         u.id                       AS user_id,
+         csi.wallet_address,
+         csi.asset_id,
+         csi.item_name,
+         si.mint_log_id,
+         csi.is_frozen,
+         csi.freeze_signature,
+         COALESCE(si.metadata, '{}'::jsonb) AS metadata,
+         csi.created_at,
+         csi.updated_at
        FROM campaign_soulbound_items csi
        JOIN users u ON u.wallet_address = csi.wallet_address
+       LEFT JOIN soulbound_items si ON si.asset_id = csi.asset_id
        WHERE u.id = $1 AND csi.item_name = $2 AND csi.campaign_id = $3
        LIMIT 1`,
       [userId, itemName, campaignId]
