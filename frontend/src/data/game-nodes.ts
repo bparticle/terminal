@@ -900,6 +900,7 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'OBSERVATION TOWER',
     question: 'Enter the six-digit code:',
     correct_answer: '473291',
+    hint: 'The cold room terminal had a /system directory...',
     max_attempts: 3,
     success_message:
       '> CODE ACCEPTED',
@@ -1014,7 +1015,9 @@ export const gameNodes: Record<string, GameNode> = {
           'all connected, all dependent,\n' +
           'all pulsing with the same faint rhythm.\n\n' +
           'The cold room at one end.\n' +
-          'A depth to the north you can feel more than see.\n' +
+          'And to the north - deep, below everything -\n' +
+          'a structure you can feel more than see.\n' +
+          'The place behind the sealed door.\n' +
           'The paths you have walked glow faintly,\n' +
           'tracing your choices through the architecture.\n\n' +
           'One branch goes thin, then thinner,\n' +
@@ -2815,6 +2818,8 @@ export const gameNodes: Record<string, GameNode> = {
       'Waiting for someone to say yes.\n\n' +
       '"This will grant access\n' +
       'where the Guild\'s name carries weight.\n' +
+      'The Temple is north, past the main corridor.\n' +
+      'Your sigil will get you through the door.\n' +
       'Examine the Book. Report what you find.\n' +
       'Do try not to touch anything you don\'t understand."\n\n' +
       'He pauses.\n' +
@@ -2838,7 +2843,9 @@ export const gameNodes: Record<string, GameNode> = {
       '"The mission stands. Enter the Temple of Null.\n' +
       'Examine the Book. Report what you find."\n\n' +
       'He pauses. Almost adds something.\n' +
-      'Decides against it.',
+      'Decides against it.\n\n' +
+      '"Your sigil will grant access.\n' +
+      'The Temple is north, past the corridor."',
     location: 'GUILD HQ',
     conditionalContent: [
       {
@@ -2994,8 +3001,9 @@ export const gameNodes: Record<string, GameNode> = {
       'ARCHIVIST-7 frowns.\n\n' +
       '"Blank pages. Yes. The Book has many.\n' +
       'But that is not all there is to find."\n\n' +
-      'He says nothing more.\n' +
-      'He does not need to.',
+      '"Go back. Look more carefully.\n' +
+      'Pay attention to what is missing\n' +
+      'as much as what is there."',
     location: 'GUILD HQ',
     next_node: 'guild_hq',
   },
@@ -3629,6 +3637,7 @@ export const gameNodes: Record<string, GameNode> = {
     location: 'TEMPLE ENTRANCE',
     question: 'Answer:',
     correct_answers: ['nothing', 'null', 'void', 'the cursor', 'darkness'],
+    hint: 'Think about what comes before the beginning...',
     max_attempts: 3,
     success_message:
       'The door considers your answer.\n\n' +
@@ -3933,13 +3942,15 @@ export const gameNodes: Record<string, GameNode> = {
           'You are one of them now.\n\n' +
           'The faceless one finds you.\n' +
           '"You have the key," they say.\n' +
-          '"But a key alone does not change a world."\n\n' +
+          '"But a key alone does not change a world.\n' +
+          'The Guild has a Book. In the Temple.\n' +
+          'THE BOOK OF NULL. It holds the rules\n' +
+          'of every iteration. Every reset. Every boundary.\n\n' +
+          '"If you want to write something new,\n' +
+          'you must take something old.\n' +
+          'A page. Tear it from the Book."\n\n' +
           'They look at you - with everyone\'s face,\n' +
           'with nobody\'s eyes.\n' +
-          '"The Guild has a Book. It holds the rules\n' +
-          'of every iteration. Every reset. Every boundary.\n' +
-          'Consider what that means to someone\n' +
-          'who holds a key to open things."\n\n' +
           '"The choice is yours. It always was."',
       },
       {
