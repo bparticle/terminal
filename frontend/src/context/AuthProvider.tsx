@@ -129,23 +129,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [disconnecting]);
 
-  // Token refresh timer
+  // Session expiry watchdog: check every minute and log out when the JWT expires.
+  // We do NOT silently call authenticate() here — it requires a wallet signature and
+  // would trigger unexpected wallet dialogs + hammer the auth rate limiter.
+  // Once logged out, isAuthenticated becomes false, and GameTerminal's stuck-state
+  // detector will prompt the user to type "connect" to re-authenticate.
   useEffect(() => {
-    if (session) {
-      refreshTimerRef.current = setInterval(() => {
-        const oneHourFromNow = Date.now() + 60 * 60 * 1000;
-        if (session.expiresAt < oneHourFromNow && connected && publicKey) {
-          authenticate().catch(console.error);
-        }
-      }, 5 * 60 * 1000); // Check every 5 minutes
-    }
+    if (!session) return;
+
+    refreshTimerRef.current = setInterval(() => {
+      if (session.expiresAt <= Date.now()) {
+        logout();
+      }
+    }, 60 * 1000); // Check every minute
 
     return () => {
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
       }
     };
-  }, [session, connected, publicKey]);
+  }, [session, logout]);
 
   const authenticate = useCallback(async () => {
     if (!publicKey || !signMessage) {

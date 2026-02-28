@@ -35,19 +35,12 @@ export async function fetchWithAuth(
     credentials: 'include',
   });
 
-  // On 401, try to re-authenticate once
-  if (response.status === 401 && authContext) {
-    try {
-      await authContext.authenticate();
-      const retryHeaders = {
-        ...headers,
-        ...authContext.getAuthHeaders(),
-      };
-      return fetch(url, { ...options, headers: retryHeaders, credentials: 'include' });
-    } catch {
-      throw new Error('Session expired — please reconnect your wallet.');
-    }
-  }
+  // On 401 the session has expired. Do NOT attempt to silently re-authenticate here —
+  // this system requires a wallet signature, so calling authenticate() from a background
+  // fetch would: (a) pop up unexpected wallet dialogs, and (b) hammer the rate-limited
+  // auth endpoint when multiple concurrent requests all fail at once.
+  // Instead, return the 401 response and let callers handle it gracefully.
+  // The stuck-state detector in GameTerminal will prompt the user to type "connect".
 
   if (response.status === 429) {
     throw new Error('Rate limited. Please try again later.');
