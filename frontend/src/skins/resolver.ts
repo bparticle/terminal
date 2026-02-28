@@ -13,39 +13,32 @@ export interface ResolvedSkin {
   config: SkinConfig;
 }
 
+export interface SkinOption {
+  id: string;
+  displayName: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function deepMerge<T extends Record<string, unknown>>(base: T, patch?: DeepPartial<T>): T {
+function deepMerge<T>(base: T, patch?: DeepPartial<T>): T {
   if (!patch) return base;
 
-  const merged = { ...base } as T;
-  for (const key of Object.keys(patch) as Array<keyof T>) {
+  const merged = { ...(base as object) } as T;
+  for (const key of Object.keys(patch as object) as Array<keyof T>) {
     const patchValue = patch[key];
     if (patchValue === undefined) continue;
 
     const baseValue = merged[key];
     if (isRecord(baseValue) && isRecord(patchValue)) {
-      merged[key] = deepMerge(baseValue as Record<string, unknown>, patchValue as DeepPartial<Record<string, unknown>>) as T[keyof T];
+      merged[key] = deepMerge(baseValue, patchValue as DeepPartial<typeof baseValue>) as T[keyof T];
       continue;
     }
 
     merged[key] = patchValue as T[keyof T];
   }
   return merged;
-}
-
-export function readForcedSkinId(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  const fromQuery = new URLSearchParams(window.location.search).get('skin');
-  if (fromQuery && fromQuery.trim()) return fromQuery.trim();
-
-  const fromStorage = window.localStorage.getItem('terminalSkinOverride');
-  if (fromStorage && fromStorage.trim()) return fromStorage.trim();
-
-  return null;
 }
 
 export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
@@ -68,4 +61,15 @@ export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
     skinId: candidateSkinId,
     config: deepMerge(DEFAULT_SKIN, patch as DeepPartial<SkinConfig>),
   };
+}
+
+export function listAvailableSkins(): SkinOption[] {
+  const ids = new Set<string>([DEFAULT_SKIN_ID, ...Object.keys(SKIN_REGISTRY)]);
+  return Array.from(ids).map((id) => {
+    const patch = SKIN_REGISTRY[id] as DeepPartial<SkinConfig> | undefined;
+    return {
+      id,
+      displayName: patch?.displayName || (id === DEFAULT_SKIN_ID ? DEFAULT_SKIN.displayName : id),
+    };
+  });
 }

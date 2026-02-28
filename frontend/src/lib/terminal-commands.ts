@@ -2,6 +2,7 @@ import { GameEngine } from './game-engine';
 import { checkWhitelistStatus, getMintHistory, checkMintStatus, getSoulboundItems, verifySoulbound } from './mint-api';
 import { checkPfpStatus } from './pfp-api';
 import { updateProfileName, updateProfilePfp } from './api';
+import { listAvailableSkins } from '@/skins/resolver';
 
 export interface TerminalContext {
   engine: GameEngine | null;
@@ -9,6 +10,7 @@ export interface TerminalContext {
   connected: boolean;
   isAuthenticated: boolean;
   isAuthenticating: boolean;
+  isAdmin: boolean;
   addOutput: (text: string, className?: string) => void;
   clearOutput: () => void;
   openWalletModal: () => void;
@@ -16,6 +18,9 @@ export interface TerminalContext {
   authenticate: () => Promise<void>;
   setTheme: (theme: string) => void;
   currentTheme: string;
+  setSkinOverride: (skinId: string | null) => void;
+  currentSkinOverride: string | null;
+  currentSkinResolved: string;
   pendingRestart: boolean;
   setPendingRestart: (v: boolean) => void;
 }
@@ -24,6 +29,7 @@ interface Command {
   description: string;
   execute: (args: string, ctx: TerminalContext) => Promise<void> | void;
   requiresWallet?: boolean;
+  requiresAdmin?: boolean;
 }
 
 export const commands: Record<string, Command> = {
@@ -59,6 +65,11 @@ export const commands: Record<string, Command> = {
       ctx.addOutput('  pfp           PFP avatar commands (list/set/clear)');
       ctx.addOutput('  gallery       Open NFT gallery overlay');
       ctx.addOutput('');
+      if (ctx.isAdmin) {
+        ctx.addOutput('Admin:', 'text-yellow-400');
+        ctx.addOutput('  admin         Admin-only tools');
+        ctx.addOutput('');
+      }
     },
   },
 
@@ -511,6 +522,81 @@ export const commands: Record<string, Command> = {
       }
     },
   },
+
+  admin: {
+    description: 'Admin-only commands',
+    requiresWallet: true,
+    requiresAdmin: true,
+    execute: (args, ctx) => {
+      const trimmed = args.trim();
+      const [sub = '', ...rest] = trimmed.split(/\s+/);
+      const subLower = sub.toLowerCase();
+
+      if (!subLower || subLower === 'help') {
+        ctx.addOutput('=== ADMIN COMMANDS ===', 'text-cyan-400');
+        ctx.addOutput('');
+        ctx.addOutput('  admin skin list          List available skins');
+        ctx.addOutput('  admin skin set <id>      Set skin override for testing');
+        ctx.addOutput('  admin skin clear         Clear override (campaign/default)');
+        ctx.addOutput('');
+        return;
+      }
+
+      if (subLower !== 'skin') {
+        ctx.addOutput('Unknown admin subcommand. Type "admin help" for usage.', 'text-red-400');
+        return;
+      }
+
+      const action = (rest[0] || 'list').toLowerCase();
+      const actionArg = (rest[1] || '').toLowerCase();
+      const options = listAvailableSkins();
+      const byId = new Map(options.map((skin) => [skin.id.toLowerCase(), skin]));
+
+      if (action === 'list' || action === 'status') {
+        ctx.addOutput('=== AVAILABLE SKINS ===', 'text-cyan-400');
+        options.forEach((skin) => {
+          ctx.addOutput(`  ${skin.id}  ${skin.displayName}`, 'text-gray-400');
+        });
+        ctx.addOutput(
+          `Override: ${ctx.currentSkinOverride || 'none'} | Active: ${ctx.currentSkinResolved}`,
+          'text-yellow-400'
+        );
+        return;
+      }
+
+      if (action === 'clear' || action === 'reset') {
+        ctx.setSkinOverride(null);
+        ctx.addOutput('Skin override cleared. Returning to campaign/default skin resolution.', 'text-green-400');
+        return;
+      }
+
+      if (action === 'set' || action === 'preview') {
+        if (!actionArg) {
+          ctx.addOutput('Usage: admin skin set <skin-id>', 'text-yellow-400');
+          return;
+        }
+        const match = byId.get(actionArg);
+        if (!match) {
+          ctx.addOutput(`Unknown skin "${actionArg}". Use "admin skin list".`, 'text-red-400');
+          return;
+        }
+        ctx.setSkinOverride(match.id);
+        ctx.addOutput(`Skin override set to: ${match.displayName} (${match.id})`, 'text-green-400');
+        ctx.addOutput('Use "admin skin clear" to return to campaign/default resolution.', 'text-gray-400');
+        return;
+      }
+
+      // Convenience: allow "admin skin <id>" directly.
+      const direct = byId.get(action);
+      if (direct) {
+        ctx.setSkinOverride(direct.id);
+        ctx.addOutput(`Skin override set to: ${direct.displayName} (${direct.id})`, 'text-green-400');
+        return;
+      }
+
+      ctx.addOutput('Unknown admin skin action. Use "admin skin list".', 'text-red-400');
+    },
+  },
 };
 
 /**
@@ -535,6 +621,10 @@ export function processCommand(input: string, ctx: TerminalContext): boolean {
 
   if (command.requiresWallet && !ctx.isAuthenticated) {
     ctx.addOutput('You must be signed in to use this command. Type "connect" to link your wallet.', 'text-yellow-400');
+    return true;
+  }
+  if (command.requiresAdmin && !ctx.isAdmin) {
+    ctx.addOutput('Admin privileges required for this command.', 'text-red-400');
     return true;
   }
 

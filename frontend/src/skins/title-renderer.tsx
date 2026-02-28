@@ -35,7 +35,7 @@ export default function SkinTitleRenderer({ title }: SkinTitleRendererProps) {
 
   if (title.mode === 'text' || (assetFailed && titleText)) {
     return (
-      <div className="skin-title-text" role="img" aria-label="Campaign title">
+      <div className="skin-title-text">
         {titleText}
       </div>
     );

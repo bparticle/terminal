@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -13,13 +13,17 @@ import SidebarWalletPanel from './components/SidebarWalletPanel';
 import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
-import ScanlineTitle from './components/ScanlineTitle';
 import GalleryOverlay from './components/GalleryOverlay';
 import CampaignOverlay from './components/CampaignOverlay';
 import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import IframeGame from '@/components/terminal/IframeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
+import { getCampaigns } from '@/lib/campaign-api';
+import { applySkin } from '@/skins/applySkin';
+import { resolveSkin } from '@/skins/resolver';
+import { getAdminSkinOverrideStorageKey, readAdminSkinOverride, writeAdminSkinOverride } from '@/skins/admin-override';
+import SkinTitleRenderer from '@/skins/title-renderer';
 import './game-terminal.css';
 
 const godotGameConfig: Record<string, { title: string; src: string }> = {
@@ -50,7 +54,7 @@ type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'done';
 export default function GameTerminal() {
   const { publicKey, connected, disconnect, signTransaction } = useWallet();
   const { setVisible } = useWalletModal();
-  const { isAuthenticated, isAuthenticating, getAuthHeaders, authenticate, isInitialized } = useAuth();
+  const { session, isAuthenticated, isAuthenticating, getAuthHeaders, authenticate, isInitialized } = useAuth();
 
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [input, setInput] = useState('');
@@ -71,6 +75,8 @@ export default function GameTerminal() {
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [campaignSkinId, setCampaignSkinId] = useState<string | null>(null);
+  const [adminSkinOverrideId, setAdminSkinOverrideId] = useState<string | null>(null);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -124,6 +130,54 @@ export default function GameTerminal() {
       window.removeEventListener('open-campaign', openCampaign);
     };
   }, []);
+
+  // Resolve campaign used for skin mapping.
+  // First pass uses first active campaign; overlay selection can override it.
+  useEffect(() => {
+    getCampaigns()
+      .then((rows) => {
+        if (rows[0]?.id) setCampaignSkinId(rows[0].id);
+      })
+      .catch(() => {
+        // Skin system always falls back to defaults.
+      });
+  }, []);
+
+  const resolvedSkin = useMemo(
+    () => resolveSkin({ campaignId: campaignSkinId, forcedSkinId: adminSkinOverrideId }),
+    [campaignSkinId, adminSkinOverrideId]
+  );
+
+  // Admin-only persisted skin override for cross-page testing.
+  useEffect(() => {
+    const isAdmin = !!session?.user?.is_admin;
+    if (!isAdmin) {
+      setAdminSkinOverrideId(null);
+      return;
+    }
+    setAdminSkinOverrideId(readAdminSkinOverride());
+  }, [session]);
+
+  // Persist admin override when changed by admin terminal command.
+  useEffect(() => {
+    if (!session?.user?.is_admin) return;
+    writeAdminSkinOverride(adminSkinOverrideId);
+  }, [adminSkinOverrideId, session]);
+
+  // React to admin-panel changes made in another tab/window.
+  useEffect(() => {
+    if (!session?.user?.is_admin) return;
+    const key = getAdminSkinOverrideStorageKey();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== key) return;
+      setAdminSkinOverrideId(readAdminSkinOverride());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [session]);
+
+  // Apply skin CSS variables and data-skin attribute to document root.
+  useEffect(() => applySkin(resolvedSkin.config), [resolvedSkin]);
 
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
@@ -533,6 +587,7 @@ export default function GameTerminal() {
         connected,
         isAuthenticated,
         isAuthenticating,
+        isAdmin: !!session?.user?.is_admin,
         addOutput,
         clearOutput,
         openWalletModal: () => setVisible(true),
@@ -540,6 +595,9 @@ export default function GameTerminal() {
         authenticate,
         setTheme,
         currentTheme: theme,
+        setSkinOverride: setAdminSkinOverrideId,
+        currentSkinOverride: adminSkinOverrideId,
+        currentSkinResolved: resolvedSkin.skinId,
         pendingRestart,
         setPendingRestart,
       };
@@ -571,7 +629,7 @@ export default function GameTerminal() {
 
       setInput('');
     },
-    [input, publicKey, connected, isAuthenticated, theme, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
+    [input, publicKey, connected, isAuthenticated, isAuthenticating, session, theme, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
   );
 
   // Re-focus input when returning from a mini-game
@@ -676,6 +734,7 @@ export default function GameTerminal() {
           connected,
           isAuthenticated,
           isAuthenticating,
+          isAdmin: !!session?.user?.is_admin,
           addOutput,
           clearOutput,
           openWalletModal: () => setVisible(true),
@@ -683,6 +742,9 @@ export default function GameTerminal() {
           authenticate,
           setTheme,
           currentTheme: theme,
+          setSkinOverride: setAdminSkinOverrideId,
+          currentSkinOverride: adminSkinOverrideId,
+          currentSkinResolved: resolvedSkin.skinId,
           pendingRestart,
           setPendingRestart,
         };
@@ -710,7 +772,7 @@ export default function GameTerminal() {
         inputRef.current?.focus();
       }, 0);
     },
-    [publicKey, connected, isAuthenticated, theme, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
+    [publicKey, connected, isAuthenticated, isAuthenticating, session, theme, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
   );
 
   const handleTerminalMouseDown = useCallback((e: React.MouseEvent) => {
@@ -732,7 +794,7 @@ export default function GameTerminal() {
   return (
     <div className="terminal-page">
       <div className="title-header">
-        <ScanlineTitle variant={5} />
+        <SkinTitleRenderer title={resolvedSkin.config.title} />
         <span className="version-badge">v{APP_VERSION}</span>
       </div>
       <div className="retro-container">
