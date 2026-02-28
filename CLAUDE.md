@@ -1,5 +1,10 @@
 # Terminal Text Adventure Game
 
+## Workflow Rules
+
+- **Never push to remote automatically.** Only commit. Push only when the user explicitly says "push" or "push it".
+- **Never auto-commit.** Only commit when the user explicitly asks to commit.
+
 Retro CRT terminal-themed text adventure game gated by Solana cNFT ownership. Features persistent cloud saves, achievement/campaign tracking, real-time multiplayer chat, embedded mini-games, and an admin panel.
 
 ## Tech Stack
