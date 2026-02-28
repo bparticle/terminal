@@ -3544,7 +3544,7 @@ export const gameNodes: Record<string, GameNode> = {
         text: 'Insert archivist log into console',
         next_node: 'broadcast_log_insert',
         requirements: { has_item: ['archivist_log_9'] },
-        visibilityRequirements: { has_item: ['archivist_log_9'] },
+        lockedText: '[The console awaits a document. You have nothing to insert yet.]',
       },
       {
         id: 2,
@@ -3736,7 +3736,8 @@ export const gameNodes: Record<string, GameNode> = {
         id: 8,
         text: 'Face the mirror',
         next_node: 'temple_mirror_challenge',
-        visibilityRequirements: { state: { knows_player_role: true } },
+        requirements: { state: { knows_player_role: true } },
+        lockedText: '[The mirror reflects only static. You are not yet ready to see.]',
       },
       {
         id: 9,
