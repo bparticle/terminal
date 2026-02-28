@@ -114,13 +114,31 @@ cd ../frontend && npm install
 
 ```bash
 createdb terminal_game_db
-psql terminal_game_db < database/migrations/001_initial_schema.sql
-psql terminal_game_db < database/migrations/002_add_last_active.sql
-psql terminal_game_db < database/migrations/003_mint_whitelist_and_log.sql
-psql terminal_game_db < database/migrations/004_soulbound_items.sql
-psql terminal_game_db < database/migrations/005_pfp_mint_tracking.sql
-psql terminal_game_db < database/seed.sql
+node database/run-migration.js --env=development --yes
+node database/run-seed.js --env=development --yes
 ```
+
+This runs all migrations in `database/migrations` (currently `001` through `013`) and then applies the canonical SQL seed (`database/seed.sql`).
+
+#### Safe environment split (recommended)
+
+```bash
+# Development / Staging
+node database/run-migration.js --env=development --yes
+node database/run-seed.js --env=development --yes
+
+# Production schema updates (default safe path)
+node database/run-migration.js --env=production --yes
+
+# Production seed (explicit + guarded, use rarely)
+node database/run-seed.js --env=production --confirm-production-seed --yes
+```
+
+Production safety checklist:
+- Confirm `backend/.env` points to the intended production `DATABASE_URL` before running scripts.
+- Take a backup/snapshot before schema changes.
+- Never seed production without `--confirm-production-seed`.
+- Keep seeds idempotent and SQL-curated (`database/seed.sql`).
 
 ### 3) Configure environment variables
 
