@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { VersionedTransaction } from '@solana/web3.js';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
@@ -13,13 +13,16 @@ import SidebarWalletPanel from './components/SidebarWalletPanel';
 import InventoryBox from './components/InventoryBox';
 import PlayersPanel from './components/PlayersPanel';
 import ChatModeToggle from './components/ChatModeToggle';
-import ScanlineTitle from './components/ScanlineTitle';
 import GalleryOverlay from './components/GalleryOverlay';
 import CampaignOverlay from './components/CampaignOverlay';
 import { APP_VERSION } from '@/lib/version';
 import SnakeGame from '@/components/terminal/SnakeGame';
 import IframeGame from '@/components/terminal/IframeGame';
 import { useSocket, ChatMessage, ChatSystemEvent } from '@/lib/useSocket';
+import { getCampaigns } from '@/lib/campaign-api';
+import { applySkin } from '@/skins/applySkin';
+import { resolveSkin, readForcedSkinId } from '@/skins/resolver';
+import SkinTitleRenderer from '@/skins/title-renderer';
 import './game-terminal.css';
 
 const godotGameConfig: Record<string, { title: string; src: string }> = {
@@ -71,6 +74,8 @@ export default function GameTerminal() {
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [campaignSkinId, setCampaignSkinId] = useState<string | null>(null);
+  const [forcedSkinId, setForcedSkinId] = useState<string | null>(null);
 
   const engineRef = useRef<GameEngine | null>(null);
   const outputEndRef = useRef<HTMLDivElement>(null);
@@ -124,6 +129,44 @@ export default function GameTerminal() {
       window.removeEventListener('open-campaign', openCampaign);
     };
   }, []);
+
+  // Resolve campaign used for skin mapping.
+  // First pass uses first active campaign; overlay selection can override it.
+  useEffect(() => {
+    getCampaigns()
+      .then((rows) => {
+        if (rows[0]?.id) setCampaignSkinId(rows[0].id);
+      })
+      .catch(() => {
+        // Skin system always falls back to defaults.
+      });
+  }, []);
+
+  // Optional dev override (query param ?skin=... or localStorage terminalSkinOverride).
+  useEffect(() => {
+    setForcedSkinId(readForcedSkinId());
+  }, []);
+
+  // Campaign overlay broadcasts selected campaign for skin preview/swap testing.
+  useEffect(() => {
+    const onCampaignFocus = (event: Event) => {
+      const custom = event as CustomEvent<{ campaignId?: string | null }>;
+      if (typeof custom.detail?.campaignId === 'string') {
+        setCampaignSkinId(custom.detail.campaignId);
+      }
+    };
+
+    window.addEventListener('campaign-focus-changed', onCampaignFocus);
+    return () => window.removeEventListener('campaign-focus-changed', onCampaignFocus);
+  }, []);
+
+  const resolvedSkin = useMemo(
+    () => resolveSkin({ campaignId: campaignSkinId, forcedSkinId }),
+    [campaignSkinId, forcedSkinId]
+  );
+
+  // Apply skin CSS variables and data-skin attribute to document root.
+  useEffect(() => applySkin(resolvedSkin.config), [resolvedSkin]);
 
   // ── Socket.IO for room chat ──────────────────────────────
   const handleChatMessage = useCallback((msg: ChatMessage) => {
@@ -732,7 +775,7 @@ export default function GameTerminal() {
   return (
     <div className="terminal-page">
       <div className="title-header">
-        <ScanlineTitle variant={5} />
+        <SkinTitleRenderer title={resolvedSkin.config.title} />
         <span className="version-badge">v{APP_VERSION}</span>
       </div>
       <div className="retro-container">
@@ -795,13 +838,13 @@ export default function GameTerminal() {
           </div>
 
           <form onSubmit={handleSubmit} className={`terminal-input-form ${chatMode ? 'chat-mode' : ''}`}>
-            {isAuthenticated && onboardingState === 'done' ? (
+            {isAuthenticated && onboardingState === 'done' && !isPrivateRoom ? (
               <ChatModeToggle
                 chatMode={chatMode}
                 onToggle={toggleChatMode}
                 isSocketConnected={isSocketConnected}
-                disabled={soloMode || isPrivateRoom}
-                disabledReason={isPrivateRoom ? 'private' : 'solo'}
+                disabled={soloMode}
+                disabledReason="solo"
               />
             ) : (
               <span className="terminal-prompt">&gt;_</span>
@@ -831,7 +874,7 @@ export default function GameTerminal() {
               }
               disabled={activeGame !== null}
             />
-            {isAuthenticated && onboardingState === 'done' && (
+            {isAuthenticated && onboardingState === 'done' && !isPrivateRoom && (
               <button
                 type="button"
                 className={`solo-toggle ${soloMode ? 'solo-toggle-active' : ''}`}

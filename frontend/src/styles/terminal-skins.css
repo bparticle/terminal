@@ -1,0 +1,6 @@
+/* Skin exception layer (kept intentionally small).
+   Prefer overriding CSS variables in skin configs instead of class-level rules. */
+
+:root[data-skin] .terminal-page {
+  background: var(--skin-page-bg, #0a0a0a);
+}
