@@ -547,10 +547,6 @@
 /* ==========================================
    STATS BOX
    ========================================== */
-.stats-box {
-  /* Scrolls with the sidebar */
-}
-
 .stats-box .stats-empty {
   color: var(--primary-dim);
   font-size: 14px;
@@ -735,6 +731,58 @@
   cursor: not-allowed;
 }
 
+.wallet-action-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.wallet-action-row .wallet-action-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+.wallet-action-btn-compact {
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 6px;
+  background: rgba(var(--primary-rgb), 0.05);
+  border-color: rgba(var(--primary-rgb), 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wallet-action-btn-compact:hover:not(:disabled) {
+  background: rgba(var(--primary-rgb), 0.14);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.2);
+}
+
+.wallet-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.8);
+  animation: wallet-live-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wallet-live-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
 .wallet-label {
   color: var(--primary-dim);
   font-size: 12px;
@@ -748,10 +796,6 @@
 /* ==========================================
    PLAYERS PANEL
    ========================================== */
-.players-panel {
-  /* Scrolls with the sidebar */
-}
-
 .players-empty {
   color: var(--primary-dim);
   font-size: 13px;
@@ -1686,6 +1730,7 @@
   color: var(--primary-dim);
   font-size: 14px;
 }
+
 
 .gallery-collection-column,
 .gallery-detail-column {

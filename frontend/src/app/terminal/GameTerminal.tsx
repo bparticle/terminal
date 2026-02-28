@@ -977,7 +977,7 @@ export default function GameTerminal() {
         {/* Side Panel (Desktop) */}
         <div className="side-panel">
           <div className="side-panel-fixed">
-            <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
+            <Monitor imageUrl={monitorImageUrl} />
             <SidebarWalletPanel
               walletAddress={publicKey?.toBase58() || null}
               isWalletConnected={connected}
@@ -986,6 +986,8 @@ export default function GameTerminal() {
               onChangeWallet={() => void handleWalletPrimaryAction()}
               onDisconnectWallet={() => void disconnect()}
               onOpenCampaign={openCampaign}
+              onOpenGallery={openGallery}
+              hasLiveCampaigns={!!activeCampaignId}
             />
             <InventoryBox items={inventory} />
           </div>
@@ -1001,7 +1003,7 @@ export default function GameTerminal() {
               className="mobile-sidebar"
               onClick={(e) => e.stopPropagation()}
             >
-              <Monitor imageUrl={monitorImageUrl} onOpenGallery={openGallery} />
+              <Monitor imageUrl={monitorImageUrl} />
               <SidebarWalletPanel
                 walletAddress={publicKey?.toBase58() || null}
                 isWalletConnected={connected}
@@ -1010,6 +1012,8 @@ export default function GameTerminal() {
                 onChangeWallet={() => void handleWalletPrimaryAction()}
                 onDisconnectWallet={() => void disconnect()}
                 onOpenCampaign={openCampaign}
+                onOpenGallery={openGallery}
+                hasLiveCampaigns={!!activeCampaignId}
               />
               <InventoryBox items={inventory} />
               <PlayersPanel currentPlayerName={playerName} isolated={isPrivateRoom} awayPlayers={awayPlayers} typingUsers={typingUsers} />

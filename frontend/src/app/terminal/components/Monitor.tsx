@@ -18,10 +18,9 @@ function proxyUrl(url: string): string {
 
 interface MonitorProps {
   imageUrl?: string | null;
-  onOpenGallery?: () => void;
 }
 
-export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
+export default function Monitor({ imageUrl }: MonitorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -35,7 +34,6 @@ export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
   }, []);
 
   const showImage = !!imageUrl && !imgFailed;
-  const canOpenGallery = !!onOpenGallery;
 
   useEffect(() => {
     if (showImage || !canvasRef.current) return;
@@ -83,13 +81,7 @@ export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
 
   return (
     <div className="panel-box monitor-container">
-      <button
-        type="button"
-        className={`monitor-screen ${canOpenGallery ? 'monitor-clickable' : ''}`}
-        onClick={canOpenGallery ? onOpenGallery : undefined}
-        aria-label={canOpenGallery ? 'Open NFT gallery' : 'Monitor display'}
-        title={canOpenGallery ? 'Open gallery' : undefined}
-      >
+      <div className="monitor-screen" aria-label="Monitor display">
         {!showImage && (
           <canvas
             ref={canvasRef}
@@ -113,7 +105,7 @@ export default function Monitor({ imageUrl, onOpenGallery }: MonitorProps) {
           />
         )}
         <div className="monitor-overlay" />
-      </button>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,8 @@ interface SidebarWalletPanelProps {
   onChangeWallet: () => void;
   onDisconnectWallet: () => void;
   onOpenCampaign: () => void;
+  onOpenGallery: () => void;
+  hasLiveCampaigns: boolean;
 }
 
 export default function SidebarWalletPanel({
@@ -18,6 +20,8 @@ export default function SidebarWalletPanel({
   onChangeWallet,
   onDisconnectWallet,
   onOpenCampaign,
+  onOpenGallery,
+  hasLiveCampaigns,
 }: SidebarWalletPanelProps) {
   const walletStatusLabel = walletAddress
     ? `Wallet: ${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`
@@ -69,14 +73,27 @@ export default function SidebarWalletPanel({
         </button>
       )}
 
-      <button
-        type="button"
-        className="wallet-action-btn"
-        onClick={onOpenCampaign}
-        disabled={!isAuthenticated}
-      >
-        OPEN CAMPAIGN SCREEN
-      </button>
+      <div className="wallet-action-row">
+        <button
+          type="button"
+          className="wallet-action-btn wallet-action-btn-compact"
+          onClick={onOpenCampaign}
+          disabled={!isAuthenticated}
+          aria-label="Open campaign screen"
+        >
+          {hasLiveCampaigns && <span className="wallet-live-dot" aria-hidden />}
+          Campaign
+        </button>
+        <button
+          type="button"
+          className="wallet-action-btn wallet-action-btn-compact"
+          onClick={onOpenGallery}
+          disabled={!isAuthenticated}
+          aria-label="Open gallery"
+        >
+          Gallery
+        </button>
+      </div>
     </div>
   );
 }
