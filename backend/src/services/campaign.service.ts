@@ -4,26 +4,41 @@ import { updateGameSaveState } from './game.service';
 import validAchievementStates from '../data/valid-achievement-states.json';
 
 /**
- * Record a single achievement if not already recorded
+ * Record a single achievement scoped to a campaign.
+ * No-op if the (wallet, campaign, state) triple already exists.
  */
 export async function recordAchievement(
   userId: string,
   wallet: string,
   stateName: string,
-  stateValue: string
+  stateValue: string,
+  campaignId: string
 ): Promise<void> {
   await query(
-    `INSERT INTO achievements (user_id, wallet_address, state_name, state_value)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (wallet_address, state_name) DO NOTHING`,
-    [userId, wallet, stateName, stateValue]
+    `INSERT INTO achievements (user_id, wallet_address, state_name, state_value, campaign_id)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (wallet_address, campaign_id, state_name) DO NOTHING`,
+    [userId, wallet, stateName, stateValue, campaignId]
   );
 }
 
 /**
- * Get all achievements for a wallet
+ * Get all achievements for a wallet in a specific campaign.
+ * Pass campaignId to scope results; omit (undefined) to return all campaigns
+ * (used by admin views only).
  */
-export async function getUserAchievements(wallet: string): Promise<Achievement[]> {
+export async function getUserAchievements(
+  wallet: string,
+  campaignId?: string
+): Promise<Achievement[]> {
+  if (campaignId) {
+    const result = await query(
+      'SELECT * FROM achievements WHERE wallet_address = $1 AND campaign_id = $2 ORDER BY achieved_at ASC',
+      [wallet, campaignId]
+    );
+    return result.rows;
+  }
+  // Unscoped path — admin/display use only
   const result = await query(
     'SELECT * FROM achievements WHERE wallet_address = $1 ORDER BY achieved_at ASC',
     [wallet]
@@ -39,13 +54,15 @@ export async function getUserAchievements(wallet: string): Promise<Achievement[]
 const VALID_ACHIEVEMENT_STATES: ReadonlySet<string> = new Set(validAchievementStates);
 
 /**
- * Scan game_state for achievement-worthy flags and record them.
- * Only allowlisted state keys are processed to prevent client-side forgery.
+ * Scan game_state for achievement-worthy flags and record them under the
+ * given campaign. Only allowlisted state keys are processed to prevent
+ * client-side forgery. Existing records are untouched (ON CONFLICT DO NOTHING).
  */
 export async function processAchievements(
   userId: string,
   wallet: string,
-  gameState: Record<string, any>
+  gameState: Record<string, any>,
+  campaignId: string
 ): Promise<void> {
   for (const [stateName, stateValue] of Object.entries(gameState)) {
     // Only process allowlisted achievement state keys
@@ -55,7 +72,7 @@ export async function processAchievements(
 
     // Record "true" flags as achievements
     if (stateValue === 'true' || stateValue === true) {
-      await recordAchievement(userId, wallet, stateName, String(stateValue));
+      await recordAchievement(userId, wallet, stateName, String(stateValue), campaignId);
     }
   }
 }
@@ -114,14 +131,13 @@ export async function hasWonCampaign(campaignId: string, wallet: string): Promis
 }
 
 /**
- * Record a campaign win
+ * Record a campaign win atomically (enforces max_winners in a single query)
  */
 export async function recordCampaignWin(
   campaignId: string,
   userId: string,
   wallet: string
 ): Promise<boolean> {
-  // Atomic insert: compute rank and enforce max_winners in a single query
   const result = await query(
     `INSERT INTO campaign_winners (campaign_id, user_id, wallet_address, rank)
      SELECT $1, $2, $3, COALESCE(
@@ -172,7 +188,7 @@ export async function getUserCampaignWins(wallet: string): Promise<any[]> {
 }
 
 /**
- * Check if user's achievements satisfy a campaign's requirements
+ * Check if user's achievements for a specific campaign satisfy its requirements
  */
 function checkCampaignRequirements(
   campaign: Campaign,
@@ -192,8 +208,16 @@ function checkCampaignRequirements(
 }
 
 /**
- * Evaluate only the active campaign for a user
- * Called after every game save
+ * Validate that a sets_state key is an allowlisted achievement state name.
+ * Prevents campaigns from clobbering core game_state fields like current_node_id.
+ */
+function isValidSetsState(key: string): boolean {
+  return VALID_ACHIEVEMENT_STATES.has(key);
+}
+
+/**
+ * Evaluate only the active campaign for a user using campaign-scoped achievements.
+ * Called after every game save.
  */
 export async function evaluateCampaigns(
   userId: string,
@@ -205,11 +229,11 @@ export async function evaluateCampaigns(
   if (!campaign.is_active) return;
   if (campaign.expires_at && new Date(campaign.expires_at).getTime() <= Date.now()) return;
 
-  const userAchievements = await getUserAchievements(wallet);
+  // Use campaign-scoped achievements only — no cross-campaign pollution
+  const userAchievements = await getUserAchievements(wallet, activeCampaignId);
   const alreadyWon = await hasWonCampaign(campaign.id, wallet);
   if (alreadyWon) return;
 
-  // Check if user meets requirements for the active campaign only
   const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
   if (!meetsRequirements) return;
 
@@ -217,11 +241,15 @@ export async function evaluateCampaigns(
   const awarded = await recordCampaignWin(campaign.id, userId, wallet);
   if (!awarded) return;
 
-  // Set state flag on the active campaign save if configured
-  if (campaign.sets_state) {
+  // Set state flag on the active campaign save if configured and the key is safe
+  if (campaign.sets_state && isValidSetsState(campaign.sets_state)) {
     await updateGameSaveState(wallet, campaign.id, {
       [campaign.sets_state]: 'true',
     });
+  } else if (campaign.sets_state && !isValidSetsState(campaign.sets_state)) {
+    console.warn(
+      `[campaign] sets_state="${campaign.sets_state}" is not in the achievement allowlist — skipping state write for campaign ${campaign.id}`
+    );
   }
 }
 
@@ -288,10 +316,8 @@ export async function deleteCampaign(id: string): Promise<void> {
 }
 
 /**
- * Retroactively evaluate a specific campaign against ALL users.
- * Queries from game_saves (not achievements) so players who never had
- * their achievements recorded are still covered. Backfills any missing
- * achievement rows for each user before checking requirements.
+ * Retroactively evaluate a specific campaign against ALL users using their
+ * campaign-scoped game_saves and achievements.
  * Returns the number of new winners awarded.
  */
 export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
@@ -299,8 +325,7 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
   users_scanned: number;
   users_qualified: number;
 }> {
-  // Use game_saves as the user source so players whose achievements were
-  // never written (played before the pipeline was working) are included.
+  // Query users who have a save in this specific campaign
   const usersResult = await query(
     `SELECT u.id, u.wallet_address, gs.game_state
      FROM users u
@@ -317,25 +342,23 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
     const alreadyWon = await hasWonCampaign(campaign.id, user.wallet_address);
     if (alreadyWon) continue;
 
-    // Backfill any missing achievement rows from this user's current game_state
-    // before checking requirements. Uses ON CONFLICT DO NOTHING so existing
-    // records are untouched.
+    // Backfill any missing achievement rows for this campaign from this user's
+    // current game_state. ON CONFLICT DO NOTHING keeps existing records intact.
     if (user.game_state) {
-      await processAchievements(user.id, user.wallet_address, user.game_state);
+      await processAchievements(user.id, user.wallet_address, user.game_state, campaign.id);
     }
 
-    // Get user's achievements (now backfilled) and check requirements
-    const userAchievements = await getUserAchievements(user.wallet_address);
+    // Evaluate against campaign-scoped achievements only
+    const userAchievements = await getUserAchievements(user.wallet_address, campaign.id);
     const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
 
     if (meetsRequirements) {
       usersQualified++;
 
-      // Atomically award (enforces max_winners)
       const awarded = await recordCampaignWin(campaign.id, user.id, user.wallet_address);
       if (!awarded) break; // campaign is full
 
-      if (campaign.sets_state) {
+      if (campaign.sets_state && isValidSetsState(campaign.sets_state)) {
         await updateGameSaveState(user.wallet_address, campaign.id, {
           [campaign.sets_state]: 'true',
         });
@@ -353,17 +376,17 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
 }
 
 /**
- * Re-scan all game saves and backfill any missing achievement records.
- * Safe to run multiple times — uses INSERT ... ON CONFLICT DO NOTHING,
- * so existing achievements are never modified or deleted.
- * Returns the number of users processed and net new achievements written.
+ * Re-scan all game saves and backfill missing achievement records,
+ * properly scoped per campaign.
+ * Safe to run multiple times — uses ON CONFLICT DO NOTHING.
  */
 export async function resyncAchievementsFromGameSaves(): Promise<{
   users_processed: number;
   achievements_added: number;
 }> {
+  // Fetch each (user, campaign) save independently so achievements are scoped correctly
   const usersResult = await query(
-    `SELECT u.id, u.wallet_address, gs.game_state
+    `SELECT u.id, u.wallet_address, gs.game_state, gs.campaign_id
      FROM users u
      JOIN game_saves gs ON gs.user_id = u.id
      WHERE gs.game_state != '{}'::jsonb`
@@ -372,9 +395,9 @@ export async function resyncAchievementsFromGameSaves(): Promise<{
   const before = await query('SELECT COUNT(*) as count FROM achievements');
   const beforeCount = parseInt(before.rows[0].count, 10);
 
-  for (const user of usersResult.rows) {
-    if (user.game_state) {
-      await processAchievements(user.id, user.wallet_address, user.game_state);
+  for (const row of usersResult.rows) {
+    if (row.game_state && row.campaign_id) {
+      await processAchievements(row.id, row.wallet_address, row.game_state, row.campaign_id);
     }
   }
 

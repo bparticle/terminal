@@ -30,9 +30,22 @@ export interface Achievement {
   id: string;
   user_id: string;
   wallet_address: string;
+  campaign_id: string;
   state_name: string;
   state_value: string;
   achieved_at: string;
+}
+
+export interface CampaignSoulboundItem {
+  id: string;
+  wallet_address: string;
+  campaign_id: string;
+  item_name: string;
+  asset_id: string | null;
+  is_frozen: boolean;
+  freeze_signature: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Campaign {

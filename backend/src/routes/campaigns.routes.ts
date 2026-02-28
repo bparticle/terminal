@@ -77,11 +77,17 @@ router.get('/all', requireAuth, requireAdmin, async (_req: AuthenticatedRequest,
 
 /**
  * GET /api/v1/campaigns/user/progress
- * Get the authenticated user's achievements and campaign wins
+ * Get the authenticated user's achievements and campaign wins.
+ * Pass ?campaign_id=<uuid> to scope achievements to a specific campaign
+ * (used by the CampaignOverlay to show correct per-campaign progress dots).
+ * Without campaign_id, returns achievements across all campaigns.
  */
 router.get('/user/progress', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const achievements = await getUserAchievements(req.user!.walletAddress);
+    const campaignId = validateString(req.query.campaign_id, 'campaign_id', { maxLength: 64 });
+    const scopedCampaignId = (campaignId && UUID_V4_REGEX.test(campaignId)) ? campaignId : undefined;
+
+    const achievements = await getUserAchievements(req.user!.walletAddress, scopedCampaignId);
     const campaignWins = await getUserCampaignWins(req.user!.walletAddress);
 
     res.json({
@@ -309,7 +315,7 @@ router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: Auth
       throw new AppError('User not found', 404);
     }
 
-    await recordAchievement(targetUser.rows[0].id, wallet_address, state_name, state_value);
+    await recordAchievement(targetUser.rows[0].id, wallet_address, state_name, state_value, campaign_id);
     await evaluateCampaigns(targetUser.rows[0].id, wallet_address, campaign_id);
 
     res.json({ success: true });

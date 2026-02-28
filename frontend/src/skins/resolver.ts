@@ -1,10 +1,9 @@
-import { CAMPAIGN_SKIN_MAP } from './campaign-skin-map';
 import { DEFAULT_SKIN, DEFAULT_SKIN_ID } from './defaults';
 import { SKIN_REGISTRY } from './registry';
 import { DeepPartial, SkinConfig } from './types';
 
 interface ResolveSkinInput {
-  campaignId?: string | null;
+  /** Force a specific skin by ID. adminSkinOverrideId takes priority over campaignSkinId. */
   forcedSkinId?: string | null;
 }
 
@@ -41,10 +40,18 @@ function deepMerge<T>(base: T, patch?: DeepPartial<T>): T {
   return merged;
 }
 
+/**
+ * Resolve the active skin from:
+ *   1. forcedSkinId — either the admin test override OR the campaign's skin_id
+ *      (callers combine these: `adminOverride || campaign.skin_id || null`)
+ *   2. DEFAULT_SKIN — fallback when nothing is forced or the ID is unknown
+ *
+ * Campaign skin_id is read from the campaign object at the call site and passed
+ * as forcedSkinId; there is no static campaign→skin mapping in code.
+ */
 export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
-  const { campaignId = null, forcedSkinId = null } = input;
-  const mappedSkinId = campaignId ? CAMPAIGN_SKIN_MAP[campaignId] : null;
-  const candidateSkinId = forcedSkinId || mappedSkinId || DEFAULT_SKIN_ID;
+  const { forcedSkinId = null } = input;
+  const candidateSkinId = forcedSkinId || DEFAULT_SKIN_ID;
   const patch = SKIN_REGISTRY[candidateSkinId];
 
   if (!patch) {

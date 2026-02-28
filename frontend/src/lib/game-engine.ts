@@ -174,9 +174,9 @@ export class GameEngine {
       console.error('Failed to fetch NFTs:', error);
     }
 
-    // Fetch soulbound items in parallel
+    // Fetch soulbound items scoped to the active campaign
     try {
-      const { items } = await fetchSoulboundItems();
+      const { items } = await fetchSoulboundItems(this.activeCampaignId);
       this.soulboundItemsMap = new Map(
         items.map((i) => [i.item_name, { assetId: i.asset_id, isFrozen: i.is_frozen }])
       );
@@ -902,7 +902,7 @@ export class GameEngine {
     this.soulboundPollTimer = setInterval(async () => {
       polls++;
       try {
-        const { items } = await fetchSoulboundItems();
+        const { items } = await fetchSoulboundItems(this.activeCampaignId);
         let updated = false;
         for (const item of items) {
           if (this.soulboundPendingItems.has(item.item_name) && item.asset_id) {
@@ -946,7 +946,7 @@ export class GameEngine {
     this.soulboundItemsMap.set(itemName, { assetId: '', isFrozen: false });
     this.pollSoulboundStatus(itemName);
 
-    void mintSoulboundBackground(itemName, INVENTORY_ITEM_URI).then((result) => {
+    void mintSoulboundBackground(itemName, INVENTORY_ITEM_URI, this.activeCampaignId).then((result) => {
       if (result.alreadyMinted && result.assetId) {
         this.soulboundItemsMap.set(itemName, { assetId: result.assetId, isFrozen: true });
         this.soulboundPendingItems.delete(itemName);
@@ -1583,6 +1583,15 @@ export class GameEngine {
       // Best-effort pre-switch save; campaign switch should still proceed.
     }
 
+    // Clear campaign-specific soulbound state so the new campaign starts fresh.
+    // fetchNFTs() in initialize() will reload with the new campaign_id.
+    if (this.soulboundPollTimer) {
+      clearInterval(this.soulboundPollTimer);
+      this.soulboundPollTimer = null;
+    }
+    this.soulboundItemsMap.clear();
+    this.soulboundPendingItems.clear();
+
     this.activeCampaignId = campaignId;
     await this.initialize(this.walletAddress, campaignId, nodeSetId, name, this.pfpImageUrl || undefined);
   }
@@ -1630,6 +1639,10 @@ export class GameEngine {
   // ==========================================
   // GETTERS
   // ==========================================
+
+  getActiveCampaignId(): string | null {
+    return this.activeCampaignId;
+  }
 
   getCurrentNode(): GameNode | null {
     return this.currentNode;

@@ -99,10 +99,14 @@ export async function getCampaignLeaderboard(id: string): Promise<{
 }
 
 /**
- * Get user's progress (achievements + campaign wins)
+ * Get user's progress (achievements + campaign wins).
+ * Pass campaignId to scope achievements to a specific campaign — this is what
+ * the CampaignOverlay uses to render accurate per-campaign progress dots.
+ * Without campaignId, returns achievements across all campaigns (admin/summary use).
  */
-export async function getUserProgress(): Promise<CampaignProgress> {
-  const response = await fetchWithAuth('campaigns/user/progress');
+export async function getUserProgress(campaignId?: string): Promise<CampaignProgress> {
+  const params = campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : '';
+  const response = await fetchWithAuth(`campaigns/user/progress${params}`);
   if (!response.ok) return { achievements: [], campaign_wins: [] };
   const data = await response.json();
   return data.progress;

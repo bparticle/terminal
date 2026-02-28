@@ -149,27 +149,43 @@ export default function GameTerminal() {
   }, []);
 
   // Resolve active campaign and its assigned skin.
+  // Retry once on failure so a transient network error doesn't leave the player
+  // stuck (engine won't start without activeCampaignId).
   useEffect(() => {
-    getCampaigns()
-      .then((rows) => {
-        const firstCampaign = rows[0];
-        if (!firstCampaign) return;
-        setActiveCampaignId((prev) => prev || firstCampaign.id);
-        setCampaignAssignedSkinId((prev) => prev ?? firstCampaign.skin_id ?? null);
-        setActiveNodeSetId(firstCampaign.node_set_id || 'terminal-core');
-      })
-      .catch(() => {
-        // Skin system always falls back to defaults.
-      });
-  }, []);
+    let cancelled = false;
+    const load = () =>
+      getCampaigns()
+        .then((rows) => {
+          if (cancelled) return;
+          const firstCampaign = rows[0];
+          if (!firstCampaign) {
+            // No campaigns in the system — the engine cannot start without one.
+            // Show a clear message rather than silently hanging.
+            addOutput('', undefined);
+            addOutput('No campaigns available. Ask an admin to create one.', 'text-yellow-400');
+            return;
+          }
+          setActiveCampaignId((prev) => prev || firstCampaign.id);
+          setCampaignAssignedSkinId((prev) => prev ?? firstCampaign.skin_id ?? null);
+          setActiveNodeSetId(firstCampaign.node_set_id || 'terminal-core');
+        })
+        .catch(() => {
+          if (cancelled) return;
+          // Retry once after 3 seconds on failure
+          setTimeout(() => {
+            if (!cancelled) load();
+          }, 3000);
+        });
+    load();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- addOutput is stable
 
   const resolvedSkin = useMemo(
     () =>
       resolveSkin({
-        campaignId: activeCampaignId,
         forcedSkinId: adminSkinOverrideId || campaignAssignedSkinId || null,
       }),
-    [activeCampaignId, campaignAssignedSkinId, adminSkinOverrideId]
+    [campaignAssignedSkinId, adminSkinOverrideId]
   );
 
   // Admin-only persisted skin override for cross-page testing.
@@ -855,6 +871,15 @@ export default function GameTerminal() {
       <div className="title-header">
         <SkinTitleRenderer title={resolvedSkin.config.title} />
         <span className="version-badge">v{APP_VERSION}</span>
+        {adminSkinOverrideId && (
+          <span
+            className="version-badge"
+            style={{ background: '#7c3aed', color: '#fff', marginLeft: '0.5rem', cursor: 'default' }}
+            title={`Admin skin override active: "${adminSkinOverrideId}". Use /skin clear to remove.`}
+          >
+            SKIN: {adminSkinOverrideId}
+          </span>
+        )}
       </div>
       <div className="retro-container">
         {/* Main Terminal */}

@@ -175,16 +175,22 @@ export async function mintSoulbound(config: {
  * Background soulbound mint for inventory items.
  * Returns queue/dedup status so callers can reconcile UI state.
  */
-export async function mintSoulboundBackground(itemName: string, uri: string): Promise<{
+export async function mintSoulboundBackground(
+  itemName: string,
+  uri: string,
+  campaignId?: string | null
+): Promise<{
   queued: boolean;
   alreadyMinted?: boolean;
   assetId?: string;
   error?: string;
 }> {
   try {
+    const body: Record<string, string> = { itemName, uri, name: itemName };
+    if (campaignId) body.campaign_id = campaignId;
     const response = await fetchWithAuth('soulbound/mint-background', {
       method: 'POST',
-      body: JSON.stringify({ itemName, uri, name: itemName }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -209,18 +215,19 @@ export async function mintSoulboundBackground(itemName: string, uri: string): Pr
   }
 }
 
-export async function getSoulboundItems(): Promise<{
+export async function getSoulboundItems(campaignId?: string | null): Promise<{
   items: Array<{
-    id: string;
+    id?: string;
     asset_id: string;
     item_name: string;
     is_frozen: boolean;
     freeze_signature: string | null;
-    metadata: Record<string, any>;
+    metadata?: Record<string, any>;
     created_at: string;
   }>;
 }> {
-  const response = await fetchWithAuth('soulbound/items');
+  const params = campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : '';
+  const response = await fetchWithAuth(`soulbound/items${params}`);
   if (!response.ok) return { items: [] };
   return response.json();
 }

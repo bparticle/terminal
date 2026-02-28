@@ -121,9 +121,9 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
       throw new AppError('No save found to update', 404);
     }
 
-    // 2. Process achievements (scan game_state for new flags)
+    // 2. Process achievements (scan game_state for new flags, scoped to this campaign)
     if (game_state) {
-      await processAchievements(req.user!.userId, wallet_address, game_state);
+      await processAchievements(req.user!.userId, wallet_address, game_state, campaign_id);
     }
 
     // 3. Evaluate campaigns (may call updateGameSaveState to set campaign flags)
@@ -171,10 +171,18 @@ router.post('/action', requireAuth, async (req: AuthenticatedRequest, res: Respo
 
 /**
  * GET /api/v1/game/users (admin only)
- * List all game users with game state, inventory, location
+ * List all game users with their most-recently-played campaign save.
+ * Supports pagination via ?limit= and ?offset= query params.
+ * Multiple campaign saves per user are NOT expanded — only the most recent
+ * save is returned per user to avoid duplicated rows.
  */
-router.get('/users', requireAuth, requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/users', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 500);
+    const offset = Math.max(parseInt(String(req.query.offset || '0'), 10) || 0, 0);
+
+    // Use DISTINCT ON to get one row per user (most recently played save).
+    // Achievements are aggregated across all campaigns for this admin view.
     const result = await query(
       `SELECT
         u.id as user_id,
@@ -194,17 +202,29 @@ router.get('/users', requireAuth, requireAdmin, async (_req: AuthenticatedReques
           (SELECT json_agg(json_build_object(
             'state_name', a.state_name,
             'state_value', a.state_value,
+            'campaign_id', a.campaign_id,
             'achieved_at', a.achieved_at
           ) ORDER BY a.achieved_at ASC)
           FROM achievements a WHERE a.wallet_address = u.wallet_address),
           '[]'::json
         ) as achievements
       FROM users u
-      LEFT JOIN game_saves gs ON gs.user_id = u.id
-      ORDER BY gs.updated_at DESC NULLS LAST`
+      LEFT JOIN LATERAL (
+        SELECT gs_inner.*
+        FROM game_saves gs_inner
+        WHERE gs_inner.user_id = u.id
+        ORDER BY gs_inner.updated_at DESC NULLS LAST
+        LIMIT 1
+      ) gs ON true
+      ORDER BY gs.updated_at DESC NULLS LAST
+      LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
-    res.json({ users: result.rows });
+    const totalResult = await query('SELECT COUNT(*) as count FROM users');
+    const total = parseInt(totalResult.rows[0].count, 10);
+
+    res.json({ users: result.rows, total, limit, offset });
   } catch (error) {
     console.error('Get game users error:', error);
     res.status(500).json({ error: 'Failed to fetch game users' });

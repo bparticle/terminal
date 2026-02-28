@@ -333,7 +333,7 @@ export const commands: Record<string, Command> = {
       if (!sub || sub === 'list') {
         ctx.addOutput('Fetching soulbound items...', 'text-gray-400');
         try {
-          const { items } = await getSoulboundItems();
+          const { items } = await getSoulboundItems(ctx.engine?.getActiveCampaignId());
           if (items.length === 0) {
             ctx.addOutput('No soulbound items found.', 'text-gray-400');
             return;
@@ -354,7 +354,7 @@ export const commands: Record<string, Command> = {
       if (sub === 'verify') {
         ctx.addOutput('Verifying soulbound items on-chain...', 'text-gray-400');
         try {
-          const { items } = await getSoulboundItems();
+          const { items } = await getSoulboundItems(ctx.engine?.getActiveCampaignId());
           if (items.length === 0) {
             ctx.addOutput('No soulbound items to verify.', 'text-gray-400');
             return;

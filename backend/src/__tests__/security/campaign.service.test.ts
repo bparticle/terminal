@@ -6,6 +6,8 @@ import { getMockQuery, mockQueryResult, TEST_USER_ID, TEST_WALLET } from '../hel
 import { processAchievements, recordCampaignWin } from '../../services/campaign.service';
 import validAchievementStates from '../../data/valid-achievement-states.json';
 
+const TEST_CAMPAIGN_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
 describe('Campaign Service', () => {
   beforeEach(() => {
     getMockQuery().mockReset();
@@ -17,11 +19,13 @@ describe('Campaign Service', () => {
       const mockQuery = getMockQuery();
       await processAchievements(TEST_USER_ID, TEST_WALLET, {
         riddle_solved: true,
-      });
+      }, TEST_CAMPAIGN_ID);
 
       // Should have called query once for the INSERT
       expect(mockQuery).toHaveBeenCalledTimes(1);
       expect(mockQuery.mock.calls[0][1]).toContain('riddle_solved');
+      // Verify campaign_id is included in the query params
+      expect(mockQuery.mock.calls[0][1]).toContain(TEST_CAMPAIGN_ID);
     });
 
     it('ignores unknown/arbitrary state keys', async () => {
@@ -30,7 +34,7 @@ describe('Campaign Service', () => {
         hacked_state: true,
         evil_key: true,
         admin_bypass: true,
-      });
+      }, TEST_CAMPAIGN_ID);
 
       // No queries should have been made
       expect(mockQuery).not.toHaveBeenCalled();
@@ -42,7 +46,7 @@ describe('Campaign Service', () => {
         _internal: true,
         quiz_answer_1: true,
         quiz_attempts: 3,
-      });
+      }, TEST_CAMPAIGN_ID);
 
       expect(mockQuery).not.toHaveBeenCalled();
     });
@@ -52,7 +56,7 @@ describe('Campaign Service', () => {
       await processAchievements(TEST_USER_ID, TEST_WALLET, {
         riddle_solved: false,
         archives_accessed: 'false',
-      });
+      }, TEST_CAMPAIGN_ID);
 
       expect(mockQuery).not.toHaveBeenCalled();
     });
@@ -61,7 +65,7 @@ describe('Campaign Service', () => {
       const mockQuery = getMockQuery();
       await processAchievements(TEST_USER_ID, TEST_WALLET, {
         riddle_solved: { nested: true },
-      });
+      }, TEST_CAMPAIGN_ID);
 
       expect(mockQuery).not.toHaveBeenCalled();
     });
@@ -73,7 +77,7 @@ describe('Campaign Service', () => {
         archives_accessed: true,
         lab_accessed: 'true',
         unknown_key: true,
-      });
+      }, TEST_CAMPAIGN_ID);
 
       // Should have 3 calls (riddle_solved, archives_accessed, lab_accessed)
       expect(mockQuery).toHaveBeenCalledTimes(3);
@@ -95,7 +99,7 @@ describe('Campaign Service', () => {
         mockQuery.mockReset();
         mockQuery.mockResolvedValue({ rows: [], rowCount: 0 });
 
-        await processAchievements(TEST_USER_ID, TEST_WALLET, { [state]: true });
+        await processAchievements(TEST_USER_ID, TEST_WALLET, { [state]: true }, TEST_CAMPAIGN_ID);
         expect(mockQuery).toHaveBeenCalledTimes(1);
       }
     });
@@ -104,7 +108,7 @@ describe('Campaign Service', () => {
       const mockQuery = getMockQuery();
       await processAchievements(TEST_USER_ID, TEST_WALLET, {
         definitely_not_a_real_state: true,
-      });
+      }, TEST_CAMPAIGN_ID);
       expect(mockQuery).not.toHaveBeenCalled();
     });
   });

@@ -168,24 +168,89 @@ export async function verifySoulbound(assetId: string): Promise<{
 }
 
 /**
- * Get all soulbound items for a wallet
+ * Get soulbound items for a wallet.
+ * When campaignId is provided, returns campaign-scoped items from
+ * campaign_soulbound_items, with a fallback to global soulbound_items for
+ * any items not yet recorded in the campaign mapping (e.g. pre-migration items).
+ * Without campaignId, returns from the global soulbound_items table (legacy path).
  */
-export async function getSoulboundItems(wallet: string): Promise<SoulboundItem[]> {
+export async function getSoulboundItems(
+  wallet: string,
+  campaignId?: string
+): Promise<SoulboundItem[]> {
+  if (!campaignId) {
+    const result = await query(
+      'SELECT * FROM soulbound_items WHERE wallet_address = $1 ORDER BY created_at DESC',
+      [wallet]
+    );
+    return result.rows;
+  }
+
+  // Campaign-scoped: union campaign mapping + global fallback for unmapped items
   const result = await query(
-    'SELECT * FROM soulbound_items WHERE wallet_address = $1 ORDER BY created_at DESC',
-    [wallet]
+    `SELECT
+       csi.item_name,
+       csi.asset_id,
+       csi.is_frozen,
+       csi.freeze_signature,
+       csi.created_at,
+       csi.updated_at,
+       'campaign' as source
+     FROM campaign_soulbound_items csi
+     WHERE csi.wallet_address = $1 AND csi.campaign_id = $2
+
+     UNION ALL
+
+     -- Global fallback: items not yet in campaign_soulbound_items for this campaign
+     SELECT
+       si.item_name,
+       si.asset_id,
+       si.is_frozen,
+       si.freeze_signature,
+       si.created_at,
+       si.updated_at,
+       'global' as source
+     FROM soulbound_items si
+     WHERE si.wallet_address = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM campaign_soulbound_items csi2
+         WHERE csi2.wallet_address = $1
+           AND csi2.campaign_id = $2
+           AND csi2.item_name = si.item_name
+       )
+     ORDER BY created_at DESC`,
+    [wallet, campaignId]
   );
   return result.rows;
 }
 
 /**
  * Check if a soulbound item has already been minted for this user+item combo.
- * Returns the existing record if found, null otherwise.
+ * When campaignId is provided, checks the campaign mapping first, then
+ * the global table. Returns the existing record if found, null otherwise.
  */
 export async function checkSoulboundExists(
   userId: string,
-  itemName: string
+  itemName: string,
+  campaignId?: string
 ): Promise<SoulboundItem | null> {
+  if (campaignId) {
+    // Check campaign-specific mapping first
+    const campaignResult = await query(
+      `SELECT csi.item_name, csi.asset_id, csi.is_frozen, csi.freeze_signature,
+              csi.created_at, csi.updated_at
+       FROM campaign_soulbound_items csi
+       JOIN users u ON u.wallet_address = csi.wallet_address
+       WHERE u.id = $1 AND csi.item_name = $2 AND csi.campaign_id = $3
+       LIMIT 1`,
+      [userId, itemName, campaignId]
+    );
+    if (campaignResult.rows.length > 0) {
+      return campaignResult.rows[0];
+    }
+  }
+
+  // Fall back to global soulbound_items (covers pre-migration items)
   const result = await query(
     'SELECT * FROM soulbound_items WHERE user_id = $1 AND item_name = $2 LIMIT 1',
     [userId, itemName]
@@ -194,13 +259,47 @@ export async function checkSoulboundExists(
 }
 
 /**
+ * Write a campaign_soulbound_items mapping row.
+ * Used after minting to associate the on-chain asset with a campaign context,
+ * and also to create a mapping when a pre-existing global item is "adopted"
+ * into a campaign without re-minting.
+ */
+async function upsertCampaignSoulboundItem(
+  wallet: string,
+  campaignId: string,
+  itemName: string,
+  assetId: string,
+  isFrozen: boolean,
+  freezeSignature?: string | null
+): Promise<void> {
+  await query(
+    `INSERT INTO campaign_soulbound_items
+       (wallet_address, campaign_id, item_name, asset_id, is_frozen, freeze_signature)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (wallet_address, campaign_id, item_name)
+     DO UPDATE SET
+       asset_id        = EXCLUDED.asset_id,
+       is_frozen       = EXCLUDED.is_frozen,
+       freeze_signature = EXCLUDED.freeze_signature`,
+    [wallet, campaignId, itemName, assetId, isFrozen, freezeSignature || null]
+  );
+}
+
+/**
  * Mint and freeze a soulbound item in one operation.
  * Skips if item already minted for this user (deduplication).
+ *
+ * When campaignId is provided:
+ *   • Checks campaign_soulbound_items first for dedup.
+ *   • If the item exists globally (soulbound_items) but not in this campaign,
+ *     creates the campaign mapping and returns alreadyMinted=true (no re-mint).
+ *   • On successful mint, writes to BOTH soulbound_items and campaign_soulbound_items.
  */
 export async function mintAndFreezeSoulbound(
   userId: string,
   wallet: string,
-  mintConfig: MintParams
+  mintConfig: MintParams,
+  campaignId?: string
 ): Promise<{
   assetId: string;
   mintSignature: string;
@@ -208,9 +307,51 @@ export async function mintAndFreezeSoulbound(
   mintLogId: string;
   alreadyMinted?: boolean;
 }> {
-  // Deduplication: atomically reserve the user+item slot before minting.
-  // Uses INSERT ON CONFLICT on the (user_id, item_name) unique index.
   const itemName = mintConfig.itemName || mintConfig.name;
+
+  // Campaign-specific dedup: if already in campaign mapping, short-circuit.
+  if (campaignId) {
+    const campaignExisting = await query(
+      `SELECT csi.asset_id, csi.is_frozen, csi.freeze_signature
+       FROM campaign_soulbound_items csi
+       JOIN users u ON u.wallet_address = csi.wallet_address
+       WHERE u.id = $1 AND csi.item_name = $2 AND csi.campaign_id = $3
+       LIMIT 1`,
+      [userId, itemName, campaignId]
+    );
+    if (campaignExisting.rows.length > 0) {
+      const row = campaignExisting.rows[0];
+      return {
+        assetId: row.asset_id,
+        mintSignature: '',
+        freezeSignature: row.freeze_signature || '',
+        mintLogId: '',
+        alreadyMinted: true,
+      };
+    }
+
+    // Item exists globally (minted in another campaign context) — adopt it into
+    // this campaign without re-minting. Creates the campaign mapping only.
+    const globalExisting = await query(
+      'SELECT * FROM soulbound_items WHERE user_id = $1 AND item_name = $2 LIMIT 1',
+      [userId, itemName]
+    );
+    if (globalExisting.rows.length > 0) {
+      const g = globalExisting.rows[0];
+      await upsertCampaignSoulboundItem(
+        wallet, campaignId, itemName, g.asset_id, g.is_frozen, g.freeze_signature
+      );
+      return {
+        assetId: g.asset_id,
+        mintSignature: '',
+        freezeSignature: g.freeze_signature || '',
+        mintLogId: g.mint_log_id || '',
+        alreadyMinted: true,
+      };
+    }
+  }
+
+  // Global dedup: atomically reserve the user+item slot before minting.
   const reserveResult = await query(
     `INSERT INTO soulbound_items (user_id, wallet_address, asset_id, item_name, is_frozen, metadata)
      VALUES ($1, $2, $3, $4, FALSE, $5)
@@ -220,9 +361,14 @@ export async function mintAndFreezeSoulbound(
   );
 
   if (reserveResult.rowCount === 0) {
-    // Already exists — return existing record
+    // Already exists globally — create campaign mapping if needed
     const existing = await checkSoulboundExists(userId, itemName);
     if (existing) {
+      if (campaignId) {
+        await upsertCampaignSoulboundItem(
+          wallet, campaignId, itemName, existing.asset_id, existing.is_frozen, existing.freeze_signature
+        );
+      }
       return {
         assetId: existing.asset_id,
         mintSignature: '',
@@ -252,25 +398,27 @@ export async function mintAndFreezeSoulbound(
       throw new Error(`Minted successfully (${mintResult.assetId}) but freeze failed: ${error.message}`);
     }
 
-    // Step 3: Update reservation with real data
+    const metadata = JSON.stringify({
+      name: mintConfig.name,
+      description: mintConfig.description,
+      image: mintConfig.image,
+      attributes: mintConfig.attributes,
+    });
+
+    // Step 3: Update global reservation with real data
     await query(
       `UPDATE soulbound_items
-       SET asset_id = $1, mint_log_id = $2, is_frozen = TRUE, freeze_signature = $3,
-           metadata = $4
+       SET asset_id = $1, mint_log_id = $2, is_frozen = TRUE, freeze_signature = $3, metadata = $4
        WHERE id = $5`,
-      [
-        mintResult.assetId,
-        mintResult.mintLogId,
-        freezeSignature,
-        JSON.stringify({
-          name: mintConfig.name,
-          description: mintConfig.description,
-          image: mintConfig.image,
-          attributes: mintConfig.attributes,
-        }),
-        reservationId,
-      ]
+      [mintResult.assetId, mintResult.mintLogId, freezeSignature, metadata, reservationId]
     );
+
+    // Step 4: Write campaign mapping if campaign context was provided
+    if (campaignId) {
+      await upsertCampaignSoulboundItem(
+        wallet, campaignId, itemName, mintResult.assetId, true, freezeSignature
+      );
+    }
 
     return {
       assetId: mintResult.assetId,
@@ -279,7 +427,7 @@ export async function mintAndFreezeSoulbound(
       mintLogId: mintResult.mintLogId,
     };
   } catch (error) {
-    // Clean up the reservation on failure so the user can retry
+    // Clean up the global reservation on failure so the user can retry
     await query('DELETE FROM soulbound_items WHERE id = $1', [reservationId]);
     throw error;
   }

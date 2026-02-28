@@ -45,19 +45,22 @@ CREATE INDEX idx_game_saves_user ON game_saves(user_id);
 CREATE INDEX idx_game_saves_wallet_campaign ON game_saves(wallet_address, campaign_id);
 CREATE INDEX idx_game_saves_user_campaign ON game_saves(user_id, campaign_id);
 
--- Achievements: individual state flags achieved by players
+-- Achievements: individual state flags achieved by players, scoped per campaign
 CREATE TABLE achievements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   wallet_address VARCHAR(44) NOT NULL,
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
   state_name VARCHAR(200) NOT NULL,
   state_value VARCHAR(200) NOT NULL,
   achieved_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(wallet_address, state_name)
+  UNIQUE(wallet_address, campaign_id, state_name)
 );
 
 CREATE INDEX idx_achievements_wallet ON achievements(wallet_address);
 CREATE INDEX idx_achievements_user ON achievements(user_id);
+CREATE INDEX idx_achievements_wallet_campaign ON achievements(wallet_address, campaign_id);
+CREATE INDEX idx_achievements_campaign ON achievements(campaign_id);
 
 -- Campaigns: admin-created challenges with target states
 CREATE TABLE campaigns (
@@ -99,6 +102,30 @@ CREATE TABLE campaign_winners (
 
 CREATE INDEX idx_campaign_winners_campaign ON campaign_winners(campaign_id);
 CREATE INDEX idx_campaign_winners_wallet ON campaign_winners(wallet_address);
+
+-- Campaign-scoped soulbound item mapping table
+-- Associates on-chain assets (minted globally) with a specific campaign context.
+-- Read path: campaign_soulbound_items → fallback to global soulbound_items.
+-- On-chain NFT ownership is always global at the wallet level.
+CREATE TABLE campaign_soulbound_items (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_address    VARCHAR(44) NOT NULL,
+  campaign_id       UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  item_name         VARCHAR(200) NOT NULL,
+  asset_id          VARCHAR(44),
+  is_frozen         BOOLEAN NOT NULL DEFAULT FALSE,
+  freeze_signature  VARCHAR(100),
+  created_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(wallet_address, campaign_id, item_name)
+);
+
+CREATE INDEX idx_csb_wallet_campaign ON campaign_soulbound_items(wallet_address, campaign_id);
+CREATE INDEX idx_csb_campaign ON campaign_soulbound_items(campaign_id);
+
+CREATE TRIGGER update_campaign_soulbound_items_updated_at
+  BEFORE UPDATE ON campaign_soulbound_items
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Site settings: key-value store for global configuration
 CREATE TABLE site_settings (
