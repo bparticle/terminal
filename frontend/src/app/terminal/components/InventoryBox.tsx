@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { genericItemPngSrc, itemPngSrc } from '@/lib/item-image';
@@ -18,8 +18,6 @@ interface InventoryBoxProps {
 }
 
 const ITEMS_PER_PAGE = 2;
-const CLOSE_DELAY_MS = 120;
-const HOVER_PADDING = 8; // px buffer around rects before triggering close
 
 // Two-step fallback: item-specific PNG → _generic.png → emoji
 function ItemIcon({ name }: { name: string }) {
@@ -123,21 +121,17 @@ function ItemSlot({
   isHighlight,
   slotKey,
   isOpen,
-  onOpen,
-  onClose,
+  onToggle,
 }: {
   item: InventoryItem;
   isHighlight: boolean;
   slotKey: string;
   isOpen: boolean;
-  onOpen: (slotKey: string) => void;
-  onClose: (slotKey: string) => void;
+  onToggle: (slotKey: string) => void;
 }) {
   const slotRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ right: number; bottom: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafRef = useRef<number | null>(null);
 
   // Compute position and drive CSS visibility when open state changes
@@ -162,67 +156,21 @@ function ItemSlot({
     }
   }, [isOpen]);
 
-  // Global pointermove: geometry-based close detection
-  // This completely sidesteps mouseenter/mouseleave DOM hierarchy issues.
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const onMove = (e: PointerEvent) => {
-      // Throttle to one check per animation frame
-      if (rafRef.current) return;
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null;
-        const { clientX: x, clientY: y } = e;
-        const slotRect = slotRef.current?.getBoundingClientRect();
-        const tooltipRect = tooltipRef.current?.getBoundingClientRect();
-
-        const inSlot = slotRect &&
-          x >= slotRect.left - HOVER_PADDING &&
-          x <= slotRect.right + HOVER_PADDING &&
-          y >= slotRect.top - HOVER_PADDING &&
-          y <= slotRect.bottom + HOVER_PADDING;
-
-        const inTooltip = tooltipRect &&
-          x >= tooltipRect.left - HOVER_PADDING &&
-          x <= tooltipRect.right + HOVER_PADDING &&
-          y >= tooltipRect.top - HOVER_PADDING &&
-          y <= tooltipRect.bottom + HOVER_PADDING;
-
-        if (inSlot || inTooltip) {
-          if (closeTimerRef.current) {
-            clearTimeout(closeTimerRef.current);
-            closeTimerRef.current = null;
-          }
-        } else if (!closeTimerRef.current) {
-          closeTimerRef.current = setTimeout(() => {
-            closeTimerRef.current = null;
-            onClose(slotKey);
-          }, CLOSE_DELAY_MS);
-        }
-      });
-    };
-
-    window.addEventListener('pointermove', onMove, { passive: true });
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-      if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
-    };
-  }, [isOpen, slotKey, onClose]);
-
   // Cleanup on unmount
   useEffect(() => () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
   }, []);
 
-  const handlePointerEnter = useCallback(() => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
+  const handleClick = useCallback(() => {
+    onToggle(slotKey);
+  }, [slotKey, onToggle]);
+
+  const handleKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onToggle(slotKey);
     }
-    onOpen(slotKey);
-  }, [slotKey, onOpen]);
+  }, [slotKey, onToggle]);
 
   if (!item.name) {
     return (
@@ -236,13 +184,17 @@ function ItemSlot({
     <div
       ref={slotRef}
       className={`inventory-slot has-item ${isHighlight ? 'highlight' : ''} ${item.soulbound ? 'soulbound' : ''}`}
-      onPointerEnter={handlePointerEnter}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      aria-expanded={isOpen}
+      aria-label={`Inspect ${item.name.replace(/_/g, ' ')}`}
     >
       <ItemIcon name={item.name} />
       {item.soulbound && <SoulboundBadge />}
       {tooltipPos && createPortal(
         <div
-          ref={tooltipRef}
           className={`soulbound-tooltip${isVisible ? ' is-open' : ''}`}
           style={{ right: tooltipPos.right, bottom: tooltipPos.bottom }}
         >
@@ -263,10 +215,37 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const prevItemsRef = useRef<string[]>([]);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const openTooltip = useCallback((key: string) => setOpenSlotKey(key), []);
-  const closeTooltip = useCallback((key: string) => {
-    setOpenSlotKey((prev) => (prev === key ? null : prev));
+  const toggleTooltip = useCallback((key: string) => {
+    setOpenSlotKey((prev) => (prev === key ? null : key));
   }, []);
+
+  useEffect(() => {
+    if (!openSlotKey) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target) return;
+
+      const clickedSlot = target.closest('.inventory-slot.has-item');
+      const clickedTooltip = target.closest('.soulbound-tooltip');
+      if (!clickedSlot && !clickedTooltip) {
+        setOpenSlotKey(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenSlotKey(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [openSlotKey]);
 
   useEffect(() => {
     const prevNames = prevItemsRef.current;
@@ -334,8 +313,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
                 isHighlight={item.name === highlightItem}
                 slotKey={slotKey}
                 isOpen={openSlotKey === slotKey}
-                onOpen={openTooltip}
-                onClose={closeTooltip}
+                onToggle={toggleTooltip}
               />
             );
           })}

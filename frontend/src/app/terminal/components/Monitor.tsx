@@ -45,16 +45,18 @@ export default function Monitor({ imageUrl }: MonitorProps) {
     let animFrame: number;
     let time = 0;
 
-    // Read color once and update only when the theme attribute changes (#7)
+    // Read colors once and update when skin/theme attributes change.
     let color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#2dfe39';
+    let monitorCanvasBg = getComputedStyle(document.documentElement).getPropertyValue('--skin-monitor-canvas-bg').trim() || '#0a0a0a';
     const observer = new MutationObserver(() => {
       color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#2dfe39';
+      monitorCanvasBg = getComputedStyle(document.documentElement).getPropertyValue('--skin-monitor-canvas-bg').trim() || '#0a0a0a';
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-skin'] });
 
     const draw = () => {
       time += 0.02;
-      ctx.fillStyle = '#0a0a0a';
+      ctx.fillStyle = monitorCanvasBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.font = '10px VT323';
