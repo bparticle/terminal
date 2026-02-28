@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearInterval(refreshTimerRef.current);
       }
     };
-  }, [session, logout]);
+  }, [session]); // logout is stable (useCallback with [] deps) — matches existing pattern
 
   const authenticate = useCallback(async () => {
     if (!publicKey || !signMessage) {
