@@ -57,9 +57,14 @@ export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
     };
   }
 
+  const merged = deepMerge(DEFAULT_SKIN, patch as DeepPartial<SkinConfig>);
   return {
     skinId: candidateSkinId,
-    config: deepMerge(DEFAULT_SKIN, patch as DeepPartial<SkinConfig>),
+    config: {
+      ...merged,
+      id: candidateSkinId,
+      displayName: patch.displayName || merged.displayName,
+    },
   };
 }
 

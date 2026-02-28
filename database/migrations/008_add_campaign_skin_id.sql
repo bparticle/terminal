@@ -1,0 +1,3 @@
+ALTER TABLE campaigns
+ADD COLUMN IF NOT EXISTS skin_id VARCHAR(64);
+

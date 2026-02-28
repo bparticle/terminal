@@ -38,6 +38,7 @@ export interface Campaign {
   id: string;
   name: string;
   description: string | null;
+  skin_id: string | null;
   target_states: string[];
   target_value: string;
   require_all: boolean;

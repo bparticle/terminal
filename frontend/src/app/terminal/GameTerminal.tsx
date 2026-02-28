@@ -75,7 +75,8 @@ export default function GameTerminal() {
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
-  const [campaignSkinId, setCampaignSkinId] = useState<string | null>(null);
+  const [campaignIdForSkin, setCampaignIdForSkin] = useState<string | null>(null);
+  const [campaignAssignedSkinId, setCampaignAssignedSkinId] = useState<string | null>(null);
   const [adminSkinOverrideId, setAdminSkinOverrideId] = useState<string | null>(null);
 
   const engineRef = useRef<GameEngine | null>(null);
@@ -136,7 +137,10 @@ export default function GameTerminal() {
   useEffect(() => {
     getCampaigns()
       .then((rows) => {
-        if (rows[0]?.id) setCampaignSkinId(rows[0].id);
+        const firstCampaign = rows[0];
+        if (!firstCampaign) return;
+        setCampaignIdForSkin(firstCampaign.id);
+        setCampaignAssignedSkinId(firstCampaign.skin_id || null);
       })
       .catch(() => {
         // Skin system always falls back to defaults.
@@ -144,8 +148,12 @@ export default function GameTerminal() {
   }, []);
 
   const resolvedSkin = useMemo(
-    () => resolveSkin({ campaignId: campaignSkinId, forcedSkinId: adminSkinOverrideId }),
-    [campaignSkinId, adminSkinOverrideId]
+    () =>
+      resolveSkin({
+        campaignId: campaignIdForSkin,
+        forcedSkinId: adminSkinOverrideId || campaignAssignedSkinId || null,
+      }),
+    [campaignIdForSkin, campaignAssignedSkinId, adminSkinOverrideId]
   );
 
   // Admin-only persisted skin override for cross-page testing.

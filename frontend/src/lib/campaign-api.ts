@@ -4,6 +4,7 @@ export interface Campaign {
   id: string;
   name: string;
   description: string | null;
+  skin_id?: string | null;
   target_states: string[];
   target_value: string;
   require_all: boolean;
@@ -47,6 +48,7 @@ export interface CampaignProgress {
 export interface CreateCampaignInput {
   name: string;
   description?: string;
+  skin_id?: string;
   target_states: string[];
   target_value?: string;
   require_all?: boolean;

@@ -14,12 +14,14 @@ import {
   type CampaignLeaderboardEntry,
 } from '@/lib/campaign-api';
 import { getGameMetadata, resyncAchievements } from '@/lib/admin-api';
+import { listAvailableSkins } from '@/skins/resolver';
 
 type ModalType = 'create' | 'edit' | 'leaderboard' | 'simulate' | null;
 
 const emptyCampaignForm: CreateCampaignInput = {
   name: '',
   description: '',
+  skin_id: '',
   target_states: [],
   target_value: 'true',
   require_all: true,
@@ -51,6 +53,7 @@ export default function Campaigns() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [resyncing, setResyncing] = useState(false);
+  const skinOptions = listAvailableSkins();
 
   useEffect(() => {
     loadCampaigns();
@@ -102,6 +105,7 @@ export default function Campaigns() {
     setFormData({
       name: campaign.name,
       description: campaign.description || '',
+      skin_id: campaign.skin_id || '',
       target_states: [...campaign.target_states],
       target_value: campaign.target_value,
       require_all: campaign.require_all,
@@ -126,6 +130,7 @@ export default function Campaigns() {
     try {
       const payload = {
         ...formData,
+        skin_id: formData.skin_id || undefined,
         expires_at: formData.expires_at || undefined,
         sets_state: formData.sets_state || undefined,
         reward_nft_mint: formData.reward_nft_mint || undefined,
@@ -366,6 +371,7 @@ export default function Campaigns() {
                       <p className="text-sm text-gray-400 mb-2">{campaign.description}</p>
                     )}
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+                      <span>Skin: {campaign.skin_id || 'terminal-default'}</span>
                       <span>
                         States: {campaign.target_states.join(', ')}{' '}
                         ({campaign.require_all ? 'ALL required' : 'ANY'})
@@ -462,6 +468,24 @@ export default function Campaigns() {
                 placeholder="Campaign description"
                 rows={2}
               />
+            </Field>
+
+            {/* Skin */}
+            <Field label="Skin">
+              <select
+                value={formData.skin_id || ''}
+                onChange={(e) => setFormData({ ...formData, skin_id: e.target.value })}
+                className="admin-input"
+              >
+                <option value="">terminal-default (fallback)</option>
+                {skinOptions
+                  .filter((s) => s.id !== 'terminal-default')
+                  .map((skin) => (
+                    <option key={skin.id} value={skin.id}>
+                      {skin.displayName} ({skin.id})
+                    </option>
+                  ))}
+              </select>
             </Field>
 
             {/* Target States */}

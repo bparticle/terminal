@@ -60,6 +60,7 @@ CREATE TABLE campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(200) NOT NULL,
   description TEXT,
+  skin_id VARCHAR(64),
   target_states TEXT[] NOT NULL,
   target_value VARCHAR(200) DEFAULT 'true',
   require_all BOOLEAN DEFAULT TRUE,
