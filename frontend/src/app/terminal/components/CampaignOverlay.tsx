@@ -69,15 +69,6 @@ export default function CampaignOverlay({ isOpen, walletAddress, onClose }: Camp
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    if (!isOpen || !activeCampaignId) return;
-    window.dispatchEvent(
-      new CustomEvent<{ campaignId: string }>('campaign-focus-changed', {
-        detail: { campaignId: activeCampaignId },
-      })
-    );
-  }, [isOpen, activeCampaignId]);
-
   const activeCampaign = useMemo(() => {
     if (!campaigns.length) return null;
     return campaigns.find((campaign) => campaign.id === activeCampaignId) || campaigns[0];

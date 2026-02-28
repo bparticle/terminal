@@ -1,14 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 @import '../../styles/terminal-themes.css';
-@import '../../styles/terminal-variables.css';
-@import '../../styles/terminal-skins.css';
 
 /* ==========================================
    PAGE & LAYOUT
    ========================================== */
 .terminal-page {
-  font-family: var(--skin-font-family, 'VT323', monospace);
-  background: var(--skin-page-bg, #0a0a0a);
+  font-family: 'VT323', monospace;
+  background: #0a0a0a;
   height: 100vh;
   color: var(--primary-color);
   display: flex;
@@ -24,36 +22,13 @@
   gap: 6px;
   padding: 6px 15px 0;
   width: 100%;
-  max-width: var(--skin-page-max-width, 1400px);
+  max-width: 1400px;
   margin: 0 auto;
 }
 
-.title-header canvas,
-.title-header .skin-title-media,
-.title-header .skin-title-canvas {
-  max-width: var(--skin-title-max-width-desktop, 420px);
-  background: var(--skin-title-bg, #0a0a0a);
-}
-
-.title-header .skin-title-media {
-  display: block;
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-.title-header .skin-title-text {
-  color: var(--skin-title-text-color, var(--primary-color));
-  font-family: var(--skin-font-family, 'VT323', monospace);
-  font-size: var(--skin-title-text-size, 42px);
-  letter-spacing: var(--skin-title-text-letter-spacing, 0.2em);
-  line-height: 1;
-  text-transform: uppercase;
-  text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.28);
-  max-width: var(--skin-title-max-width-desktop, 420px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.title-header canvas {
+  max-width: 420px;
+  background: #0a0a0a;
 }
 
 .version-badge {
@@ -69,12 +44,12 @@
 
 .retro-container {
   display: flex;
-  gap: var(--skin-retro-gap, 15px);
+  gap: 15px;
   flex: 1;
   min-height: 0;
-  padding: var(--skin-retro-padding, 0 15px 15px);
+  padding: 0 15px 15px;
   width: 100%;
-  max-width: var(--skin-page-max-width, 1400px);
+  max-width: 1400px;
   margin: 0 auto;
   position: relative;
   isolation: isolate;
@@ -86,7 +61,7 @@
    ========================================== */
 .terminal-section {
   flex: 1;
-  background: var(--skin-terminal-bg, #1a1a1a);
+  background: #1a1a1a;
   border: 3px solid var(--primary-color);
   border-radius: 10px;
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
@@ -357,7 +332,7 @@
    SIDE PANEL
    ========================================== */
 .side-panel {
-  width: var(--skin-sidebar-width, 250px);
+  width: 250px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -379,7 +354,7 @@
 }
 
 .panel-box {
-  background: var(--skin-panel-bg, transparent);
+  background: transparent;
   border: none;
   border-radius: 0;
   padding: 10px 12px;
@@ -402,12 +377,12 @@
 .monitor-container {
   position: relative;
   z-index: 5;
-  background: var(--skin-monitor-bg, #1a1a1a);
+  background: #1a1a1a;
   border: 2px solid var(--primary-color) !important;
-  border-radius: var(--skin-monitor-border-radius, 8px) !important;
+  border-radius: 8px !important;
   box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.2) !important;
-  padding: var(--skin-monitor-padding, 10px);
-  margin-bottom: var(--skin-monitor-margin-bottom, 8px);
+  padding: 10px;
+  margin-bottom: 8px;
 }
 
 .monitor-container::before {
@@ -456,9 +431,9 @@
 }
 
 .mobile-sidebar {
-  width: var(--skin-mobile-sidebar-width, 280px);
-  max-width: var(--skin-mobile-sidebar-max-width, 80vw);
-  background: var(--skin-mobile-sidebar-bg, #0a0a0a);
+  width: 280px;
+  max-width: 80vw;
+  background: #0a0a0a;
   padding: 15px;
   overflow-y: auto;
   display: flex;
@@ -511,8 +486,8 @@
   position: relative;
   border-radius: 4px;
   overflow: hidden;
-  background: var(--skin-title-bg, #0a0a0a);
-  aspect-ratio: var(--skin-monitor-aspect-ratio, 1);
+  background: #0a0a0a;
+  aspect-ratio: 1;
   width: 100%;
   border: none;
   padding: 0;
@@ -2034,16 +2009,7 @@
   }
 
   .title-header canvas {
-    max-width: var(--skin-title-max-width-mobile, 260px);
-  }
-
-  .title-header .skin-title-media,
-  .title-header .skin-title-canvas {
-    max-width: var(--skin-title-max-width-mobile, 260px);
-  }
-
-  .title-header .skin-title-text {
-    font-size: clamp(24px, 7vw, 34px);
+    max-width: 260px;
   }
 
   .retro-container {
