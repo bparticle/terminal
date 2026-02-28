@@ -40,6 +40,7 @@ export interface Campaign {
   name: string;
   description: string | null;
   skin_id: string | null;
+  node_set_id: string | null;
   target_states: string[];
   target_value: string;
   require_all: boolean;

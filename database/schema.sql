@@ -65,6 +65,7 @@ CREATE TABLE campaigns (
   name VARCHAR(200) NOT NULL,
   description TEXT,
   skin_id VARCHAR(64),
+  node_set_id VARCHAR(64),
   target_states TEXT[] NOT NULL,
   target_value VARCHAR(200) DEFAULT 'true',
   require_all BOOLEAN DEFAULT TRUE,

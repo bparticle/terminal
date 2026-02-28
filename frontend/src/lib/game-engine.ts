@@ -1,5 +1,5 @@
 import { GameNode, GameSave, Requirements, GameEffects } from './types/game';
-import { gameNodes } from '@/data/game-nodes';
+import { resolveCampaignNodeSet, type NodeSetMap } from '@/data/campaign-nodes/registry';
 import { loadGame, startNewGame, saveGame, resetGame } from './game-api';
 import { fetchOwnedNFTs, OwnedNFT } from './nft-helius';
 import { checkMintEligibility, executeMint, mintSoulbound, mintSoulboundBackground, getSoulboundItems as fetchSoulboundItems, prepareMint, confirmMint } from './mint-api';
@@ -36,6 +36,8 @@ export class GameEngine {
   private currentNode: GameNode | null = null;
   private walletAddress: string = '';
   private activeCampaignId: string | null = null;
+  private activeNodeSetId: string = 'terminal-core';
+  private nodeMap: NodeSetMap = resolveCampaignNodeSet('terminal-core').nodes;
   private save: GameSave | null = null;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private ownedNFTs: OwnedNFT[] = [];
@@ -81,11 +83,15 @@ export class GameEngine {
   async initialize(
     walletAddress: string,
     campaignId: string,
+    nodeSetId: string | null = 'terminal-core',
     playerName: string = 'Wanderer',
     pfpImageUrl?: string,
   ): Promise<void> {
     this.walletAddress = walletAddress;
     this.activeCampaignId = campaignId;
+    const resolvedNodeSet = resolveCampaignNodeSet(nodeSetId);
+    this.activeNodeSetId = resolvedNodeSet.nodeSetId;
+    this.nodeMap = resolvedNodeSet.nodes;
     this.pfpImageUrl = pfpImageUrl || null;
 
     try {
@@ -114,7 +120,7 @@ export class GameEngine {
     }
 
     // Load current node
-    this.currentNode = gameNodes[this.save.current_node_id] || gameNodes['start'];
+    this.currentNode = this.nodeMap[this.save.current_node_id] || this.nodeMap['start'];
 
     this.startAutoSaveTimer();
 
@@ -1138,7 +1144,7 @@ export class GameEngine {
   private async handleQuizAnswer(answer: string): Promise<void> {
     if (!this.quizState || !this.save) return;
 
-    const node = gameNodes[this.quizState.nodeId];
+    const node = this.nodeMap[this.quizState.nodeId];
     if (!node) return;
 
     const userAnswer = answer.toLowerCase().trim();
@@ -1353,7 +1359,7 @@ export class GameEngine {
   // ==========================================
 
   async moveToNode(nodeId: string): Promise<void> {
-    const node = gameNodes[nodeId];
+    const node = this.nodeMap[nodeId];
     if (!node) {
       this.outputFn(`Error: Node "${nodeId}" not found.`, 'text-red-400');
       return;
@@ -1554,10 +1560,16 @@ export class GameEngine {
   async reloadGame(): Promise<void> {
     if (!this.activeCampaignId) return;
     this.outputFn('Reloading game...', 'text-yellow-400');
-    await this.initialize(this.walletAddress, this.activeCampaignId, this.save?.name || 'Wanderer', this.pfpImageUrl || undefined);
+    await this.initialize(
+      this.walletAddress,
+      this.activeCampaignId,
+      this.activeNodeSetId,
+      this.save?.name || 'Wanderer',
+      this.pfpImageUrl || undefined
+    );
   }
 
-  async switchCampaign(campaignId: string): Promise<void> {
+  async switchCampaign(campaignId: string, nodeSetId: string | null = 'terminal-core'): Promise<void> {
     if (!campaignId || campaignId === this.activeCampaignId) return;
     const previousCampaignId = this.activeCampaignId;
     const name = this.save?.name || 'Wanderer';
@@ -1572,7 +1584,7 @@ export class GameEngine {
     }
 
     this.activeCampaignId = campaignId;
-    await this.initialize(this.walletAddress, campaignId, name, this.pfpImageUrl || undefined);
+    await this.initialize(this.walletAddress, campaignId, nodeSetId, name, this.pfpImageUrl || undefined);
   }
 
   async restartGame(): Promise<void> {
@@ -1595,7 +1607,7 @@ export class GameEngine {
         save_version: nextVersion,
       };
 
-      this.currentNode = gameNodes['start'];
+      this.currentNode = this.nodeMap['start'];
       this.quizState = null;
       this.minigameGate = null;
       this.pfpReclaimPending = null;

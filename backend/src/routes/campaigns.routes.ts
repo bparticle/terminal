@@ -158,6 +158,7 @@ router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, re
       name: validateString(req.body.name, 'name', { required: true, maxLength: 200 })!,
       description: validateString(req.body.description, 'description', { maxLength: 1000 }),
       skin_id: validateString(req.body.skin_id, 'skin_id', { maxLength: 64 }),
+      node_set_id: validateString(req.body.node_set_id, 'node_set_id', { maxLength: 64 }),
       target_states: validateStringArray(req.body.target_states, 'target_states', { required: true, maxItems: 20 })!,
       target_value: validateString(req.body.target_value, 'target_value', { maxLength: 200 }),
       require_all: typeof req.body.require_all === 'boolean' ? req.body.require_all : true,
@@ -201,6 +202,13 @@ router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, 
         validatedData.skin_id = null;
       } else {
         validatedData.skin_id = validateString(req.body.skin_id, 'skin_id', { maxLength: 64 });
+      }
+    }
+    if (req.body.node_set_id !== undefined) {
+      if (req.body.node_set_id === null || req.body.node_set_id === '') {
+        validatedData.node_set_id = null;
+      } else {
+        validatedData.node_set_id = validateString(req.body.node_set_id, 'node_set_id', { maxLength: 64 });
       }
     }
     if (req.body.target_states !== undefined) validatedData.target_states = validateStringArray(req.body.target_states, 'target_states', { maxItems: 20 });

@@ -230,13 +230,14 @@ export async function evaluateCampaigns(
  */
 export async function createCampaign(data: Partial<Campaign>): Promise<Campaign> {
   const result = await query(
-    `INSERT INTO campaigns (name, description, skin_id, target_states, target_value, require_all, sets_state, max_winners, reward_description, reward_nft_mint, is_active, expires_at, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `INSERT INTO campaigns (name, description, skin_id, node_set_id, target_states, target_value, require_all, sets_state, max_winners, reward_description, reward_nft_mint, is_active, expires_at, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING *`,
     [
       data.name,
       data.description || null,
       data.skin_id || null,
+      data.node_set_id || 'terminal-core',
       data.target_states,
       data.target_value || 'true',
       data.require_all !== undefined ? data.require_all : true,
@@ -260,7 +261,7 @@ export async function updateCampaign(id: string, data: Partial<Campaign>): Promi
   const values: any[] = [];
   let idx = 1;
 
-  const allowedFields = ['name', 'description', 'skin_id', 'target_states', 'target_value', 'require_all', 'sets_state', 'max_winners', 'reward_description', 'reward_nft_mint', 'is_active', 'expires_at'];
+  const allowedFields = ['name', 'description', 'skin_id', 'node_set_id', 'target_states', 'target_value', 'require_all', 'sets_state', 'max_winners', 'reward_description', 'reward_nft_mint', 'is_active', 'expires_at'];
 
   for (const field of allowedFields) {
     if ((data as any)[field] !== undefined) {

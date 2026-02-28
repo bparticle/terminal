@@ -9,7 +9,7 @@ interface CampaignOverlayProps {
   isOpen: boolean;
   walletAddress: string | null;
   currentCampaignId: string | null;
-  onSwitchCampaign: (campaignId: string, skinId?: string | null) => void;
+  onSwitchCampaign: (campaignId: string, skinId?: string | null, nodeSetId?: string | null) => void;
   onClose: () => void;
 }
 
@@ -142,7 +142,7 @@ export default function CampaignOverlay({ isOpen, walletAddress, currentCampaign
               type="button"
               className="gallery-action-btn"
               disabled={activeCampaign.id === currentCampaignId}
-              onClick={() => onSwitchCampaign(activeCampaign.id, activeCampaign.skin_id || null)}
+              onClick={() => onSwitchCampaign(activeCampaign.id, activeCampaign.skin_id || null, activeCampaign.node_set_id || null)}
             >
               {activeCampaign.id === currentCampaignId ? 'ACTIVE' : 'ENTER CAMPAIGN'}
             </button>

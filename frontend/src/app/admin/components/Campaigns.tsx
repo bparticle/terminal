@@ -15,6 +15,7 @@ import {
 } from '@/lib/campaign-api';
 import { getGameMetadata, resyncAchievements } from '@/lib/admin-api';
 import { listAvailableSkins } from '@/skins/resolver';
+import { listAvailableNodeSets } from '@/data/campaign-nodes/registry';
 
 type ModalType = 'create' | 'edit' | 'leaderboard' | 'simulate' | null;
 
@@ -22,6 +23,7 @@ const emptyCampaignForm: CreateCampaignInput = {
   name: '',
   description: '',
   skin_id: '',
+  node_set_id: 'terminal-core',
   target_states: [],
   target_value: 'true',
   require_all: true,
@@ -55,6 +57,7 @@ export default function Campaigns() {
   const [saving, setSaving] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const skinOptions = listAvailableSkins();
+  const nodeSetOptions = listAvailableNodeSets();
 
   useEffect(() => {
     loadCampaigns();
@@ -107,6 +110,7 @@ export default function Campaigns() {
       name: campaign.name,
       description: campaign.description || '',
       skin_id: campaign.skin_id || '',
+      node_set_id: campaign.node_set_id || 'terminal-core',
       target_states: [...campaign.target_states],
       target_value: campaign.target_value,
       require_all: campaign.require_all,
@@ -132,6 +136,7 @@ export default function Campaigns() {
       const payload = {
         ...formData,
         skin_id: formData.skin_id || undefined,
+        node_set_id: formData.node_set_id || 'terminal-core',
         expires_at: formData.expires_at || undefined,
         sets_state: formData.sets_state || undefined,
         reward_nft_mint: formData.reward_nft_mint || undefined,
@@ -378,6 +383,7 @@ export default function Campaigns() {
                     )}
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
                       <span>Skin: {campaign.skin_id || 'terminal-default'}</span>
+                      <span>Nodes: {campaign.node_set_id || 'terminal-core'}</span>
                       <span>
                         States: {campaign.target_states.join(', ')}{' '}
                         ({campaign.require_all ? 'ALL required' : 'ANY'})
@@ -491,6 +497,21 @@ export default function Campaigns() {
                       {skin.displayName} ({skin.id})
                     </option>
                   ))}
+              </select>
+            </Field>
+
+            {/* Node Set */}
+            <Field label="Node Set">
+              <select
+                value={formData.node_set_id || 'terminal-core'}
+                onChange={(e) => setFormData({ ...formData, node_set_id: e.target.value })}
+                className="admin-input"
+              >
+                {nodeSetOptions.map((nodeSet) => (
+                  <option key={nodeSet.id} value={nodeSet.id}>
+                    {nodeSet.displayName} ({nodeSet.id})
+                  </option>
+                ))}
               </select>
             </Field>
 
