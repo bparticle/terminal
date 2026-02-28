@@ -10,6 +10,16 @@
   color: #8a5a00;
 }
 
+:root[data-skin="newsroom"] {
+  /* Make terminal scanlines subtle for readability. */
+  --skin-scanline-tint-alpha: 0;
+  --skin-scanline-shadow-alpha: 0;
+  --skin-scanline-opacity: 0.32;
+  --skin-scanline-size: 5px;
+  --skin-scanline-duration: 50s;
+  /* To disable scanlines completely for this skin, set: --skin-scanline-opacity: 0; */
+}
+
 :root[data-skin="newsroom"] .text-cyan-400 {
   color: #0f5a7a;
 }

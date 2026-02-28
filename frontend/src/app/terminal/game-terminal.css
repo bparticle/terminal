@@ -105,12 +105,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(rgba(var(--primary-rgb), 0.03) 50%,
-      rgba(0, 0, 0, 0.3) 50%);
-  background-size: 100% 4px;
+  background: linear-gradient(
+      rgba(var(--primary-rgb), var(--skin-scanline-tint-alpha, 0.03)) 50%,
+      rgba(0, 0, 0, var(--skin-scanline-shadow-alpha, 0.3)) 50%
+  );
+  background-size: 100% var(--skin-scanline-size, 4px);
   pointer-events: none;
   z-index: 2;
-  animation: scanlines 10s linear infinite;
+  opacity: var(--skin-scanline-opacity, 1);
+  animation: scanlines var(--skin-scanline-duration, 10s) linear infinite;
 }
 
 @keyframes scanlines {

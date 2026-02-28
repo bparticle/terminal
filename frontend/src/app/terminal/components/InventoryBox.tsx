@@ -261,6 +261,7 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
   const [highlightItem, setHighlightItem] = useState<string | null>(null);
   const [openSlotKey, setOpenSlotKey] = useState<string | null>(null);
   const prevItemsRef = useRef<string[]>([]);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openTooltip = useCallback((key: string) => setOpenSlotKey(key), []);
   const closeTooltip = useCallback((key: string) => {
@@ -273,14 +274,39 @@ export default function InventoryBox({ items, maxItems = 12 }: InventoryBoxProps
 
     const newItems = currentNames.filter((n) => !prevNames.includes(n));
     if (newItems.length > 0) {
-      setHighlightItem(newItems[newItems.length - 1]);
-      setTimeout(() => setHighlightItem(null), 2000);
+      const newestItemName = newItems[newItems.length - 1];
+      const newestItemIndex = currentNames.lastIndexOf(newestItemName);
+      const targetPage = Math.floor(newestItemIndex / ITEMS_PER_PAGE);
+
+      setPage(targetPage);
+      setHighlightItem(newestItemName);
+      setOpenSlotKey(null);
+
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightItem(null);
+        highlightTimerRef.current = null;
+      }, 2000);
     }
 
     prevItemsRef.current = currentNames;
   }, [items]);
 
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages - 1));
+  }, [totalPages]);
+
   const startIdx = page * ITEMS_PER_PAGE;
   const pageItems = items.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
