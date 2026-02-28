@@ -1,0 +1,29 @@
+:root {
+  --skin-font-family: 'VT323', monospace;
+
+  --skin-page-bg: #0a0a0a;
+  --skin-title-bg: #0a0a0a;
+  --skin-terminal-bg: #1a1a1a;
+  --skin-panel-bg: transparent;
+  --skin-monitor-bg: #1a1a1a;
+  --skin-mobile-sidebar-bg: #0a0a0a;
+
+  --skin-page-max-width: 1400px;
+  --skin-retro-gap: 15px;
+  --skin-retro-padding: 0 15px 15px;
+
+  --skin-title-max-width-desktop: 420px;
+  --skin-title-max-width-mobile: 260px;
+  --skin-title-text-size: 42px;
+  --skin-title-text-letter-spacing: 0.2em;
+  --skin-title-text-color: var(--primary-color);
+
+  --skin-sidebar-width: 250px;
+  --skin-mobile-sidebar-width: 280px;
+  --skin-mobile-sidebar-max-width: 80vw;
+
+  --skin-monitor-border-radius: 8px;
+  --skin-monitor-padding: 10px;
+  --skin-monitor-margin-bottom: 8px;
+  --skin-monitor-aspect-ratio: 1;
+}
