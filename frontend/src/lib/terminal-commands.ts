@@ -16,8 +16,6 @@ export interface TerminalContext {
   openWalletModal: () => void;
   disconnectWallet: () => void;
   authenticate: () => Promise<void>;
-  setTheme: (theme: string) => void;
-  currentTheme: string;
   setSkinOverride: (skinId: string | null) => void;
   currentSkinOverride: string | null;
   currentSkinResolved: string;
@@ -42,7 +40,6 @@ export const commands: Record<string, Command> = {
       ctx.addOutput('  help          Show this help message');
       ctx.addOutput('  about         About this system');
       ctx.addOutput('  clear         Clear terminal output');
-      ctx.addOutput('  theme [1-3]   Change color theme');
       ctx.addOutput('');
       ctx.addOutput('Wallet:', 'text-yellow-400');
       ctx.addOutput('  connect       Connect your wallet');
@@ -131,33 +128,6 @@ export const commands: Record<string, Command> = {
       } else {
         ctx.disconnectWallet();
         ctx.addOutput('Wallet disconnected.', 'text-yellow-400');
-      }
-    },
-  },
-
-  theme: {
-    description: 'Change color theme',
-    execute: (args, ctx) => {
-      const themeNum = args.trim();
-      if (!themeNum) {
-        ctx.addOutput('Available themes:', 'text-cyan-400');
-        ctx.addOutput('  theme 1  Classic Green (default)');
-        ctx.addOutput('  theme 2  Laser Blue');
-        ctx.addOutput('  theme 3  Knight Rider Red');
-        ctx.addOutput(`Current theme: ${ctx.currentTheme}`, 'text-gray-400');
-        return;
-      }
-
-      if (['1', '2', '3'].includes(themeNum)) {
-        ctx.setTheme(themeNum);
-        const names: Record<string, string> = {
-          '1': 'Classic Green',
-          '2': 'Laser Blue',
-          '3': 'Knight Rider Red',
-        };
-        ctx.addOutput(`Theme changed to: ${names[themeNum]}`, 'text-green-400');
-      } else {
-        ctx.addOutput('Invalid theme. Use: theme 1, theme 2, or theme 3', 'text-red-400');
       }
     },
   },

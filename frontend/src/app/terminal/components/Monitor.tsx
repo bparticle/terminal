@@ -52,7 +52,7 @@ export default function Monitor({ imageUrl }: MonitorProps) {
       color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#2dfe39';
       monitorCanvasBg = getComputedStyle(document.documentElement).getPropertyValue('--skin-monitor-canvas-bg').trim() || '#0a0a0a';
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-skin'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin'] });
 
     const draw = () => {
       time += 0.02;

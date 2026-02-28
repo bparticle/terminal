@@ -60,7 +60,6 @@ export default function GameTerminal() {
   const [input, setInput] = useState('');
   const [currentLocation, setCurrentLocation] = useState('HUB');
   const [inventory, setInventory] = useState<Array<{ name: string; soulbound?: boolean; assetId?: string; isFrozen?: boolean }>>([]);
-  const [theme, setThemeState] = useState('1');
   const [pendingRestart, setPendingRestart] = useState(false);
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -306,20 +305,10 @@ export default function GameTerminal() {
     }
   }, [isAuthenticated, getAuthHeaders, authenticate]);
 
-  // Load theme and solo mode from localStorage
+  // Load solo mode from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('terminalTheme') || '1';
-    setThemeState(saved);
-    document.documentElement.setAttribute('data-theme', saved);
-
     const savedSolo = localStorage.getItem('soloMode') === 'true';
     setSoloMode(savedSolo);
-  }, []);
-
-  const setTheme = useCallback((t: string) => {
-    setThemeState(t);
-    localStorage.setItem('terminalTheme', t);
-    document.documentElement.setAttribute('data-theme', t);
   }, []);
 
   // Output helpers
@@ -633,8 +622,6 @@ export default function GameTerminal() {
         openWalletModal: () => setVisible(true),
         disconnectWallet: () => disconnect(),
         authenticate,
-        setTheme,
-        currentTheme: theme,
         setSkinOverride: setAdminSkinOverrideId,
         currentSkinOverride: adminSkinOverrideId,
         currentSkinResolved: resolvedSkin.skinId,
@@ -669,7 +656,7 @@ export default function GameTerminal() {
 
       setInput('');
     },
-    [input, publicKey, connected, isAuthenticated, isAuthenticating, session, theme, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect, handleOnboardingInput, sendMessage]
+    [input, publicKey, connected, isAuthenticated, isAuthenticating, session, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, onboardingState, chatMode, addOutput, addUserOutput, clearOutput, setVisible, disconnect, handleOnboardingInput, sendMessage]
   );
 
   // Re-focus input when returning from a mini-game
@@ -815,8 +802,6 @@ export default function GameTerminal() {
           openWalletModal: () => setVisible(true),
           disconnectWallet: () => disconnect(),
           authenticate,
-          setTheme,
-          currentTheme: theme,
           setSkinOverride: setAdminSkinOverrideId,
           currentSkinOverride: adminSkinOverrideId,
           currentSkinResolved: resolvedSkin.skinId,
@@ -847,7 +832,7 @@ export default function GameTerminal() {
         inputRef.current?.focus();
       }, 0);
     },
-    [publicKey, connected, isAuthenticated, isAuthenticating, session, theme, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, addOutput, addUserOutput, clearOutput, setTheme, setVisible, disconnect]
+    [publicKey, connected, isAuthenticated, isAuthenticating, session, adminSkinOverrideId, resolvedSkin.skinId, pendingRestart, addOutput, addUserOutput, clearOutput, setVisible, disconnect]
   );
 
   const handleTerminalMouseDown = useCallback((e: React.MouseEvent) => {
@@ -871,7 +856,7 @@ export default function GameTerminal() {
       <div className="title-header">
         <SkinTitleRenderer title={resolvedSkin.config.title} />
         <span className="version-badge">v{APP_VERSION}</span>
-        {adminSkinOverrideId && (
+        {adminSkinOverrideId && !!session?.user?.is_admin && (
           <span
             className="version-badge"
             style={{ background: '#7c3aed', color: '#fff', marginLeft: '0.5rem', cursor: 'default' }}

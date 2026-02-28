@@ -3,7 +3,10 @@ import { SKIN_REGISTRY } from './registry';
 import { DeepPartial, SkinConfig } from './types';
 
 interface ResolveSkinInput {
-  /** Force a specific skin by ID. adminSkinOverrideId takes priority over campaignSkinId. */
+  /**
+   * The skin ID to activate. Pass `adminOverride || campaign.skin_id || null`.
+   * Admin override takes priority; callers are responsible for combining them.
+   */
   forcedSkinId?: string | null;
 }
 
@@ -17,10 +20,16 @@ export interface SkinOption {
   displayName: string;
 }
 
+/** Type guard — true for plain objects, false for arrays and primitives. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Recursively merge a patch into a base object.
+ * Plain objects are merged; any other value (string, number, array) is replaced.
+ * Undefined patch values are skipped (they do not erase the base value).
+ */
 function deepMerge<T>(base: T, patch?: DeepPartial<T>): T {
   if (!patch) return base;
 
@@ -41,13 +50,15 @@ function deepMerge<T>(base: T, patch?: DeepPartial<T>): T {
 }
 
 /**
- * Resolve the active skin from:
- *   1. forcedSkinId — either the admin test override OR the campaign's skin_id
- *      (callers combine these: `adminOverride || campaign.skin_id || null`)
- *   2. DEFAULT_SKIN — fallback when nothing is forced or the ID is unknown
+ * Resolve the active skin config from a skin ID.
  *
- * Campaign skin_id is read from the campaign object at the call site and passed
- * as forcedSkinId; there is no static campaign→skin mapping in code.
+ * Priority order:
+ *   1. forcedSkinId — admin localStorage override OR the active campaign's skin_id
+ *      (the caller combines these: `adminOverride || campaign.skin_id || null`)
+ *   2. DEFAULT_SKIN — used when forcedSkinId is null or not found in the registry
+ *
+ * The returned config is always a fully-populated SkinConfig (never partial),
+ * produced by deep-merging the registry patch onto DEFAULT_SKIN.
  */
 export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
   const { forcedSkinId = null } = input;
@@ -75,6 +86,7 @@ export function resolveSkin(input: ResolveSkinInput): ResolvedSkin {
   };
 }
 
+/** Return all registered skins as { id, displayName } pairs for use in admin UI and terminal commands. */
 export function listAvailableSkins(): SkinOption[] {
   const ids = new Set<string>([DEFAULT_SKIN_ID, ...Object.keys(SKIN_REGISTRY)]);
   return Array.from(ids).map((id) => {

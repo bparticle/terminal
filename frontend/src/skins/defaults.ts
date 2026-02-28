@@ -1,3 +1,13 @@
+/**
+ * The canonical default skin — the baseline every other skin patches on top of.
+ *
+ * These values are the source of truth for TypeScript.
+ * terminal-variables.css holds matching CSS fallbacks for FOUC prevention only.
+ *
+ * Never import DEFAULT_SKIN directly in components. Go through resolveSkin()
+ * so that campaign and admin overrides are applied correctly.
+ */
+
 import { SkinConfig } from './types';
 
 export const DEFAULT_SKIN_ID = 'terminal-default';
@@ -10,13 +20,15 @@ export const DEFAULT_SKIN: SkinConfig = {
     animatedVariant: 5,
     imageSrc: null,
     imageAlt: 'Terminal title',
+    // 'text' is used as the fallback label if an image/gif ever fails to load,
+    // even though animatedCanvas mode doesn't render it directly.
     text: 'TERMINAL ADVENTURE',
   },
   background: {
     page: '#0a0a0a',
     title: '#0a0a0a',
     terminal: '#1a1a1a',
-    panel: 'transparent',
+    panel: 'transparent', // sidebar panels have no background fill by default
     monitor: '#1a1a1a',
     mobileSidebar: '#0a0a0a',
   },
@@ -44,5 +56,14 @@ export const DEFAULT_SKIN: SkinConfig = {
     titleTextSize: '42px',
     titleTextLetterSpacing: '0.2em',
     titleTextColor: 'var(--primary-color)',
+  },
+  // Classic Green palette
+  palette: {
+    primaryColor: '#2dfe39',
+    primaryRgb: '45, 254, 57',
+    primaryDim: '#1fb527',
+    primaryDark: '#158c1d',
+    primaryLight: '#5fff66',
+    primaryGlow: 'rgba(45, 254, 57, 0.5)',
   },
 };

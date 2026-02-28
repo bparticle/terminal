@@ -186,38 +186,41 @@ export async function getSoulboundItems(
     return result.rows;
   }
 
-  // Campaign-scoped: union campaign mapping + global fallback for unmapped items
+  // Campaign-scoped: union campaign mapping + global fallback for unmapped items.
+  // ORDER BY is placed after the full UNION (via subquery) so it sorts the combined result.
   const result = await query(
-    `SELECT
-       csi.item_name,
-       csi.asset_id,
-       csi.is_frozen,
-       csi.freeze_signature,
-       csi.created_at,
-       csi.updated_at,
-       'campaign' as source
-     FROM campaign_soulbound_items csi
-     WHERE csi.wallet_address = $1 AND csi.campaign_id = $2
+    `SELECT * FROM (
+       SELECT
+         csi.item_name,
+         csi.asset_id,
+         csi.is_frozen,
+         csi.freeze_signature,
+         csi.created_at,
+         csi.updated_at,
+         'campaign' as source
+       FROM campaign_soulbound_items csi
+       WHERE csi.wallet_address = $1 AND csi.campaign_id = $2
 
-     UNION ALL
+       UNION ALL
 
-     -- Global fallback: items not yet in campaign_soulbound_items for this campaign
-     SELECT
-       si.item_name,
-       si.asset_id,
-       si.is_frozen,
-       si.freeze_signature,
-       si.created_at,
-       si.updated_at,
-       'global' as source
-     FROM soulbound_items si
-     WHERE si.wallet_address = $1
-       AND NOT EXISTS (
-         SELECT 1 FROM campaign_soulbound_items csi2
-         WHERE csi2.wallet_address = $1
-           AND csi2.campaign_id = $2
-           AND csi2.item_name = si.item_name
-       )
+       -- Global fallback: items not yet in campaign_soulbound_items for this campaign
+       SELECT
+         si.item_name,
+         si.asset_id,
+         si.is_frozen,
+         si.freeze_signature,
+         si.created_at,
+         si.updated_at,
+         'global' as source
+       FROM soulbound_items si
+       WHERE si.wallet_address = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM campaign_soulbound_items csi2
+           WHERE csi2.wallet_address = $1
+             AND csi2.campaign_id = $2
+             AND csi2.item_name = si.item_name
+         )
+     ) combined
      ORDER BY created_at DESC`,
     [wallet, campaignId]
   );

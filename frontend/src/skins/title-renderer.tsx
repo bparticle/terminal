@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * Renders the top title area based on the active skin's title config.
+ *
+ * Fallback chain:
+ *   1. mode === 'image' | 'gif' and imageSrc is set  → <img>
+ *   2. Image load failure, or mode === 'text'         → styled text (skin-title-text)
+ *   3. Everything else (mode === 'animatedCanvas')    → ScanlineTitle canvas
+ *
+ * The `text` field is used both as the label for mode === 'text' and as the
+ * fallback label shown when an image or gif fails to load.
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import ScanlineTitle from '@/app/terminal/components/ScanlineTitle';
 import { SkinTitleConfig } from './types';
@@ -12,6 +24,7 @@ export default function SkinTitleRenderer({ title }: SkinTitleRendererProps) {
   const [assetFailed, setAssetFailed] = useState(false);
   const titleText = title.text.trim() || 'TERMINAL ADVENTURE';
 
+  // Reset failure state whenever the skin switches to a different asset.
   useEffect(() => {
     setAssetFailed(false);
   }, [title.mode, title.imageSrc]);

@@ -1,4 +1,13 @@
 :root {
+  /* Default palette (Classic Green) — overridden on hydration by applySkin().
+     These values exist only as a FOUC guard; the canonical defaults live in defaults.ts. */
+  --primary-color: #2dfe39;
+  --primary-rgb: 45, 254, 57;
+  --primary-dim: #1fb527;
+  --primary-dark: #158c1d;
+  --primary-light: #5fff66;
+  --primary-glow: rgba(45, 254, 57, 0.5);
+
   --skin-font-family: 'VT323', monospace;
 
   --skin-page-bg: #0a0a0a;

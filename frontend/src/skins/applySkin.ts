@@ -1,5 +1,16 @@
 import { SkinConfig } from './types';
 
+/**
+ * Apply a resolved SkinConfig to the document root.
+ *
+ * Sets all skin CSS variables as inline styles on <html> and stamps
+ * `data-skin="<id>"` so that terminal-skins.css class-level overrides
+ * (used for structural exceptions that can't be expressed as variables)
+ * can target specific skins via `:root[data-skin="..."]`.
+ *
+ * Returns a cleanup function that removes all applied variables and the
+ * data-skin attribute. Designed to be used directly as a useEffect return value.
+ */
 export function applySkin(config: SkinConfig): () => void {
   if (typeof document === 'undefined') return () => {};
 
@@ -33,32 +44,17 @@ export function applySkin(config: SkinConfig): () => void {
     '--skin-title-text-letter-spacing': config.typography.titleTextLetterSpacing,
     '--skin-title-text-color': config.typography.titleTextColor,
   };
-  const paletteVariables: Record<string, string> = config.palette
-    ? {
-        '--primary-color': config.palette.primaryColor,
-        '--primary-rgb': config.palette.primaryRgb,
-        '--primary-dim': config.palette.primaryDim,
-        '--primary-dark': config.palette.primaryDark,
-        '--primary-light': config.palette.primaryLight,
-        '--primary-glow': config.palette.primaryGlow,
-      }
-    : {};
+  const paletteVariables: Record<string, string> = {
+    '--primary-color': config.palette.primaryColor,
+    '--primary-rgb': config.palette.primaryRgb,
+    '--primary-dim': config.palette.primaryDim,
+    '--primary-dark': config.palette.primaryDark,
+    '--primary-light': config.palette.primaryLight,
+    '--primary-glow': config.palette.primaryGlow,
+  };
   const variables: Record<string, string> = { ...baseVariables, ...paletteVariables };
-  const paletteKeys = [
-    '--primary-color',
-    '--primary-rgb',
-    '--primary-dim',
-    '--primary-dark',
-    '--primary-light',
-    '--primary-glow',
-  ];
 
   root.setAttribute('data-skin', config.id);
-  if (!config.palette) {
-    for (const key of paletteKeys) {
-      root.style.removeProperty(key);
-    }
-  }
   for (const [name, value] of Object.entries(variables)) {
     root.style.setProperty(name, value);
   }
