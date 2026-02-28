@@ -8,6 +8,13 @@ import { executeMint } from './mint.service';
 import { getNFTDetails } from './helius.service';
 import { getUmi } from './umi';
 
+const PENDING_ASSET_PREFIX = 'pending-';
+const STALE_PENDING_MS = 10 * 60 * 1000;
+
+function isPendingAssetId(assetId?: string | null): boolean {
+  return typeof assetId === 'string' && assetId.startsWith(PENDING_ASSET_PREFIX);
+}
+
 /**
  * Get the asset proof needed for Bubblegum instructions
  */
@@ -180,7 +187,11 @@ export async function getSoulboundItems(
 ): Promise<SoulboundItem[]> {
   if (!campaignId) {
     const result = await query(
-      'SELECT * FROM soulbound_items WHERE wallet_address = $1 ORDER BY created_at DESC',
+      `SELECT *
+       FROM soulbound_items
+       WHERE wallet_address = $1
+         AND asset_id NOT LIKE 'pending-%'
+       ORDER BY created_at DESC`,
       [wallet]
     );
     return result.rows;
@@ -200,6 +211,7 @@ export async function getSoulboundItems(
          'campaign' as source
        FROM campaign_soulbound_items csi
        WHERE csi.wallet_address = $1 AND csi.campaign_id = $2
+         AND csi.asset_id NOT LIKE 'pending-%'
 
        UNION ALL
 
@@ -214,6 +226,7 @@ export async function getSoulboundItems(
          'global' as source
        FROM soulbound_items si
        WHERE si.wallet_address = $1
+         AND si.asset_id NOT LIKE 'pending-%'
          AND NOT EXISTS (
            SELECT 1 FROM campaign_soulbound_items csi2
            WHERE csi2.wallet_address = $1
@@ -269,10 +282,26 @@ export async function checkSoulboundExists(
 
   // Fall back to global soulbound_items (covers pre-migration items)
   const result = await query(
-    'SELECT * FROM soulbound_items WHERE user_id = $1 AND item_name = $2 LIMIT 1',
+    `SELECT *
+     FROM soulbound_items
+     WHERE user_id = $1
+       AND item_name = $2
+     ORDER BY created_at DESC
+     LIMIT 1`,
     [userId, itemName]
   );
-  return result.rows[0] || null;
+  const existing = result.rows[0] || null;
+  if (!existing) return null;
+
+  if (isPendingAssetId(existing.asset_id)) {
+    const ageMs = Date.now() - new Date(existing.created_at).getTime();
+    if (ageMs > STALE_PENDING_MS) {
+      await query('DELETE FROM soulbound_items WHERE id = $1', [existing.id]);
+      return null;
+    }
+  }
+
+  return existing;
 }
 
 /**

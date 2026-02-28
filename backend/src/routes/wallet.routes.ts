@@ -80,7 +80,13 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
         [address]
       ),
       query(
-        `SELECT asset_id, item_name, created_at FROM soulbound_items WHERE wallet_address = $1`,
+        `SELECT DISTINCT ON (LOWER(TRIM(item_name)))
+           asset_id, item_name, created_at
+         FROM soulbound_items
+         WHERE wallet_address = $1
+           AND asset_id IS NOT NULL
+           AND asset_id NOT LIKE 'pending-%'
+         ORDER BY LOWER(TRIM(item_name)), created_at DESC`,
         [address]
       ),
     ]);

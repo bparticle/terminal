@@ -33,9 +33,9 @@
     var(--newsroom-stain-3, none);
   background-repeat: no-repeat, no-repeat, no-repeat;
   background-position:
-    var(--newsroom-stain-1-x, 20%) calc(var(--newsroom-stain-1-y, 180px) - var(--newsroom-scroll-offset, 0px)),
-    var(--newsroom-stain-2-x, 70%) calc(var(--newsroom-stain-2-y, 520px) - var(--newsroom-scroll-offset, 0px)),
-    var(--newsroom-stain-3-x, 46%) calc(var(--newsroom-stain-3-y, 900px) - var(--newsroom-scroll-offset, 0px));
+    var(--newsroom-stain-1-x, 20%) var(--newsroom-stain-1-y, 180px),
+    var(--newsroom-stain-2-x, 70%) var(--newsroom-stain-2-y, 420px),
+    var(--newsroom-stain-3-x, 46%) var(--newsroom-stain-3-y, 640px);
   background-size:
     var(--newsroom-stain-1-size, 280px auto),
     var(--newsroom-stain-2-size, 260px auto),

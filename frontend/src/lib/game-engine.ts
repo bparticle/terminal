@@ -8,6 +8,7 @@ import { updateProfilePfp } from './api';
 
 // Default metadata URI for soulbound inventory items (uploaded to Arweave via Irys)
 const INVENTORY_ITEM_URI = 'https://gateway.irys.xyz/7QqN4xNSS1ZujZgVjgsU2sU4dCBRdeUCbdc3qUHLchon';
+const PENDING_SOULBOUND_PREFIX = 'pending-';
 
 // Items that are consumed or transformed during gameplay — skip soulbound minting
 const CONSUMABLE_ITEMS = new Set([
@@ -19,6 +20,10 @@ const CONSUMABLE_ITEMS = new Set([
   'press_badge',
   'redacted_memo',
 ]);
+
+function isPendingSoulboundAssetId(assetId?: string | null): boolean {
+  return typeof assetId === 'string' && assetId.startsWith(PENDING_SOULBOUND_PREFIX);
+}
 
 type OutputFn = (text: string, className?: string, id?: string) => void;
 type LocationChangeFn = (location: string, nodeId?: string, roomId?: string) => void;
@@ -906,7 +911,12 @@ export class GameEngine {
         const { items } = await fetchSoulboundItems(this.activeCampaignId);
         let updated = false;
         for (const item of items) {
-          if (this.soulboundPendingItems.has(item.item_name) && item.asset_id) {
+          if (
+            this.soulboundPendingItems.has(item.item_name) &&
+            item.asset_id &&
+            !isPendingSoulboundAssetId(item.asset_id) &&
+            item.is_frozen
+          ) {
             this.soulboundItemsMap.set(item.item_name, { assetId: item.asset_id, isFrozen: item.is_frozen });
             this.soulboundPendingItems.delete(item.item_name);
             updated = true;
@@ -948,7 +958,7 @@ export class GameEngine {
     this.pollSoulboundStatus(itemName);
 
     void mintSoulboundBackground(itemName, INVENTORY_ITEM_URI, this.activeCampaignId).then((result) => {
-      if (result.alreadyMinted && result.assetId) {
+      if (result.alreadyMinted && result.assetId && !isPendingSoulboundAssetId(result.assetId)) {
         this.soulboundItemsMap.set(itemName, { assetId: result.assetId, isFrozen: true });
         this.soulboundPendingItems.delete(itemName);
         this.stopSoulboundPollingIfIdle();

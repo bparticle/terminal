@@ -625,12 +625,9 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                           ))}
                         </div>
 
-                        <div className="gallery-section-label">Transfer</div>
-                        {selectedNft.isSoulbound ? (
-                          <div className="gallery-state-line text-yellow-400">
-                            This NFT is soulbound and cannot be transferred.
-                          </div>
-                        ) : (
+                        {!selectedNft.isSoulbound && !isSoulboundCollection && (
+                          <>
+                            <div className="gallery-section-label">Transfer</div>
                           <div className="gallery-transfer-box">
                             <input
                               type="text"
@@ -666,10 +663,11 @@ export default function GalleryOverlay({ isOpen, walletAddress, signAndSubmit, o
                               {isTransferring ? 'CONFIRMING TRANSFER...' : 'TRANSFER NFT'}
                             </button>
                           </div>
+                          </>
                         )}
                       </>
                     ) : (
-                      <div className="gallery-empty">Select an NFT to see details and transfer options.</div>
+                      <div className="gallery-empty">Select an NFT to see details.</div>
                     )}
                   </div>
                 </div>

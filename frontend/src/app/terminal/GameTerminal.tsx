@@ -251,7 +251,6 @@ export default function GameTerminal() {
       '--newsroom-stain-1-size',
       '--newsroom-stain-2-size',
       '--newsroom-stain-3-size',
-      '--newsroom-scroll-offset',
     ];
 
     const clearVars = () => {
@@ -269,16 +268,21 @@ export default function GameTerminal() {
       `${Math.round(min + Math.random() * (max - min))}%`;
     const randomSize = () => Math.round(220 + Math.random() * 160);
     const randomAsset = () => NEWSROOM_COFFEE_STAIN_ASSETS[Math.floor(Math.random() * NEWSROOM_COFFEE_STAIN_ASSETS.length)];
-    const randomFarBelow = (height: number) => height + 160 + Math.round(Math.random() * 1100);
-    const scrollFactor = 0.35;
+    const viewportHeight = Math.max(420, outputEl?.clientHeight ?? 0);
 
+    // Keep stains fully visible vertically so pagination/page-break transitions
+    // never slice a stain through the middle. Horizontal clipping is acceptable.
     type StainState = { asset: string; x: string; y: number; size: number };
-    const stains: StainState[] = Array.from({ length: 3 }, (_, i) => ({
-      asset: randomAsset(),
-      x: randomPercent(16, 76),
-      y: 160 + i * 320 + Math.round(Math.random() * 180),
-      size: randomSize(),
-    }));
+    const stains: StainState[] = Array.from({ length: 3 }, () => {
+      const size = randomSize();
+      const maxSafeY = Math.max(24, viewportHeight - size - 24);
+      return {
+        asset: randomAsset(),
+        x: randomPercent(-8, 88),
+        y: Math.round(24 + Math.random() * (maxSafeY - 24)),
+        size,
+      };
+    });
 
     const applyStain = (index: number, stain: StainState) => {
       const n = index + 1;
@@ -291,38 +295,8 @@ export default function GameTerminal() {
     for (let i = 0; i < stains.length; i++) {
       applyStain(i, stains[i]);
     }
-    root.style.setProperty('--newsroom-scroll-offset', '0px');
-
-    const onScroll = () => {
-      if (!outputEl) return;
-      const offset = outputEl.scrollTop * scrollFactor;
-      root.style.setProperty('--newsroom-scroll-offset', `${offset}px`);
-
-      const viewportHeight = outputEl.clientHeight;
-      let changed = false;
-      for (const stain of stains) {
-        const visibleY = stain.y - offset;
-        // Once a stain has moved off the top, recycle it below the viewport
-        // with a fresh asset, size, and x-position.
-        if (visibleY < -stain.size - 60) {
-          stain.asset = randomAsset();
-          stain.x = randomPercent(16, 76);
-          stain.size = randomSize();
-          stain.y = offset + randomFarBelow(viewportHeight);
-          changed = true;
-        }
-      }
-      if (changed) {
-        for (let i = 0; i < stains.length; i++) {
-          applyStain(i, stains[i]);
-        }
-      }
-    };
-    onScroll();
-    outputEl?.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
-      outputEl?.removeEventListener('scroll', onScroll);
       clearVars();
     };
   }, [resolvedSkin.skinId]);
