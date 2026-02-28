@@ -47,6 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const authAttemptRef = useRef(false);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref updated synchronously every render so getAuthHeaders always reads the
+  // latest token — avoids a race where child effects run before AuthProvider's
+  // setAuthContext effect fires with the new session.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
 
   // Load session from storage on mount, then validate against backend
   useEffect(() => {
@@ -225,9 +230,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
-    if (!session?.token) return {};
-    return { Authorization: `Bearer ${session.token}` };
-  }, [session]);
+    if (!sessionRef.current?.token) return {};
+    return { Authorization: `Bearer ${sessionRef.current.token}` };
+  }, []); // reads from ref — always current, no stale-closure race
 
   useEffect(() => {
     setAuthContext({ getAuthHeaders, authenticate });
