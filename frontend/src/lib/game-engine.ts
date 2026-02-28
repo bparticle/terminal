@@ -40,6 +40,7 @@ interface MinigameGate {
 }
 
 export class GameEngine {
+  private static readonly REQUEST_TIMEOUT_MS = 60_000;
   private currentNode: GameNode | null = null;
   private walletAddress: string = '';
   private activeCampaignId: string | null = null;
@@ -472,6 +473,25 @@ export class GameEngine {
     );
   }
 
+  private async withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`${label} timed out`));
+      }, GameEngine.REQUEST_TIMEOUT_MS);
+
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+    });
+  }
+
   private async handleMintActionNode(node: GameNode): Promise<void> {
     if (!this.save || !node.mint_config) return;
 
@@ -503,7 +523,10 @@ export class GameEngine {
     try {
       // Check supply/dedup via mintKey (no whitelist — that's PFP-only)
       if (mintConfig.mintKey) {
-        const eligibility = await checkMintEligibility(mintConfig.mintKey, mintConfig.maxSupply);
+        const eligibility = await this.withTimeout(
+          checkMintEligibility(mintConfig.mintKey, mintConfig.maxSupply),
+          'Mint eligibility check'
+        );
         if (mintConfig.oncePerPlayer && eligibility.alreadyMinted) {
           this.stopSpinner(mintId(), 'Already minted', false);
           if (node.mint_already_minted_node) {
@@ -539,7 +562,7 @@ export class GameEngine {
 
       if (mintConfig.soulbound) {
         this.startSpinner(steps[mintStep] || 'Minting soulbound token', mintId(), 'text-yellow-400');
-        result = await mintSoulbound(mintConfig);
+        result = await this.withTimeout(mintSoulbound(mintConfig), 'Soulbound mint');
         this.stopSpinner(mintId(), 'Soulbound token minted');
         this.soulboundItemsMap.set(mintConfig.itemName || mintConfig.name, {
           assetId: result?.assetId || '',
@@ -548,7 +571,7 @@ export class GameEngine {
         mintStep++;
       } else if (this.signAndSubmitFn) {
         this.startSpinner(steps[mintStep] || 'Preparing transaction', mintId());
-        const prepared = await prepareMint({
+        const prepared = await this.withTimeout(prepareMint({
           name: mintConfig.name,
           uri: mintConfig.uri,
           symbol: mintConfig.symbol,
@@ -556,7 +579,7 @@ export class GameEngine {
           mintKey: mintConfig.mintKey,
           maxSupply: mintConfig.maxSupply,
           oncePerPlayer: mintConfig.oncePerPlayer,
-        });
+        }), 'Mint transaction prepare');
         this.stopSpinner(mintId(), 'Transaction prepared');
         mintStep++;
 
@@ -566,17 +589,20 @@ export class GameEngine {
         mintStep++;
 
         this.startSpinner(steps[mintStep] || 'Confirming on-chain', mintId());
-        result = await confirmMint(prepared.mintLogId, signedTxBase64);
+        result = await this.withTimeout(
+          confirmMint(prepared.mintLogId, signedTxBase64),
+          'Mint transaction confirm'
+        );
         this.stopSpinner(mintId(), 'Confirmed on-chain');
         mintStep++;
       } else {
         this.startSpinner(steps[mintStep] || 'Minting', mintId(), 'text-yellow-400');
-        result = await executeMint({
+        result = await this.withTimeout(executeMint({
           ...mintConfig,
           mintKey: mintConfig.mintKey,
           maxSupply: mintConfig.maxSupply,
           oncePerPlayer: mintConfig.oncePerPlayer,
-        });
+        }), 'Mint execution');
         this.stopSpinner(mintId(), 'Minted');
         mintStep++;
       }
@@ -711,7 +737,7 @@ export class GameEngine {
 
     this.startSpinner('Checking PFP mint eligibility', pfpId());
     try {
-      const status = await checkPfpStatus();
+      const status = await this.withTimeout(checkPfpStatus(), 'PFP eligibility check');
 
       if (!status.whitelisted) {
         this.stopSpinner(pfpId(), 'Not eligible', false);
@@ -759,7 +785,7 @@ export class GameEngine {
         this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
         this.outputFn('');
 
-        const preparePromise = preparePfpMint();
+        const preparePromise = this.withTimeout(preparePfpMint(), 'PFP mint prepare');
 
         stepActive('Seeding identity generator');
         await delay(500 + Math.random() * 400);
@@ -788,7 +814,10 @@ export class GameEngine {
         stepDone('Submitted to Solana');
 
         stepActive('Confirming transaction');
-        result = await confirmPfpMint(prepared.mintLogId, signedTxBase64);
+        result = await this.withTimeout(
+          confirmPfpMint(prepared.mintLogId, signedTxBase64),
+          'PFP mint confirm'
+        );
         stepDone('Transaction confirmed');
 
         result.traits = prepared.pfpData.traits;
@@ -797,7 +826,7 @@ export class GameEngine {
         this.outputFn('> IDENTITY GENERATION SEQUENCE', 'text-yellow-400 font-bold');
         this.outputFn('');
         stepActive('Generating');
-        result = await mintPfp();
+        result = await this.withTimeout(mintPfp(), 'PFP mint');
         stepDone('Generated');
       }
 
@@ -866,7 +895,7 @@ export class GameEngine {
 
     this.outputFn('Fetching your existing identities...', 'text-gray-400');
     try {
-      const status = await checkPfpStatus();
+      const status = await this.withTimeout(checkPfpStatus(), 'PFP list fetch');
       if (status.pfps.length === 0) {
         this.outputFn('No existing PFPs were found.', 'text-yellow-400');
         this.outputFn('Returning to the booth options.', 'text-gray-400');
@@ -1439,11 +1468,20 @@ export class GameEngine {
       for (const item of effects.add_item) {
         if (!this.save.inventory.includes(item)) {
           this.save.inventory.push(item);
-          this.outputFn(`[Item obtained: ${item}]`, 'text-yellow-400');
+          const willMintSoulbound =
+            this.shouldBackgroundMintSoulboundItems() &&
+            !this.soulboundItemsMap.has(item) &&
+            !CONSUMABLE_ITEMS.has(item);
+          this.outputFn(
+            willMintSoulbound
+              ? `◉ ITEM ACQUIRED: ${item.replace(/_/g, ' ')}  [⛓ Minting to chain...]`
+              : `◉ ITEM ACQUIRED: ${item.replace(/_/g, ' ')}`,
+            'text-green-400'
+          );
 
           // Background soulbound mint — fire-and-forget, one per user per item
           // Skip consumable/transient items that will be removed or transformed
-          if (this.shouldBackgroundMintSoulboundItems() && !this.soulboundItemsMap.has(item) && !CONSUMABLE_ITEMS.has(item)) {
+          if (willMintSoulbound) {
             this.queueSoulboundBackgroundMint(item);
           }
         }
@@ -1456,7 +1494,7 @@ export class GameEngine {
         const index = this.save.inventory.indexOf(item);
         if (index > -1) {
           this.save.inventory.splice(index, 1);
-          this.outputFn(`[Item removed: ${item}]`, 'text-gray-400');
+          this.outputFn(`◉ ITEM REMOVED: ${item.replace(/_/g, ' ')}`, 'text-gray-400');
         }
       }
       this.inventoryChangeFn?.(this.buildInventoryItems());
@@ -1662,6 +1700,27 @@ export class GameEngine {
 
   getCurrentNode(): GameNode | null {
     return this.currentNode;
+  }
+
+  examineCurrentNode(target: string): string | null {
+    const node = this.currentNode;
+    if (!node?.examine) return null;
+
+    const query = target.trim().toLowerCase();
+    if (!query) return null;
+
+    const entries = Object.entries(node.examine);
+    const exact = entries.find(([key]) => key.toLowerCase() === query);
+    if (exact) return this.renderTemplate(exact[1]);
+
+    const partial = entries.find(([key]) => key.toLowerCase().includes(query) || query.includes(key.toLowerCase()));
+    if (partial) return this.renderTemplate(partial[1]);
+
+    return null;
+  }
+
+  getNodeById(nodeId: string): GameNode | null {
+    return this.nodeMap[nodeId] || null;
   }
 
   getSave(): GameSave | null {

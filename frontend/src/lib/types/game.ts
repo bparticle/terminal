@@ -54,6 +54,7 @@ export interface GameNode {
   id: string;
   type: 'story' | 'choice' | 'puzzle' | 'nft_check' | 'item_check' | 'location' | 'quiz' | 'godot_game' | 'mint_action' | 'pfp_mint';
   content: string;
+  examine?: Record<string, string>;
   location?: string;
   choices?: GameChoice[];
   effects?: GameEffects;

@@ -2,6 +2,7 @@ import { GameEngine } from './game-engine';
 import { checkWhitelistStatus, getMintHistory, checkMintStatus, getSoulboundItems, verifySoulbound } from './mint-api';
 import { checkPfpStatus } from './pfp-api';
 import { updateProfileName, updateProfilePfp } from './api';
+import { getCampaigns, getUserProgress } from './campaign-api';
 import { listAvailableSkins } from '@/skins/resolver';
 
 export interface TerminalContext {
@@ -34,39 +35,26 @@ export const commands: Record<string, Command> = {
   help: {
     description: 'Show available commands',
     execute: (_args, ctx) => {
-      ctx.addOutput('=== TERMINAL COMMANDS ===', 'text-cyan-400');
-      ctx.addOutput('');
-      ctx.addOutput('General:', 'text-yellow-400');
-      ctx.addOutput('  help          Show this help message');
-      ctx.addOutput('  about         About this system');
-      ctx.addOutput('  clear         Clear terminal output');
-      ctx.addOutput('');
-      ctx.addOutput('Wallet:', 'text-yellow-400');
-      ctx.addOutput('  connect       Connect your wallet');
-      ctx.addOutput('  disconnect    Disconnect wallet');
-      ctx.addOutput('  rename <name> Set your player name (2–20 chars, letters/numbers/._-)');
-
-      ctx.addOutput('');
-      ctx.addOutput('Game:', 'text-yellow-400');
-      ctx.addOutput('  [number]      Select a choice');
-      ctx.addOutput('  ENTER         Continue to next scene');
-      ctx.addOutput('  look / l      Re-display current scene');
-      ctx.addOutput('  inventory / i Show your inventory');
-      ctx.addOutput('  save          Save game manually');
-      ctx.addOutput('  load          Reload saved game');
-      ctx.addOutput('  restart       Restart the game');
-      ctx.addOutput('');
-      ctx.addOutput('NFT:', 'text-yellow-400');
-      ctx.addOutput('  mint          Mint commands (status/history/confirm)');
-      ctx.addOutput('  soulbound     Soulbound item commands (list/verify)');
-      ctx.addOutput('  pfp           PFP avatar commands (list/set/clear)');
-      ctx.addOutput('  gallery       Open NFT gallery overlay');
-      ctx.addOutput('');
+      ctx.addOutput('=== SCANLINES TERMINAL COMMAND REFERENCE ===', 'text-cyan-400');
+      ctx.addOutput('GENERAL:    help (h) · about · clear', 'text-cyan-400');
+      ctx.addOutput('WALLET:     connect · disconnect · rename <name>', 'text-cyan-400');
+      ctx.addOutput('NAVIGATION: [number] · ENTER · n · look (l)', 'text-cyan-400');
+      ctx.addOutput('MAP/STATS:  map (m) · whereami · stats', 'text-cyan-400');
+      ctx.addOutput('INVENTORY:  inventory (i)', 'text-cyan-400');
+      ctx.addOutput('SAVE/LOAD:  save · load · restart', 'text-cyan-400');
+      ctx.addOutput('NFT:        mint · soulbound · pfp · gallery', 'text-cyan-400');
+      ctx.addOutput('', undefined);
       if (ctx.isAdmin) {
-        ctx.addOutput('Admin:', 'text-yellow-400');
-        ctx.addOutput('  admin         Admin-only tools');
-        ctx.addOutput('');
+        ctx.addOutput('Admin: admin', 'text-yellow-400');
+        ctx.addOutput('', undefined);
       }
+    },
+  },
+
+  h: {
+    description: 'Show help (shortcut)',
+    execute: (_args, ctx) => {
+      commands.help.execute(_args, ctx);
     },
   },
 
@@ -135,10 +123,22 @@ export const commands: Record<string, Command> = {
   look: {
     description: 'Re-display current scene',
     requiresWallet: true,
-    execute: (_args, ctx) => {
-      if (ctx.engine) {
+    execute: (args, ctx) => {
+      if (!ctx.engine) return;
+
+      const target = args.trim();
+      if (!target) {
         ctx.engine.displayCurrentNode();
+        return;
       }
+
+      const description = ctx.engine.examineCurrentNode(target);
+      if (!description) {
+        ctx.addOutput(`You don't see anything notable about "${target}".`, 'text-gray-400');
+        return;
+      }
+
+      description.split('\n').forEach((line) => ctx.addOutput(line, 'text-white'));
     },
   },
 
@@ -147,6 +147,94 @@ export const commands: Record<string, Command> = {
     requiresWallet: true,
     execute: (_args, ctx) => {
       commands.look.execute(_args, ctx);
+    },
+  },
+
+  map: {
+    description: 'Show area exits from current location',
+    requiresWallet: true,
+    execute: (_args, ctx) => {
+      if (!ctx.engine) return;
+
+      const node = ctx.engine.getCurrentNode();
+      if (!node) {
+        ctx.addOutput('Location data unavailable.', 'text-yellow-400');
+        return;
+      }
+
+      const nodeLabel = node.location || ctx.engine.getLocation() || node.id;
+      const firstContentLine = node.content
+        .split('\n')
+        .map((line) => line.trim())
+        .find(Boolean);
+
+      const exits: Array<{ displayNum: number; text: string; destination: string }> = [];
+      let displayNum = 0;
+      for (const choice of node.choices || []) {
+        const visible = ctx.engine.checkRequirements(choice.visibilityRequirements);
+        if (!visible) continue;
+        displayNum++;
+        const enabled = ctx.engine.checkRequirements(choice.requirements);
+        if (!enabled) continue;
+        if (!choice.next_node || choice.next_node === node.id) continue;
+        const destinationNode = ctx.engine.getNodeById(choice.next_node);
+        const destination = destinationNode?.location?.trim();
+        if (!destination) continue;
+        if (destination.toLowerCase() === nodeLabel.toLowerCase()) continue;
+        exits.push({
+          displayNum,
+          text: choice.text,
+          destination,
+        });
+      }
+
+      const title = 'AREA MAP';
+      const locationText = `YOU ARE HERE: ${nodeLabel.toUpperCase()}`;
+      const innerWidth = Math.max(34, locationText.length + 2);
+      const border = `+${'-'.repeat(innerWidth + 2)}+`;
+      const divider = `+${'-'.repeat(innerWidth + 2)}+`;
+      const centeredTitle = title
+        .padStart(Math.floor((innerWidth + title.length) / 2), ' ')
+        .padEnd(innerWidth, ' ');
+      const titleLine = `| ${centeredTitle} |`;
+      const locationLine = `| ${locationText.padEnd(innerWidth, ' ')} |`;
+
+      ctx.addOutput(border, 'text-cyan-400');
+      ctx.addOutput(titleLine, 'text-cyan-400');
+      ctx.addOutput(divider, 'text-cyan-400');
+      ctx.addOutput(locationLine, 'text-cyan-400');
+      ctx.addOutput(border, 'text-cyan-400');
+      if (firstContentLine) {
+        ctx.addOutput(`Scene: ${firstContentLine}`, 'text-gray-400');
+      }
+
+      if (exits.length === 0) {
+        ctx.addOutput('No exits to other areas from this room.', 'text-yellow-400');
+        ctx.addOutput('Only local interactions are available here.', 'text-gray-400');
+      } else {
+        ctx.addOutput('Exits to other areas:', 'text-yellow-400');
+        exits.forEach((exit) => {
+          // Starts with [n] so it remains clickable in terminal output.
+          ctx.addOutput(`[${exit.displayNum}] ──> ${exit.destination.toUpperCase()}`, 'text-cyan-400');
+          ctx.addOutput(`    via: ${exit.text}`, 'text-gray-400');
+        });
+      }
+    },
+  },
+
+  whereami: {
+    description: 'Alias for map',
+    requiresWallet: true,
+    execute: (_args, ctx) => {
+      commands.map.execute(_args, ctx);
+    },
+  },
+
+  m: {
+    description: 'Show map (shortcut)',
+    requiresWallet: true,
+    execute: (_args, ctx) => {
+      commands.map.execute(_args, ctx);
     },
   },
 
@@ -172,6 +260,62 @@ export const commands: Record<string, Command> = {
     requiresWallet: true,
     execute: (_args, ctx) => {
       commands.inventory.execute(_args, ctx);
+    },
+  },
+
+  stats: {
+    description: 'Show campaign progress details',
+    requiresWallet: true,
+    execute: async (_args, ctx) => {
+      ctx.addOutput('Fetching campaign progress...', 'text-gray-400');
+      try {
+        const activeCampaignId = ctx.engine?.getActiveCampaignId();
+        if (!activeCampaignId) {
+          ctx.addOutput('No active campaign context found.', 'text-yellow-400');
+          return;
+        }
+
+        const [campaigns, progress] = await Promise.all([
+          getCampaigns(),
+          getUserProgress(activeCampaignId),
+        ]);
+        const campaign = campaigns.find((c) => c.id === activeCampaignId);
+        if (!campaign) {
+          ctx.addOutput('No active campaigns found.', 'text-yellow-400');
+          return;
+        }
+
+        const achievedStates = new Set(progress.achievements.map((a) => a.state_name));
+        const campaignWon = progress.campaign_wins.some((w) => w.campaign_id === campaign.id);
+        const achievedCount = campaign.target_states.filter((state) => achievedStates.has(state)).length;
+
+        ctx.addOutput('', undefined);
+        ctx.addOutput(`── CAMPAIGN: ${campaign.name.toUpperCase()} ──`, 'text-cyan-400');
+        campaign.target_states.forEach((state) => {
+          const achieved = achievedStates.has(state);
+          ctx.addOutput(
+            `  ${achieved ? '◉' : '○'} ${state.padEnd(24)} [${achieved ? 'ACHIEVED' : 'not yet'}]`,
+            achieved ? 'text-green-400' : 'text-gray-400'
+          );
+        });
+        if (campaign.max_winners > 0) {
+          ctx.addOutput(
+            `Progress: ${achievedCount}/${campaign.target_states.length} objectives │ Slots: ${campaign.winner_count || 0}/${campaign.max_winners}`,
+            'text-yellow-400'
+          );
+        } else {
+          ctx.addOutput(
+            `Progress: ${achievedCount}/${campaign.target_states.length} objectives`,
+            'text-yellow-400'
+          );
+        }
+        if (campaignWon) {
+          ctx.addOutput('Status: COMPLETED', 'text-green-400');
+        }
+        ctx.addOutput('', undefined);
+      } catch {
+        ctx.addOutput('Failed to load campaign stats.', 'text-red-400');
+      }
     },
   },
 
@@ -210,6 +354,15 @@ export const commands: Record<string, Command> = {
         ctx.addOutput('Type "restart" again to confirm.', 'text-yellow-400');
         ctx.setPendingRestart(true);
       }
+    },
+  },
+
+  n: {
+    description: 'Advance current scene',
+    requiresWallet: true,
+    execute: (_args, ctx) => {
+      if (!ctx.engine) return;
+      void ctx.engine.processInput('');
     },
   },
 

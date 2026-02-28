@@ -57,6 +57,12 @@ interface OutputLine {
 }
 
 type OnboardingState = 'idle' | 'checking' | 'ask_name' | 'done';
+const MAX_OUTPUT_LINES = 800;
+
+function capOutputLines(lines: OutputLine[]): OutputLine[] {
+  if (lines.length <= MAX_OUTPUT_LINES) return lines;
+  return lines.slice(lines.length - MAX_OUTPUT_LINES);
+}
 
 export default function GameTerminal() {
   const { publicKey, connected, disconnect, signTransaction } = useWallet();
@@ -94,6 +100,9 @@ export default function GameTerminal() {
   const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const wasAuthenticatedRef = useRef(false);
   const pfpImageUrlRef = useRef<string | null>(null);
+  const commandHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const historyDraftRef = useRef<string>('');
 
   // ── Refs for use in stable callbacks ──────────
   const soloModeRef = useRef(soloMode);
@@ -306,26 +315,30 @@ export default function GameTerminal() {
     if (soloModeRef.current || isPrivateRoomRef.current) return;
     const isMe = msg.sender === playerName;
     const prefix = isMe ? '[You]' : `[${msg.sender}]`;
-    setOutput((prev) => [
-      ...prev,
-      {
+    setOutput((prev) =>
+      capOutputLines([
+        ...prev,
+        {
         text: `${prefix}: ${msg.message}`,
         className: isMe ? 'chat-message chat-message-self' : 'chat-message',
         timestamp: msg.timestamp,
-      },
-    ]);
+        },
+      ])
+    );
   }, [playerName]);
 
   const handleSystemEvent = useCallback((evt: ChatSystemEvent) => {
     if (soloModeRef.current || isPrivateRoomRef.current) return;
-    setOutput((prev) => [
-      ...prev,
-      {
+    setOutput((prev) =>
+      capOutputLines([
+        ...prev,
+        {
         text: `* ${evt.message}`,
         className: 'chat-system',
         timestamp: evt.timestamp,
-      },
-    ]);
+        },
+      ])
+    );
   }, []);
 
   const handlePlayerStatus = useCallback(({ name, status }: { name: string; status: 'active' | 'away' }) => {
@@ -405,15 +418,17 @@ export default function GameTerminal() {
           return updated;
         }
       }
-      return [...prev, { text, className, timestamp: Date.now(), id }];
+      return capOutputLines([...prev, { text, className, timestamp: Date.now(), id }]);
     });
   }, []);
 
   const addUserOutput = useCallback((text: string) => {
-    setOutput((prev) => [
-      ...prev,
-      { text: `> ${text}`, isUser: true, className: 'text-gray-400', timestamp: Date.now() },
-    ]);
+    setOutput((prev) =>
+      capOutputLines([
+        ...prev,
+        { text: `> ${text}`, isUser: true, className: 'text-gray-400', timestamp: Date.now() },
+      ])
+    );
   }, []);
 
   // Sign a partially-signed transaction and return the fully-signed tx as base64.
@@ -690,6 +705,12 @@ export default function GameTerminal() {
       // Echo user input (even if empty for "enter to continue")
       if (trimmed) {
         addUserOutput(trimmed);
+        commandHistoryRef.current.push(trimmed);
+        if (commandHistoryRef.current.length > 50) {
+          commandHistoryRef.current = commandHistoryRef.current.slice(commandHistoryRef.current.length - 50);
+        }
+        historyIndexRef.current = -1;
+        historyDraftRef.current = '';
       }
 
       // Build terminal context
@@ -976,22 +997,30 @@ export default function GameTerminal() {
               const isLocked = line.className === 'choice-locked';
               const isClickable = (choiceMatch || isEnterPrompt) && !line.isUser && !isLocked;
 
+              if (isClickable) {
+                return (
+                  <button
+                    key={`${line.timestamp}-${i}`}
+                    type="button"
+                    className={`terminal-line terminal-line-button ${line.className || ''} ${line.isUser ? 'user-input' : ''} clickable-line`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (choiceMatch) {
+                        handleChoiceClick(choiceMatch[1]);
+                      } else {
+                        handleChoiceClick('');
+                      }
+                    }}
+                  >
+                    {line.text ? parseFormattedText(line.text) : '\u00A0'}
+                  </button>
+                );
+              }
+
               return (
                 <div
                   key={`${line.timestamp}-${i}`}
-                  className={`terminal-line ${line.className || ''} ${line.isUser ? 'user-input' : ''} ${isClickable ? 'clickable-line' : ''}`}
-                  onClick={
-                    isClickable
-                      ? (e) => {
-                          e.stopPropagation();
-                          if (choiceMatch) {
-                            handleChoiceClick(choiceMatch[1]);
-                          } else {
-                            handleChoiceClick('');
-                          }
-                        }
-                      : undefined
-                  }
+                  className={`terminal-line ${line.className || ''} ${line.isUser ? 'user-input' : ''}`}
                 >
                   {line.text ? parseFormattedText(line.text) : '\u00A0'}
                 </div>
@@ -1015,12 +1044,53 @@ export default function GameTerminal() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Terminal command input"
               value={input}
-              onChange={(e) => { setInput(e.target.value); if (chatMode) emitTyping(); }}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setInput(nextValue);
+                if (historyIndexRef.current !== -1) {
+                  historyIndexRef.current = -1;
+                }
+                historyDraftRef.current = nextValue;
+                if (chatMode) emitTyping();
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Tab' && isAuthenticated && onboardingState === 'done' && !soloMode && !isPrivateRoom) {
                   e.preventDefault();
                   toggleChatMode();
+                  return;
+                }
+
+                if (e.key === 'ArrowUp' && onboardingState === 'done' && !chatMode) {
+                  const history = commandHistoryRef.current;
+                  if (history.length === 0) return;
+                  e.preventDefault();
+
+                  if (historyIndexRef.current === -1) {
+                    historyDraftRef.current = input;
+                    historyIndexRef.current = history.length - 1;
+                  } else if (historyIndexRef.current > 0) {
+                    historyIndexRef.current -= 1;
+                  }
+
+                  setInput(history[historyIndexRef.current] ?? '');
+                  return;
+                }
+
+                if (e.key === 'ArrowDown' && onboardingState === 'done' && !chatMode) {
+                  if (historyIndexRef.current === -1) return;
+                  e.preventDefault();
+
+                  const history = commandHistoryRef.current;
+                  if (historyIndexRef.current < history.length - 1) {
+                    historyIndexRef.current += 1;
+                    setInput(history[historyIndexRef.current] ?? '');
+                    return;
+                  }
+
+                  historyIndexRef.current = -1;
+                  setInput(historyDraftRef.current);
                 }
               }}
               className="terminal-input"

@@ -128,6 +128,9 @@ function ItemSlot({
   isOpen: boolean;
   onToggle: (slotKey: string) => void;
 }) {
+  const TOOLTIP_WIDTH = 220;
+  const TOOLTIP_HEIGHT = 150;
+  const TOOLTIP_PADDING = 10;
   const slotRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ right: number; bottom: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -138,9 +141,25 @@ function ItemSlot({
     if (isOpen) {
       if (slotRef.current) {
         const rect = slotRef.current.getBoundingClientRect();
+        const preferredRight = window.innerWidth - rect.right;
+        const preferredBottom = window.innerHeight - rect.top + 10;
+
+        // Keep original placement by default; clamp only when it would overflow.
+        const maxRight = window.innerWidth - TOOLTIP_WIDTH - TOOLTIP_PADDING;
+        const clampedRight = Math.min(Math.max(preferredRight, TOOLTIP_PADDING), maxRight);
+
+        const maxBottom = window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_PADDING;
+        let clampedBottom = Math.min(Math.max(preferredBottom, TOOLTIP_PADDING), maxBottom);
+
+        // If there is not enough space above, place tooltip below the slot.
+        if (preferredBottom > maxBottom) {
+          const belowBottom = window.innerHeight - rect.bottom - 10;
+          clampedBottom = Math.min(Math.max(belowBottom, TOOLTIP_PADDING), maxBottom);
+        }
+
         setTooltipPos({
-          right: window.innerWidth - rect.right,
-          bottom: window.innerHeight - rect.top + 10,
+          right: clampedRight,
+          bottom: clampedBottom,
         });
       }
       // Render at opacity:0 first, then flip to is-open in the next frame

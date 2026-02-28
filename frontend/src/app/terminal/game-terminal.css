@@ -183,6 +183,19 @@
   animation: typeIn 0.5s ease-out;
 }
 
+.terminal-line-button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-family: var(--skin-font-family, 'VT323', monospace);
+  font-size: 22px;
+  line-height: 1.4;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .terminal-line.user-input {
   opacity: 0.6;
 }
@@ -258,7 +271,7 @@
 
 /* Inline emphasis — bright white "reverse video" feel */
 .text-emphasis {
-  color: #ffffff;
+  color: var(--primary-light, #ffffff);
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.5), 0 0 14px rgba(255, 255, 255, 0.15);
 }
 
@@ -2116,17 +2129,56 @@
   }
 
   .terminal-line {
-    font-size: 18px;
+    font-size: 22px;
+    line-height: 1.45;
   }
 
   .terminal-line.clickable-line {
     padding: 6px 10px;
     margin: 2px -10px;
-    font-size: 19px;
+    font-size: 22px;
+  }
+
+  .terminal-line-button {
+    font-size: 22px;
+    line-height: 1.45;
   }
 
   .terminal-input {
+    font-size: 24px;
+  }
+
+  .terminal-prompt {
+    font-size: 24px;
+  }
+
+  .terminal-header {
+    font-size: 22px;
+    padding: 10px 14px;
+  }
+
+  .terminal-location {
     font-size: 20px;
+  }
+
+  .panel-title {
+    font-size: 17px;
+  }
+
+  .wallet-label {
+    font-size: 13px;
+  }
+
+  .wallet-addr {
+    font-size: 16px;
+  }
+
+  .player-row {
+    font-size: 16px;
+  }
+
+  .players-count {
+    font-size: 13px;
   }
 
   /* Mobile sidebar: single scrollbar, monitor sticky at top */
@@ -2246,6 +2298,27 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
+  .terminal-section::before,
+  .terminal-line,
+  .story-more-prompt,
+  .quiz-question,
+  .wallet-live-dot,
+  .player-dot.dot-active,
+  .player-typing,
+  .progress-dot.won,
+  .inventory-slot.highlight,
+  .chat-toggle-offline {
+    animation: none !important;
+  }
+
+  .terminal-line.clickable-line,
+  .monitor-clickable,
+  .wallet-action-btn,
+  .chat-toggle,
+  .solo-toggle {
+    transition: none !important;
+  }
 
   .gallery-crt-boot::before,
   .gallery-crt-glow,

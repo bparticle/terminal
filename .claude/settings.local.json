@@ -12,7 +12,6 @@
       "Bash(npx jest:*)",
       "Bash(node -e:*)",
       "Bash(git status:*)",
-      "Bash(git push:*)",
       "Bash(ss:*)",
       "Bash(netstat:*)",
       "Bash(curl:*)",
