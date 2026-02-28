@@ -8,10 +8,12 @@ export interface TerminalContext {
   walletAddress: string | null;
   connected: boolean;
   isAuthenticated: boolean;
+  isAuthenticating: boolean;
   addOutput: (text: string, className?: string) => void;
   clearOutput: () => void;
   openWalletModal: () => void;
   disconnectWallet: () => void;
+  authenticate: () => Promise<void>;
   setTheme: (theme: string) => void;
   currentTheme: string;
   pendingRestart: boolean;
@@ -83,13 +85,28 @@ export const commands: Record<string, Command> = {
 
   connect: {
     description: 'Connect your wallet',
-    execute: (_args, ctx) => {
-      if (ctx.connected) {
-        ctx.addOutput('Wallet already connected.', 'text-yellow-400');
+    execute: async (_args, ctx) => {
+      if (ctx.connected && ctx.isAuthenticated) {
+        // Fully authenticated — nothing to do
+        ctx.addOutput('Already connected and authenticated.', 'text-green-400');
         if (ctx.walletAddress) {
           ctx.addOutput(`Address: ${ctx.walletAddress}`, 'text-gray-400');
         }
+      } else if (ctx.connected && !ctx.isAuthenticated) {
+        // Wallet adapter is connected but JWT auth never completed or failed — retry
+        if (ctx.isAuthenticating) {
+          ctx.addOutput('Authentication already in progress…', 'text-yellow-400');
+          return;
+        }
+        ctx.addOutput('Wallet connected. Requesting authentication signature…', 'text-yellow-400');
+        try {
+          await ctx.authenticate();
+          ctx.addOutput('Authentication successful.', 'text-green-400');
+        } catch {
+          ctx.addOutput('Authentication failed. Please try again or reconnect your wallet.', 'text-red-400');
+        }
       } else {
+        // Not connected at all — open the wallet picker
         ctx.openWalletModal();
       }
     },

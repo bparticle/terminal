@@ -428,6 +428,23 @@ export default function GameTerminal() {
     }
   }, [isInitialized, connected, isAuthenticated, isAuthenticating]);
 
+  // Detect stuck state: wallet connected at adapter level but JWT auth never completed.
+  // This happens when the user rejects the signature, a network blip occurs, or the
+  // auto-auth effect can't retry (dependencies unchanged). Give them a clear escape hatch.
+  useEffect(() => {
+    if (!isInitialized || !connected || isAuthenticated || isAuthenticating) return;
+
+    // Brief grace period so we don't flash during the normal auth flow (which takes ~1s)
+    const timer = setTimeout(() => {
+      addOutput('');
+      addOutput('Wallet connected but not authenticated.', 'text-yellow-400');
+      addOutput('Type "connect" to sign in, or "disconnect" to reset.', 'text-gray-400');
+      addOutput('');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [isInitialized, connected, isAuthenticated, isAuthenticating]);
+
   // Handle onboarding name input
   const handleOnboardingInput = useCallback(
     async (value: string) => {
@@ -515,10 +532,12 @@ export default function GameTerminal() {
         walletAddress: publicKey?.toBase58() || null,
         connected,
         isAuthenticated,
+        isAuthenticating,
         addOutput,
         clearOutput,
         openWalletModal: () => setVisible(true),
         disconnectWallet: () => disconnect(),
+        authenticate,
         setTheme,
         currentTheme: theme,
         pendingRestart,
@@ -656,10 +675,12 @@ export default function GameTerminal() {
           walletAddress: publicKey?.toBase58() || null,
           connected,
           isAuthenticated,
+          isAuthenticating,
           addOutput,
           clearOutput,
           openWalletModal: () => setVisible(true),
           disconnectWallet: () => disconnect(),
+          authenticate,
           setTheme,
           currentTheme: theme,
           pendingRestart,
