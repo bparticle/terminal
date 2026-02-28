@@ -8,10 +8,12 @@ const BOOT_MIN_DURATION_MS = 1200;
 interface CampaignOverlayProps {
   isOpen: boolean;
   walletAddress: string | null;
+  currentCampaignId: string | null;
+  onSwitchCampaign: (campaignId: string, skinId?: string | null) => void;
   onClose: () => void;
 }
 
-export default function CampaignOverlay({ isOpen, walletAddress, onClose }: CampaignOverlayProps) {
+export default function CampaignOverlay({ isOpen, walletAddress, currentCampaignId, onSwitchCampaign, onClose }: CampaignOverlayProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [progress, setProgress] = useState<CampaignProgress>({ achievements: [], campaign_wins: [] });
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
@@ -29,13 +31,19 @@ export default function CampaignOverlay({ isOpen, walletAddress, onClose }: Camp
       ]);
       setCampaigns(campaignRows);
       setProgress(progressData);
-      setActiveCampaignId((prev) => prev || campaignRows[0]?.id || null);
+      setActiveCampaignId((prev) => prev || currentCampaignId || campaignRows[0]?.id || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load campaign data');
     } finally {
       setLoading(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, currentCampaignId]);
+
+  useEffect(() => {
+    if (currentCampaignId) {
+      setActiveCampaignId(currentCampaignId);
+    }
+  }, [currentCampaignId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,7 +124,7 @@ export default function CampaignOverlay({ isOpen, walletAddress, onClose }: Camp
                 className={`campaign-list-btn ${campaign.id === activeCampaign.id ? 'active' : ''}`}
                 onClick={() => setActiveCampaignId(campaign.id)}
               >
-                <span>{campaign.name}</span>
+                <span>{campaign.name}{campaign.id === currentCampaignId ? ' [LIVE]' : ''}</span>
                 <span className="campaign-list-btn-count">
                   {campaign.winner_count || 0}/{campaign.max_winners || 0}
                 </span>
@@ -129,6 +137,14 @@ export default function CampaignOverlay({ isOpen, walletAddress, onClose }: Camp
           <div className="gallery-detail-actions">
             <button type="button" className="gallery-action-btn" onClick={() => void loadCampaignData()}>
               REFRESH
+            </button>
+            <button
+              type="button"
+              className="gallery-action-btn"
+              disabled={activeCampaign.id === currentCampaignId}
+              onClick={() => onSwitchCampaign(activeCampaign.id, activeCampaign.skin_id || null)}
+            >
+              {activeCampaign.id === currentCampaignId ? 'ACTIVE' : 'ENTER CAMPAIGN'}
             </button>
           </div>
 

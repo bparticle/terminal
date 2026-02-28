@@ -4,10 +4,10 @@ import { GameSave, CreateGameSaveInput } from '../types';
 /**
  * Find a game save by wallet address
  */
-export async function findGameSave(walletAddress: string): Promise<GameSave | null> {
+export async function findGameSave(walletAddress: string, campaignId: string): Promise<GameSave | null> {
   const result = await query(
-    'SELECT * FROM game_saves WHERE wallet_address = $1',
-    [walletAddress]
+    'SELECT * FROM game_saves WHERE wallet_address = $1 AND campaign_id = $2',
+    [walletAddress, campaignId]
   );
   return result.rows[0] || null;
 }
@@ -17,12 +17,13 @@ export async function findGameSave(walletAddress: string): Promise<GameSave | nu
  */
 export async function createGameSave(data: CreateGameSaveInput): Promise<GameSave> {
   const result = await query(
-    `INSERT INTO game_saves (user_id, wallet_address, current_node_id, location, game_state, inventory, name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO game_saves (user_id, wallet_address, campaign_id, current_node_id, location, game_state, inventory, name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
       data.user_id,
       data.wallet_address,
+      data.campaign_id,
       data.current_node_id,
       data.location,
       JSON.stringify(data.game_state),
@@ -41,6 +42,7 @@ export async function createGameSave(data: CreateGameSaveInput): Promise<GameSav
  */
 export async function updateGameSave(
   walletAddress: string,
+  campaignId: string,
   data: Partial<Pick<GameSave, 'current_node_id' | 'location' | 'game_state' | 'inventory' | 'name'>>,
   expectedSaveVersion?: number
 ): Promise<GameSave | null> {
@@ -69,8 +71,13 @@ export async function updateGameSave(
     values.push(data.name);
   }
 
+  if (!updates.length) {
+    return findGameSave(walletAddress, campaignId);
+  }
+
   values.push(walletAddress);
-  let whereClause = `wallet_address = $${paramIndex++}`;
+  values.push(campaignId);
+  let whereClause = `wallet_address = $${paramIndex++} AND campaign_id = $${paramIndex++}`;
 
   if (expectedSaveVersion !== undefined) {
     whereClause += ` AND save_version = $${paramIndex++}`;
@@ -89,25 +96,40 @@ export async function updateGameSave(
  */
 export async function updateGameSaveState(
   walletAddress: string,
+  campaignId: string,
   stateUpdates: Record<string, any>
 ): Promise<void> {
   await query(
-    `UPDATE game_saves SET game_state = game_state || $1::jsonb WHERE wallet_address = $2`,
-    [JSON.stringify(stateUpdates), walletAddress]
+    `UPDATE game_saves
+     SET game_state = game_state || $1::jsonb
+     WHERE wallet_address = $2 AND campaign_id = $3`,
+    [JSON.stringify(stateUpdates), walletAddress, campaignId]
   );
 }
 
 /**
  * Reset a single player's game data:
- * - game save (node, state, inventory)
- * - achievements
- * - active profile PFP selection
- *
- * Campaign wins are intentionally NOT cleared — they are permanent
- * leaderboard records. A player who earned a campaign win and resets
- * to replay the game should not lose their historical position.
+ * - game save (node, state, inventory) for one campaign only
  */
-export async function resetPlayerData(walletAddress: string): Promise<void> {
+export async function resetPlayerData(walletAddress: string, campaignId: string): Promise<void> {
+  await transaction(async (client) => {
+    await client.query(
+      `UPDATE game_saves SET
+        current_node_id = 'start',
+        location = 'HUB',
+        game_state = '{}'::jsonb,
+        inventory = '[]'::jsonb,
+        save_version = save_version + 1
+       WHERE wallet_address = $1 AND campaign_id = $2`,
+      [walletAddress, campaignId]
+    );
+  });
+}
+
+/**
+ * Admin utility: reset a player's entire profile across all campaigns.
+ */
+export async function resetPlayerDataAllCampaigns(walletAddress: string): Promise<void> {
   await transaction(async (client) => {
     await client.query(
       `UPDATE game_saves SET

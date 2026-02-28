@@ -35,6 +35,7 @@ interface MinigameGate {
 export class GameEngine {
   private currentNode: GameNode | null = null;
   private walletAddress: string = '';
+  private activeCampaignId: string | null = null;
   private save: GameSave | null = null;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private ownedNFTs: OwnedNFT[] = [];
@@ -79,20 +80,22 @@ export class GameEngine {
 
   async initialize(
     walletAddress: string,
+    campaignId: string,
     playerName: string = 'Wanderer',
     pfpImageUrl?: string,
   ): Promise<void> {
     this.walletAddress = walletAddress;
+    this.activeCampaignId = campaignId;
     this.pfpImageUrl = pfpImageUrl || null;
 
     try {
-      const response = await loadGame(walletAddress);
+      const response = await loadGame(walletAddress, campaignId);
       if (response) {
         this.save = response.save as unknown as GameSave;
         this.save.name = playerName;
         this.save.game_state.player_name = playerName;
       } else {
-        const newResponse = await startNewGame('start', playerName);
+        const newResponse = await startNewGame(campaignId, 'start', playerName);
         this.save = newResponse.save as unknown as GameSave;
         this.save.game_state = { player_name: playerName };
       }
@@ -100,6 +103,7 @@ export class GameEngine {
       console.error('Failed to initialize game:', error);
       this.save = {
         wallet_address: walletAddress,
+        campaign_id: campaignId,
         current_node_id: 'start',
         location: 'HUB',
         game_state: { player_name: playerName },
@@ -112,8 +116,7 @@ export class GameEngine {
     // Load current node
     this.currentNode = gameNodes[this.save.current_node_id] || gameNodes['start'];
 
-    // Start auto-save timer (30 seconds)
-    this.autoSaveTimer = setInterval(() => this.autoSave(), 30000);
+    this.startAutoSaveTimer();
 
     // Fetch owned NFTs in background
     this.fetchNFTs(walletAddress);
@@ -138,15 +141,24 @@ export class GameEngine {
   }
 
   destroy(): void {
-    if (this.autoSaveTimer) {
-      clearInterval(this.autoSaveTimer);
-      this.autoSaveTimer = null;
-    }
+    this.stopAutoSaveTimer();
     if (this.soulboundPollTimer) {
       clearInterval(this.soulboundPollTimer);
       this.soulboundPollTimer = null;
     }
     this.soulboundPendingItems.clear();
+  }
+
+  private startAutoSaveTimer(): void {
+    this.stopAutoSaveTimer();
+    this.autoSaveTimer = setInterval(() => this.autoSave(), 30000);
+  }
+
+  private stopAutoSaveTimer(): void {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
   }
 
   private async fetchNFTs(walletAddress: string): Promise<void> {
@@ -1487,27 +1499,35 @@ export class GameEngine {
   // ==========================================
 
   async autoSave(): Promise<void> {
-    if (!this.save || !this.save.wallet_address) return;
+    const saveSnapshot = this.save;
+    const campaignId = this.activeCampaignId;
+    if (!saveSnapshot || !saveSnapshot.wallet_address || !campaignId) return;
 
     try {
       const result = await saveGame({
-        current_node_id: this.save.current_node_id,
-        location: this.save.location,
-        game_state: this.save.game_state,
-        inventory: this.save.inventory,
-        name: this.save.name || 'Wanderer',
-        save_version: this.save.save_version,
+        campaign_id: campaignId,
+        current_node_id: saveSnapshot.current_node_id,
+        location: saveSnapshot.location,
+        game_state: saveSnapshot.game_state,
+        inventory: saveSnapshot.inventory,
+        name: saveSnapshot.name || 'Wanderer',
+        save_version: saveSnapshot.save_version,
       });
 
+      // Ignore stale responses from a previous campaign context.
+      if (this.activeCampaignId !== campaignId || this.save !== saveSnapshot) {
+        return;
+      }
+
       if (result.save.save_version !== undefined) {
-        this.save.save_version = result.save.save_version;
+        saveSnapshot.save_version = result.save.save_version;
       }
 
       // Merge any server-side state changes back into memory (e.g. sets_state
       // flags written by campaign evaluation). Without this, the next auto-save
       // would overwrite the DB back to the pre-campaign version.
       if (result.save.game_state) {
-        this.save.game_state = { ...this.save.game_state, ...result.save.game_state };
+        saveSnapshot.game_state = { ...saveSnapshot.game_state, ...result.save.game_state };
       }
 
       // Notify UI components (e.g. StatsBox) that progress may have changed
@@ -1532,20 +1552,41 @@ export class GameEngine {
   }
 
   async reloadGame(): Promise<void> {
+    if (!this.activeCampaignId) return;
     this.outputFn('Reloading game...', 'text-yellow-400');
-    await this.initialize(this.walletAddress);
+    await this.initialize(this.walletAddress, this.activeCampaignId, this.save?.name || 'Wanderer', this.pfpImageUrl || undefined);
+  }
+
+  async switchCampaign(campaignId: string): Promise<void> {
+    if (!campaignId || campaignId === this.activeCampaignId) return;
+    const previousCampaignId = this.activeCampaignId;
+    const name = this.save?.name || 'Wanderer';
+
+    this.stopAutoSaveTimer();
+    try {
+      if (previousCampaignId) {
+        await this.autoSave();
+      }
+    } catch {
+      // Best-effort pre-switch save; campaign switch should still proceed.
+    }
+
+    this.activeCampaignId = campaignId;
+    await this.initialize(this.walletAddress, campaignId, name, this.pfpImageUrl || undefined);
   }
 
   async restartGame(): Promise<void> {
     if (!this.walletAddress) return;
+    if (!this.activeCampaignId) return;
 
     try {
-      await resetGame();
+      await resetGame(this.activeCampaignId);
 
       const name = this.save?.name || 'Wanderer';
       const nextVersion = (this.save?.save_version || 1) + 1;
       this.save = {
         wallet_address: this.walletAddress,
+        campaign_id: this.activeCampaignId || undefined,
         current_node_id: 'start',
         location: 'HUB',
         game_state: { player_name: name },

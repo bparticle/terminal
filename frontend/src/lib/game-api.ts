@@ -4,6 +4,7 @@ export interface GameSave {
   id: number;
   user_id: string;
   wallet_address: string;
+  campaign_id: string;
   current_node_id: string;
   location: string;
   game_state: Record<string, any>;
@@ -18,9 +19,9 @@ export interface GameSave {
  * Load an existing game save
  * Returns null if no save exists (404)
  */
-export async function loadGame(walletAddress: string): Promise<{ save: GameSave } | null> {
+export async function loadGame(walletAddress: string, campaignId: string): Promise<{ save: GameSave } | null> {
   try {
-    const response = await fetchWithAuth(`game/load/${walletAddress}`);
+    const response = await fetchWithAuth(`game/load/${walletAddress}?campaign_id=${encodeURIComponent(campaignId)}`);
 
     if (response.status === 404 || response.status === 403 || response.status === 401) {
       return null;
@@ -42,12 +43,14 @@ export async function loadGame(walletAddress: string): Promise<{ save: GameSave 
  * Create a new game save
  */
 export async function startNewGame(
+  campaignId: string,
   startingNodeId: string = 'start',
   name: string = 'Wanderer'
 ): Promise<{ save: GameSave }> {
   const response = await fetchWithAuth('game/new', {
     method: 'POST',
     body: JSON.stringify({
+      campaign_id: campaignId,
       starting_node_id: startingNodeId,
       name,
     }),
@@ -68,8 +71,11 @@ export async function startNewGame(
 /**
  * Fully reset the player's game data (save, achievements, campaign wins)
  */
-export async function resetGame(): Promise<void> {
-  const response = await fetchWithAuth('game/reset', { method: 'POST' });
+export async function resetGame(campaignId: string): Promise<void> {
+  const response = await fetchWithAuth('game/reset', {
+    method: 'POST',
+    body: JSON.stringify({ campaign_id: campaignId }),
+  });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to reset game');
@@ -77,6 +83,7 @@ export async function resetGame(): Promise<void> {
 }
 
 export async function saveGame(data: {
+  campaign_id: string;
   current_node_id: string;
   location: string;
   game_state: Record<string, any>;

@@ -24,22 +24,26 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_wallet ON users(wallet_address);
 
--- Game saves: one per wallet, stores full game state
+-- Game saves: one per wallet+campaign, stores full game state
 CREATE TABLE game_saves (
   id SERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  wallet_address VARCHAR(44) NOT NULL UNIQUE,
+  wallet_address VARCHAR(44) NOT NULL,
+  campaign_id UUID NOT NULL,
   current_node_id VARCHAR(100) NOT NULL DEFAULT 'start',
   location VARCHAR(100) NOT NULL DEFAULT 'HUB',
   game_state JSONB NOT NULL DEFAULT '{}',
   inventory JSONB NOT NULL DEFAULT '[]',
   name VARCHAR(100) DEFAULT 'Wanderer',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(wallet_address, campaign_id)
 );
 
 CREATE INDEX idx_game_saves_wallet ON game_saves(wallet_address);
 CREATE INDEX idx_game_saves_user ON game_saves(user_id);
+CREATE INDEX idx_game_saves_wallet_campaign ON game_saves(wallet_address, campaign_id);
+CREATE INDEX idx_game_saves_user_campaign ON game_saves(user_id, campaign_id);
 
 -- Achievements: individual state flags achieved by players
 CREATE TABLE achievements (
@@ -76,6 +80,10 @@ CREATE TABLE campaigns (
 );
 
 CREATE INDEX idx_campaigns_active ON campaigns(is_active);
+
+ALTER TABLE game_saves
+  ADD CONSTRAINT fk_game_saves_campaign
+  FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE;
 
 -- Campaign winners: tracks who completed each campaign
 CREATE TABLE campaign_winners (

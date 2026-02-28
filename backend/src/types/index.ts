@@ -15,6 +15,7 @@ export interface GameSave {
   id: number;
   user_id: string;
   wallet_address: string;
+  campaign_id: string;
   current_node_id: string;
   location: string;
   game_state: Record<string, any>;
@@ -72,6 +73,7 @@ export interface AuthenticatedRequest extends Request {
 export interface CreateGameSaveInput {
   user_id: string;
   wallet_address: string;
+  campaign_id: string;
   current_node_id: string;
   location: string;
   game_state: Record<string, any>;

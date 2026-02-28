@@ -22,6 +22,7 @@ import { AppError } from '../middleware/errorHandler';
 import { validateString, validateStringArray } from '../middleware/validate';
 
 const router = Router();
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/v1/campaigns
@@ -283,11 +284,15 @@ router.post('/:id/evaluate', requireAuth, requireAdmin, async (req: Authenticate
 router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const wallet_address = validateString(req.body.wallet_address, 'wallet_address', { required: true, maxLength: 50 })!;
+    const campaign_id = validateString(req.body.campaign_id, 'campaign_id', { required: true, maxLength: 64 })!;
     const state_name = validateString(req.body.state_name, 'state_name', { required: true, maxLength: 200 })!;
     const state_value = validateString(req.body.state_value, 'state_value', { maxLength: 200 }) || 'true';
 
     if (!isValidSolanaAddress(wallet_address)) {
       throw new AppError('Invalid wallet address', 400);
+    }
+    if (!UUID_V4_REGEX.test(campaign_id)) {
+      throw new AppError('campaign_id must be a valid UUID', 400);
     }
 
     // Find user by wallet
@@ -297,7 +302,7 @@ router.post('/simulate-achievement', requireAuth, requireAdmin, async (req: Auth
     }
 
     await recordAchievement(targetUser.rows[0].id, wallet_address, state_name, state_value);
-    await evaluateCampaigns(targetUser.rows[0].id, wallet_address);
+    await evaluateCampaigns(targetUser.rows[0].id, wallet_address, campaign_id);
 
     res.json({ success: true });
   } catch (error) {

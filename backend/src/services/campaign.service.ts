@@ -192,35 +192,36 @@ function checkCampaignRequirements(
 }
 
 /**
- * Evaluate all active campaigns for a user
+ * Evaluate only the active campaign for a user
  * Called after every game save
  */
 export async function evaluateCampaigns(
   userId: string,
-  wallet: string
+  wallet: string,
+  activeCampaignId: string
 ): Promise<void> {
-  const activeCampaigns = await findActiveCampaigns();
+  const campaign = await findCampaignById(activeCampaignId);
+  if (!campaign) return;
+  if (!campaign.is_active) return;
+  if (campaign.expires_at && new Date(campaign.expires_at).getTime() <= Date.now()) return;
+
   const userAchievements = await getUserAchievements(wallet);
+  const alreadyWon = await hasWonCampaign(campaign.id, wallet);
+  if (alreadyWon) return;
 
-  for (const campaign of activeCampaigns) {
-    // Skip if already won
-    const alreadyWon = await hasWonCampaign(campaign.id, wallet);
-    if (alreadyWon) continue;
+  // Check if user meets requirements for the active campaign only
+  const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
+  if (!meetsRequirements) return;
 
-    // Check if user meets requirements
-    const meetsRequirements = checkCampaignRequirements(campaign, userAchievements);
+  // Atomically award campaign win (enforces max_winners in the query)
+  const awarded = await recordCampaignWin(campaign.id, userId, wallet);
+  if (!awarded) return;
 
-    if (meetsRequirements) {
-      // Atomically award campaign win (enforces max_winners in the query)
-      const awarded = await recordCampaignWin(campaign.id, userId, wallet);
-
-      // Set state flag on user's game save if configured
-      if (awarded && campaign.sets_state) {
-        await updateGameSaveState(wallet, {
-          [campaign.sets_state]: 'true',
-        });
-      }
-    }
+  // Set state flag on the active campaign save if configured
+  if (campaign.sets_state) {
+    await updateGameSaveState(wallet, campaign.id, {
+      [campaign.sets_state]: 'true',
+    });
   }
 }
 
@@ -302,7 +303,9 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
   const usersResult = await query(
     `SELECT u.id, u.wallet_address, gs.game_state
      FROM users u
-     JOIN game_saves gs ON gs.user_id = u.id`
+     JOIN game_saves gs ON gs.user_id = u.id
+     WHERE gs.campaign_id = $1`,
+    [campaign.id]
   );
 
   let winnersAwarded = 0;
@@ -332,7 +335,7 @@ export async function evaluateCampaignForAllUsers(campaign: Campaign): Promise<{
       if (!awarded) break; // campaign is full
 
       if (campaign.sets_state) {
-        await updateGameSaveState(user.wallet_address, {
+        await updateGameSaveState(user.wallet_address, campaign.id, {
           [campaign.sets_state]: 'true',
         });
       }

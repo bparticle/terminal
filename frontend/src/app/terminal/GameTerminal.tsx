@@ -75,7 +75,7 @@ export default function GameTerminal() {
   const [monitorImageUrl, setMonitorImageUrl] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
-  const [campaignIdForSkin, setCampaignIdForSkin] = useState<string | null>(null);
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [campaignAssignedSkinId, setCampaignAssignedSkinId] = useState<string | null>(null);
   const [adminSkinOverrideId, setAdminSkinOverrideId] = useState<string | null>(null);
 
@@ -132,15 +132,14 @@ export default function GameTerminal() {
     };
   }, []);
 
-  // Resolve campaign used for skin mapping.
-  // First pass uses first active campaign; overlay selection can override it.
+  // Resolve active campaign and its assigned skin.
   useEffect(() => {
     getCampaigns()
       .then((rows) => {
         const firstCampaign = rows[0];
         if (!firstCampaign) return;
-        setCampaignIdForSkin(firstCampaign.id);
-        setCampaignAssignedSkinId(firstCampaign.skin_id || null);
+        setActiveCampaignId((prev) => prev || firstCampaign.id);
+        setCampaignAssignedSkinId((prev) => prev ?? firstCampaign.skin_id ?? null);
       })
       .catch(() => {
         // Skin system always falls back to defaults.
@@ -150,10 +149,10 @@ export default function GameTerminal() {
   const resolvedSkin = useMemo(
     () =>
       resolveSkin({
-        campaignId: campaignIdForSkin,
+        campaignId: activeCampaignId,
         forcedSkinId: adminSkinOverrideId || campaignAssignedSkinId || null,
       }),
-    [campaignIdForSkin, campaignAssignedSkinId, adminSkinOverrideId]
+    [activeCampaignId, campaignAssignedSkinId, adminSkinOverrideId]
   );
 
   // Admin-only persisted skin override for cross-page testing.
@@ -395,7 +394,7 @@ export default function GameTerminal() {
 
   // Initialize game engine AFTER onboarding is done
   useEffect(() => {
-    if (onboardingState !== 'done' || !publicKey || engineRef.current) return;
+    if (onboardingState !== 'done' || !publicKey || !activeCampaignId || engineRef.current) return;
 
     const engine = new GameEngine(
       addOutput,
@@ -417,7 +416,7 @@ export default function GameTerminal() {
 
     engineRef.current = engine;
 
-    engine.initialize(publicKey.toBase58(), playerName || 'Wanderer', pfpImageUrlRef.current || undefined);
+    engine.initialize(publicKey.toBase58(), activeCampaignId, playerName || 'Wanderer', pfpImageUrlRef.current || undefined);
 
     return () => {
       if (engineRef.current) {
@@ -425,7 +424,7 @@ export default function GameTerminal() {
         engineRef.current = null;
       }
     };
-  }, [onboardingState, publicKey, playerName, handleLocationChange, signAndSubmit, getStoryPageSize]);
+  }, [onboardingState, publicKey, playerName, activeCampaignId, handleLocationChange, signAndSubmit, getStoryPageSize]);
 
   // Heartbeat: send presence every 60 seconds while authenticated
   useEffect(() => {
@@ -706,6 +705,38 @@ export default function GameTerminal() {
     setCampaignOpen(false);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
+
+  const switchCampaign = useCallback(async (campaignId: string, skinId?: string | null) => {
+    if (!campaignId) return;
+    if (campaignId === activeCampaignId) {
+      setCampaignOpen(false);
+      return;
+    }
+
+    const previousCampaignId = activeCampaignId;
+    const previousSkinId = campaignAssignedSkinId;
+    setCampaignOpen(false);
+    setActiveCampaignId(campaignId);
+    setCampaignAssignedSkinId(skinId || null);
+
+    if (!engineRef.current) {
+      return;
+    }
+
+    addOutput(`Switching to campaign: ${campaignId}`, 'text-cyan-400');
+    try {
+      await engineRef.current.switchCampaign(campaignId);
+      addOutput('Campaign context loaded.', 'text-green-400');
+      window.dispatchEvent(new CustomEvent('game-progress-updated'));
+    } catch (error) {
+      console.error('Campaign switch failed:', error);
+      setActiveCampaignId(previousCampaignId);
+      setCampaignAssignedSkinId(previousSkinId);
+      addOutput('Failed to switch campaign context.', 'text-red-400');
+    } finally {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [activeCampaignId, campaignAssignedSkinId, addOutput]);
 
   // Godot iframe game handlers
   const handleGodotMessage = useCallback((data: any) => {
@@ -990,6 +1021,8 @@ export default function GameTerminal() {
         <CampaignOverlay
           isOpen={campaignOpen}
           walletAddress={publicKey?.toBase58() || null}
+          currentCampaignId={activeCampaignId}
+          onSwitchCampaign={switchCampaign}
           onClose={closeCampaign}
         />
       </div>

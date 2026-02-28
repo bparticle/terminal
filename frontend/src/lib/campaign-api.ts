@@ -184,6 +184,7 @@ export async function evaluateCampaign(id: string): Promise<{ winners_awarded: n
  */
 export async function simulateAchievement(data: {
   wallet_address: string;
+  campaign_id: string;
   state_name: string;
   state_value?: string;
 }): Promise<void> {

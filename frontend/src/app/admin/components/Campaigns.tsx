@@ -46,6 +46,7 @@ export default function Campaigns() {
   } | null>(null);
   const [simulateForm, setSimulateForm] = useState({
     wallet_address: '',
+    campaign_id: '',
     state_name: '',
     state_value: 'true',
   });
@@ -245,8 +246,8 @@ export default function Campaigns() {
   // --- Simulate ---
 
   const handleSimulate = async () => {
-    if (!simulateForm.wallet_address || !simulateForm.state_name) {
-      showStatus('error', 'Wallet address and state name are required');
+    if (!simulateForm.wallet_address || !simulateForm.campaign_id || !simulateForm.state_name) {
+      showStatus('error', 'Wallet address, campaign, and state name are required');
       return;
     }
 
@@ -321,7 +322,12 @@ export default function Campaigns() {
         </button>
         <button
           onClick={() => {
-            setSimulateForm({ wallet_address: '', state_name: '', state_value: 'true' });
+            setSimulateForm({
+              wallet_address: '',
+              campaign_id: campaigns[0]?.id || '',
+              state_name: '',
+              state_value: 'true',
+            });
             setActiveModal('simulate');
           }}
           className="px-4 py-2 text-sm bg-blue-800 text-blue-100 border border-blue-600 hover:bg-blue-700 transition-colors"
@@ -719,6 +725,20 @@ export default function Campaigns() {
                 className="admin-input"
                 placeholder="Solana wallet address"
               />
+            </Field>
+            <Field label="Campaign *">
+              <select
+                value={simulateForm.campaign_id}
+                onChange={(e) => setSimulateForm({ ...simulateForm, campaign_id: e.target.value })}
+                className="admin-input"
+              >
+                <option value="">Select a campaign</option>
+                {campaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="State Name *">
               <input

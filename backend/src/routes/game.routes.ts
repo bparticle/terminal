@@ -1,13 +1,14 @@
 import { Router, Response } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
-import { findGameSave, createGameSave, updateGameSave, resetPlayerData, resetAllPlayerData } from '../services/game.service';
+import { findGameSave, createGameSave, updateGameSave, resetPlayerData, resetPlayerDataAllCampaigns, resetAllPlayerData } from '../services/game.service';
 import { processAchievements, evaluateCampaigns, resyncAchievementsFromGameSaves } from '../services/campaign.service';
 import { query } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { validateString, validateJsonObject, validateJsonArray } from '../middleware/validate';
 
 const router = Router();
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * GET /api/v1/game/load/:wallet_address
@@ -16,13 +17,17 @@ const router = Router();
 router.get('/load/:wallet_address', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { wallet_address } = req.params;
+    const campaign_id = validateString(req.query.campaign_id, 'campaign_id', { required: true, maxLength: 64 });
 
     // Security: verify user owns this wallet
     if (req.user!.walletAddress !== wallet_address) {
       throw new AppError('Forbidden', 403);
     }
+    if (!campaign_id || !UUID_V4_REGEX.test(campaign_id)) {
+      throw new AppError('campaign_id must be a valid UUID', 400);
+    }
 
-    const save = await findGameSave(wallet_address);
+    const save = await findGameSave(wallet_address, campaign_id);
     if (!save) {
       throw new AppError('No save found', 404);
     }
@@ -46,17 +51,22 @@ router.post('/new', requireAuth, async (req: AuthenticatedRequest, res: Response
   try {
     const starting_node_id = validateString(req.body.starting_node_id, 'starting_node_id', { maxLength: 100 });
     const name = validateString(req.body.name, 'name', { minLength: 2, maxLength: 20 });
+    const campaign_id = validateString(req.body.campaign_id, 'campaign_id', { required: true, maxLength: 64 });
     const wallet_address = req.user!.walletAddress;
+    if (!campaign_id || !UUID_V4_REGEX.test(campaign_id)) {
+      throw new AppError('campaign_id must be a valid UUID', 400);
+    }
 
     // Check if save already exists
-    const existing = await findGameSave(wallet_address);
+    const existing = await findGameSave(wallet_address, campaign_id);
     if (existing) {
-      throw new AppError('Save already exists. Use /game/save to update.', 409);
+      throw new AppError('Save already exists for this campaign. Use /game/save to update.', 409);
     }
 
     const save = await createGameSave({
       user_id: req.user!.userId,
       wallet_address,
+      campaign_id,
       current_node_id: starting_node_id || 'start',
       location: 'HUB',
       game_state: {},
@@ -82,6 +92,10 @@ router.post('/new', requireAuth, async (req: AuthenticatedRequest, res: Response
 router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const wallet_address = req.user!.walletAddress;
+    const campaign_id = validateString(req.body.campaign_id, 'campaign_id', { required: true, maxLength: 64 });
+    if (!campaign_id || !UUID_V4_REGEX.test(campaign_id)) {
+      throw new AppError('campaign_id must be a valid UUID', 400);
+    }
 
     // Validate inputs
     const current_node_id = validateString(req.body.current_node_id, 'current_node_id', { maxLength: 100 });
@@ -92,7 +106,7 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
     const save_version = typeof req.body.save_version === 'number' ? req.body.save_version : undefined;
 
     // 1. Update game save (with optimistic locking when save_version is provided)
-    const save = await updateGameSave(wallet_address, {
+    const save = await updateGameSave(wallet_address, campaign_id, {
       current_node_id,
       location,
       game_state,
@@ -113,13 +127,13 @@ router.post('/save', requireAuth, async (req: AuthenticatedRequest, res: Respons
     }
 
     // 3. Evaluate campaigns (may call updateGameSaveState to set campaign flags)
-    await evaluateCampaigns(req.user!.userId, wallet_address);
+    await evaluateCampaigns(req.user!.userId, wallet_address, campaign_id);
 
     // 4. Re-fetch so the response includes any server-side state changes
     //    (e.g. sets_state flags written by campaign evaluation). The client
     //    merges this back into its in-memory game_state so subsequent
     //    auto-saves don't overwrite the campaign flags.
-    const finalSave = await findGameSave(wallet_address);
+    const finalSave = await findGameSave(wallet_address, campaign_id);
     res.json({ save: finalSave ?? save });
   } catch (error) {
     if (error instanceof AppError) {
@@ -170,6 +184,7 @@ router.get('/users', requireAuth, requireAdmin, async (_req: AuthenticatedReques
         u.pfp_nft_id,
         u.is_admin,
         u.created_at as user_created_at,
+        gs.campaign_id,
         gs.current_node_id,
         gs.location,
         gs.game_state,
@@ -229,16 +244,24 @@ router.get('/metadata', requireAuth, requireAdmin, async (_req: AuthenticatedReq
 
 /**
  * POST /api/v1/game/reset
- * Player resets their own game data (save + achievements + campaign wins)
+ * Player resets only the active campaign save context
  */
 router.post('/reset', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const wallet_address = req.user!.walletAddress;
-    await resetPlayerData(wallet_address);
+    const campaign_id = validateString(req.body.campaign_id, 'campaign_id', { required: true, maxLength: 64 });
+    if (!campaign_id || !UUID_V4_REGEX.test(campaign_id)) {
+      throw new AppError('campaign_id must be a valid UUID', 400);
+    }
+    await resetPlayerData(wallet_address, campaign_id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Player reset error:', error);
-    res.status(500).json({ error: 'Failed to reset game data' });
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      console.error('Player reset error:', error);
+      res.status(500).json({ error: 'Failed to reset game data' });
+    }
   }
 });
 
@@ -263,11 +286,23 @@ router.post('/admin/reset-all', requireAuth, requireAdmin, async (_req: Authenti
 router.post('/admin/reset-player/:wallet_address', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { wallet_address } = req.params;
-    await resetPlayerData(wallet_address);
+    const campaign_id = validateString(req.body.campaign_id, 'campaign_id', { maxLength: 64 });
+    if (campaign_id) {
+      if (!UUID_V4_REGEX.test(campaign_id)) {
+        throw new AppError('campaign_id must be a valid UUID', 400);
+      }
+      await resetPlayerData(wallet_address, campaign_id);
+    } else {
+      await resetPlayerDataAllCampaigns(wallet_address);
+    }
     res.json({ success: true });
   } catch (error) {
-    console.error('Admin reset-player error:', error);
-    res.status(500).json({ error: 'Failed to reset player data' });
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      console.error('Admin reset-player error:', error);
+      res.status(500).json({ error: 'Failed to reset player data' });
+    }
   }
 });
 

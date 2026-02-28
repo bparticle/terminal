@@ -14,7 +14,7 @@
 > Out of touch retro CLI adventure straight from the `@solana` graveyard.  
 > Feels like the 80's // NFT utility like it's still 2022.
 
-Scanlines is a text adventure with wallet sign-in, cNFT-gated gameplay, cloud saves, campaigns, and live chat.
+Scanlines is a modular, creator focused text adventure with wallet sign-in, cNFT-gated gameplay, cloud saves, campaigns, and live chat.
 
 ## Why We Built This
 
@@ -28,11 +28,6 @@ Community and technology is the basis of why we are building on Solana. The real
 - Open the platform to community-authored campaigns and collectible-driven worlds
 - Keep blockchain in the background as infrastructure
 - Evolve from one default skin into a creator-friendly platform with many visual styles
-
-### Core Thesis
-
-- **Text-first works**: commands and narrative keep players focused
-- **Social matters**: live explorer chat turns a solo game into a shared world
 
 ## Highlights
 
