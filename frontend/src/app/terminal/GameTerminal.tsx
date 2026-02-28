@@ -795,13 +795,13 @@ export default function GameTerminal() {
           </div>
 
           <form onSubmit={handleSubmit} className={`terminal-input-form ${chatMode ? 'chat-mode' : ''}`}>
-            {isAuthenticated && onboardingState === 'done' ? (
+            {isAuthenticated && onboardingState === 'done' && !isPrivateRoom ? (
               <ChatModeToggle
                 chatMode={chatMode}
                 onToggle={toggleChatMode}
                 isSocketConnected={isSocketConnected}
-                disabled={soloMode || isPrivateRoom}
-                disabledReason={isPrivateRoom ? 'private' : 'solo'}
+                disabled={soloMode}
+                disabledReason="solo"
               />
             ) : (
               <span className="terminal-prompt">&gt;_</span>
@@ -831,7 +831,7 @@ export default function GameTerminal() {
               }
               disabled={activeGame !== null}
             />
-            {isAuthenticated && onboardingState === 'done' && (
+            {isAuthenticated && onboardingState === 'done' && !isPrivateRoom && (
               <button
                 type="button"
                 className={`solo-toggle ${soloMode ? 'solo-toggle-active' : ''}`}
