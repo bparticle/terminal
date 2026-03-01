@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { fetchOwnedAssetsByCollections, fetchWalletCollections, getNFTDetails, buildGalleryAsset } from '../services/helius.service';
+import { fetchOwnedAssetsByCollections, fetchWalletCollections, getNFTDetails, buildGalleryAsset, type GalleryCollectionConfig } from '../services/helius.service';
 import { isValidSolanaAddress } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
@@ -57,10 +57,21 @@ router.get('/:address/gallery', requireAuth, async (req: AuthenticatedRequest, r
 
     const activePfpCollection = getActiveCollectionMint('pfp');
     const activeItemsCollection = getActiveCollectionMint('items');
-    const collectionConfigs = [
-      activePfpCollection ? { collectionId: activePfpCollection, label: 'Scanlines PFPs', type: 'pfp' as const } : null,
-      activeItemsCollection ? { collectionId: activeItemsCollection, label: 'Terminal Items', type: 'items' as const } : null,
-    ].filter((entry): entry is { collectionId: string; label: string; type: 'pfp' | 'items' } => entry !== null);
+    const collectionConfigs: GalleryCollectionConfig[] = [];
+    if (activePfpCollection) {
+      collectionConfigs.push({
+        collectionId: activePfpCollection,
+        label: 'Scanlines PFPs',
+        type: 'pfp',
+      });
+    }
+    if (activeItemsCollection) {
+      collectionConfigs.push({
+        collectionId: activeItemsCollection,
+        label: 'Terminal Items',
+        type: 'items',
+      });
+    }
 
     const collections = await fetchOwnedAssetsByCollections(address, collectionConfigs);
 
