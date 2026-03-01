@@ -4,6 +4,7 @@ export interface Campaign {
   id: string;
   name: string;
   description: string | null;
+  subdomain?: string | null;
   skin_id?: string | null;
   node_set_id?: string | null;
   target_states: string[];
@@ -49,6 +50,7 @@ export interface CampaignProgress {
 export interface CreateCampaignInput {
   name: string;
   description?: string;
+  subdomain?: string | null;
   skin_id?: string;
   node_set_id?: string;
   target_states: string[];

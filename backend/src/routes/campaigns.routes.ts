@@ -23,6 +23,22 @@ import { validateString, validateStringArray } from '../middleware/validate';
 
 const router = Router();
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+function normalizeSubdomain(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  const parsed = validateString(value, 'subdomain', { maxLength: 63 });
+  if (parsed === undefined) return undefined;
+  const trimmed = parsed.trim().toLowerCase();
+  if (!trimmed) return null;
+  if (!SUBDOMAIN_REGEX.test(trimmed)) {
+    throw new AppError(
+      'subdomain must use lowercase letters, numbers, and hyphens (no leading/trailing hyphen)',
+      400
+    );
+  }
+  return trimmed;
+}
 
 /**
  * GET /api/v1/campaigns
@@ -163,6 +179,7 @@ router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, re
     const campaign = await createCampaign({
       name: validateString(req.body.name, 'name', { required: true, maxLength: 200 })!,
       description: validateString(req.body.description, 'description', { maxLength: 1000 }),
+      subdomain: normalizeSubdomain(req.body.subdomain),
       skin_id: validateString(req.body.skin_id, 'skin_id', { maxLength: 64 }),
       node_set_id: validateString(req.body.node_set_id, 'node_set_id', { maxLength: 64 }),
       target_states: validateStringArray(req.body.target_states, 'target_states', { required: true, maxItems: 20 })!,
@@ -183,6 +200,10 @@ router.post('/', requireAuth, requireAdmin, async (req: AuthenticatedRequest, re
 
     res.json({ campaign });
   } catch (error) {
+    if ((error as any)?.code === '23505' && String((error as any)?.constraint || '').includes('idx_campaigns_subdomain_unique')) {
+      res.status(409).json({ error: 'subdomain is already in use by another campaign' });
+      return;
+    }
     if (error instanceof AppError) {
       res.status(error.statusCode).json({ error: error.message });
     } else {
@@ -203,6 +224,7 @@ router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, 
 
     if (req.body.name !== undefined) validatedData.name = validateString(req.body.name, 'name', { required: true, maxLength: 200 });
     if (req.body.description !== undefined) validatedData.description = validateString(req.body.description, 'description', { maxLength: 1000 });
+    if (req.body.subdomain !== undefined) validatedData.subdomain = normalizeSubdomain(req.body.subdomain);
     if (req.body.skin_id !== undefined) {
       if (req.body.skin_id === null || req.body.skin_id === '') {
         validatedData.skin_id = null;
@@ -242,6 +264,10 @@ router.put('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, 
 
     res.json({ campaign });
   } catch (error) {
+    if ((error as any)?.code === '23505' && String((error as any)?.constraint || '').includes('idx_campaigns_subdomain_unique')) {
+      res.status(409).json({ error: 'subdomain is already in use by another campaign' });
+      return;
+    }
     if (error instanceof AppError) {
       res.status(error.statusCode).json({ error: error.message });
     } else {

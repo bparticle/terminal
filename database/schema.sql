@@ -67,6 +67,7 @@ CREATE TABLE campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(200) NOT NULL,
   description TEXT,
+  subdomain VARCHAR(63),
   skin_id VARCHAR(64),
   node_set_id VARCHAR(64),
   target_states TEXT[] NOT NULL,
@@ -84,6 +85,9 @@ CREATE TABLE campaigns (
 );
 
 CREATE INDEX idx_campaigns_active ON campaigns(is_active);
+CREATE UNIQUE INDEX idx_campaigns_subdomain_unique
+  ON campaigns (LOWER(subdomain))
+  WHERE subdomain IS NOT NULL;
 
 ALTER TABLE game_saves
   ADD CONSTRAINT fk_game_saves_campaign

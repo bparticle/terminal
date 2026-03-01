@@ -22,6 +22,7 @@ type ModalType = 'create' | 'edit' | 'leaderboard' | 'simulate' | null;
 const emptyCampaignForm: CreateCampaignInput = {
   name: '',
   description: '',
+  subdomain: '',
   skin_id: '',
   node_set_id: 'terminal-core',
   target_states: [],
@@ -109,6 +110,7 @@ export default function Campaigns() {
     setFormData({
       name: campaign.name,
       description: campaign.description || '',
+      subdomain: campaign.subdomain || '',
       skin_id: campaign.skin_id || '',
       node_set_id: campaign.node_set_id || 'terminal-core',
       target_states: [...campaign.target_states],
@@ -133,8 +135,10 @@ export default function Campaigns() {
 
     setSaving(true);
     try {
+      const normalizedSubdomain = (formData.subdomain || '').trim().toLowerCase();
       const payload = {
         ...formData,
+        subdomain: normalizedSubdomain || (activeModal === 'edit' ? null : undefined),
         skin_id: formData.skin_id || undefined,
         node_set_id: formData.node_set_id || 'terminal-core',
         expires_at: formData.expires_at || undefined,
@@ -382,6 +386,7 @@ export default function Campaigns() {
                       <p className="text-sm text-gray-400 mb-2">{campaign.description}</p>
                     )}
                     <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+                      <span>Subdomain: {campaign.subdomain || '(none)'}</span>
                       <span>Skin: {campaign.skin_id || 'terminal-default'}</span>
                       <span>Nodes: {campaign.node_set_id || 'terminal-core'}</span>
                       <span>
@@ -480,6 +485,22 @@ export default function Campaigns() {
                 placeholder="Campaign description"
                 rows={2}
               />
+            </Field>
+
+            {/* Subdomain */}
+            <Field label="Subdomain (optional)">
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  value={formData.subdomain || ''}
+                  onChange={(e) => setFormData({ ...formData, subdomain: e.target.value.toLowerCase() })}
+                  className="admin-input"
+                  placeholder="newsroom"
+                />
+                <p className="text-xs text-gray-500">
+                  Uses https://&lt;subdomain&gt;.scanlines.io (lowercase letters, numbers, hyphens).
+                </p>
+              </div>
             </Field>
 
             {/* Skin */}

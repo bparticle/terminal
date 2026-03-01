@@ -37,6 +37,19 @@ const NEWSROOM_COFFEE_STAIN_ASSETS = [
   '/assets/cup-coffee-stain-3_s.png',
 ];
 
+function resolveHostCampaignSubdomain(hostname: string): string | null {
+  const normalized = hostname.toLowerCase();
+  if (!normalized || normalized === 'localhost') return null;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) return null; // IPv4 local/dev access
+
+  const labels = normalized.split('.').filter(Boolean);
+  if (labels.length < 3) return null;
+
+  const subdomain = labels[0];
+  if (subdomain === 'www') return null;
+  return subdomain;
+}
+
 function parseFormattedText(text: string): React.ReactNode {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   if (parts.length === 1) return text;
@@ -164,7 +177,10 @@ export default function GameTerminal() {
   }, []);
 
   // Resolve active campaign and its assigned skin for authenticated players.
-  // Prefer the user's most recently played campaign; fall back to first active.
+  // Priority:
+  //   1) Campaign subdomain match from the current host (e.g. newsroom.scanlines.io)
+  //   2) User's most recently played campaign
+  //   3) First active campaign
   // Retry once on failure so a transient network error doesn't leave the player
   // stuck (engine won't start without activeCampaignId).
   useEffect(() => {
@@ -175,10 +191,14 @@ export default function GameTerminal() {
       Promise.all([getCampaigns(), getLastPlayedCampaign()])
         .then(([rows, lastPlayed]) => {
           if (cancelled) return;
+          const hostSubdomain = resolveHostCampaignSubdomain(window.location.hostname);
+          const subdomainCampaign = hostSubdomain
+            ? rows.find((campaign) => (campaign.subdomain || '').toLowerCase() === hostSubdomain)
+            : null;
           const preferredCampaign = lastPlayed?.campaign_id
             ? rows.find((campaign) => campaign.id === lastPlayed.campaign_id)
             : null;
-          const selectedCampaign = preferredCampaign || rows[0];
+          const selectedCampaign = subdomainCampaign || preferredCampaign || rows[0];
 
           if (!selectedCampaign) {
             // No campaigns in the system — the engine cannot start without one.
@@ -186,6 +206,14 @@ export default function GameTerminal() {
             addOutput('', undefined);
             addOutput('No campaigns available. Ask an admin to create one.', 'text-yellow-400');
             return;
+          }
+
+          if (hostSubdomain && !subdomainCampaign) {
+            addOutput('', undefined);
+            addOutput(
+              `[CAMPAIGN] No active campaign mapped to subdomain "${hostSubdomain}". Falling back to default campaign.`,
+              'text-yellow-400'
+            );
           }
           setActiveCampaignId(selectedCampaign.id);
           setCampaignAssignedSkinId(selectedCampaign.skin_id ?? null);
@@ -275,20 +303,26 @@ export default function GameTerminal() {
 
     const randomPercent = (min: number, max: number) =>
       `${Math.round(min + Math.random() * (max - min))}%`;
-    const randomSize = () => Math.round(220 + Math.random() * 160);
     const randomAsset = () => NEWSROOM_COFFEE_STAIN_ASSETS[Math.floor(Math.random() * NEWSROOM_COFFEE_STAIN_ASSETS.length)];
     const viewportHeight = Math.max(420, outputEl?.clientHeight ?? 0);
+    const randomSize = (height: number) => {
+      const maxSize = Math.max(110, Math.min(260, height - 56));
+      const minSize = Math.max(90, Math.min(170, maxSize - 20));
+      return Math.round(minSize + Math.random() * (maxSize - minSize));
+    };
+    const randomSafeY = (size: number, height: number, scrollTop: number = 0) => {
+      const minY = scrollTop + 12;
+      const maxSafeY = Math.max(minY, scrollTop + height - size - 12);
+      return Math.round(minY + Math.random() * (maxSafeY - minY));
+    };
 
-    // Keep stains fully visible vertically so pagination/page-break transitions
-    // never slice a stain through the middle. Horizontal clipping is acceptable.
     type StainState = { asset: string; x: string; y: number; size: number };
     const stains: StainState[] = Array.from({ length: 3 }, () => {
-      const size = randomSize();
-      const maxSafeY = Math.max(24, viewportHeight - size - 24);
+      const size = randomSize(viewportHeight);
       return {
         asset: randomAsset(),
         x: randomPercent(-8, 88),
-        y: Math.round(24 + Math.random() * (maxSafeY - 24)),
+        y: randomSafeY(size, viewportHeight),
         size,
       };
     });
@@ -305,7 +339,41 @@ export default function GameTerminal() {
       applyStain(i, stains[i]);
     }
 
+    // Rotate one stain every ~4 new child elements added to the output.
+    // MutationObserver is used instead of scroll events because the terminal
+    // auto-scrolls programmatically (scrollIntoView), which fires unreliable
+    // scroll events mid-animation with stale scrollTop values.
+    let stainIndex = 0;
+    let childCount = outputEl?.childElementCount ?? 0;
+    const LINES_PER_UPDATE = 4;
+
+    const observer = new MutationObserver(() => {
+      if (!outputEl) return;
+      const newCount = outputEl.childElementCount;
+      const added = newCount - childCount;
+      if (added < LINES_PER_UPDATE) return;
+      const updates = Math.floor(added / LINES_PER_UPDATE);
+      childCount += updates * LINES_PER_UPDATE;
+
+      const height = Math.max(420, outputEl.clientHeight);
+      for (let u = 0; u < updates; u++) {
+        const index = stainIndex % stains.length;
+        stainIndex++;
+        const nextSize = randomSize(height);
+        stains[index] = {
+          asset: randomAsset(),
+          x: randomPercent(-8, 88),
+          y: randomSafeY(nextSize, height, outputEl.scrollTop),
+          size: nextSize,
+        };
+        applyStain(index, stains[index]);
+      }
+    });
+
+    if (outputEl) observer.observe(outputEl, { childList: true });
+
     return () => {
+      observer.disconnect();
       clearVars();
     };
   }, [resolvedSkin.skinId]);
