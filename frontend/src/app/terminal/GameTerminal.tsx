@@ -176,19 +176,21 @@ export default function GameTerminal() {
     };
   }, []);
 
-  // Resolve active campaign and its assigned skin for authenticated players.
+  // Resolve active campaign and its assigned skin for all visitors.
   // Priority:
   //   1) Campaign subdomain match from the current host (e.g. newsroom.scanlines.io)
-  //   2) User's most recently played campaign
+  //   2) User's most recently played campaign (authenticated only)
   //   3) First active campaign
   // Retry once on failure so a transient network error doesn't leave the player
   // stuck (engine won't start without activeCampaignId).
   useEffect(() => {
-    if (!isAuthenticated) return;
-
     let cancelled = false;
-    const load = () =>
-      Promise.all([getCampaigns(), getLastPlayedCampaign()])
+    const load = () => {
+      const lastPlayedPromise = isAuthenticated
+        ? getLastPlayedCampaign()
+        : Promise.resolve(null);
+
+      return Promise.all([getCampaigns(), lastPlayedPromise])
         .then(([rows, lastPlayed]) => {
           if (cancelled) return;
           const hostSubdomain = resolveHostCampaignSubdomain(window.location.hostname);
@@ -226,6 +228,7 @@ export default function GameTerminal() {
             if (!cancelled) load();
           }, 3000);
         });
+    };
     load();
     return () => { cancelled = true; };
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps -- addOutput is stable
